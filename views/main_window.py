@@ -1162,6 +1162,30 @@ class MainWindow(QMainWindow):
         self.viewport.projectionChanged.connect(self._sync_projection_buttons)
         self._sync_projection_buttons(self.viewport.camera.projection_mode())
 
+        # Barra de ferramentas dedicada a Componentes Dinâmicos (estilo SketchUp Dynamic Components)
+        from views.shortcuts import set_tooltip
+        dc_tb = self._new_toolbar(tr("Dynamic Components"), "dynamic_components")
+        self.toolbars["dynamic_components"] = dc_tb
+
+        # 1. Ferramenta Interagir (Interact)
+        act_interact = self._add_tool_button(dc_tb, "interact")
+
+        # 2. Opções do Componente (Component Options)
+        act_options = QAction(tool_icon("dc_options"), tr("Component Options"), self)
+        act_options.setStatusTip(tr("Configure parameters and options of the selected dynamic component."))
+        set_tooltip(act_options, tr("Component Options"))
+        act_options.triggered.connect(self._on_dc_options)
+        dc_tb.addAction(act_options)
+        self._icon_actions.append((act_options, "dc_options"))
+
+        # 3. Atributos do Componente (Component Attributes)
+        act_attrs = QAction(tool_icon("dc_attributes"), tr("Component Attributes"), self)
+        act_attrs.setStatusTip(tr("Edit variables, formulas, and parametric behaviors."))
+        set_tooltip(act_attrs, tr("Component Attributes"))
+        act_attrs.triggered.connect(self._on_dc_attributes)
+        dc_tb.addAction(act_attrs)
+        self._icon_actions.append((act_attrs, "dc_attributes"))
+
     def _describe_buttons(self) -> None:
         """A toolbar button's tooltip says what it does under its name and
         keys, as Blender's do: the action's status tip, the sentence the
@@ -1688,15 +1712,15 @@ class MainWindow(QMainWindow):
         tools_menu.addSeparator()
         # Dynamic Components (nativo)
         dc_menu = QMenu(tr("Dynamic Components"), tools_menu)
-        act_dc_interact = QAction(tool_icon("select"), tr("Interact"), self)
+        act_dc_interact = QAction(tool_icon("interact"), tr("Interact"), self)
         act_dc_interact.setStatusTip(tr("Interact with dynamic components (onClick)."))
         act_dc_interact.triggered.connect(lambda: self._activate_tool("interact"))
         dc_menu.addAction(act_dc_interact)
-        act_dc_options = QAction(tr("Component Options"), self)
+        act_dc_options = QAction(tool_icon("dc_options"), tr("Component Options"), self)
         act_dc_options.setStatusTip(tr("Configure parameters of the dynamic component."))
         act_dc_options.triggered.connect(self._on_dc_options)
         dc_menu.addAction(act_dc_options)
-        act_dc_attrs = QAction(tr("Component Attributes"), self)
+        act_dc_attrs = QAction(tool_icon("dc_attributes"), tr("Component Attributes"), self)
         act_dc_attrs.setStatusTip(tr("Edit variables, formulas and behaviors."))
         act_dc_attrs.triggered.connect(self._on_dc_attributes)
         dc_menu.addAction(act_dc_attrs)

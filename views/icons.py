@@ -2093,7 +2093,104 @@ def _first_person(p, ink):
         p.drawPath(cap)
 
 
+
+def _dc_interact(p, ink):
+    # Hand pointer (like SketchUp Interact Hand)
+    from PySide6.QtGui import QPainterPath, QColor
+    from PySide6.QtCore import QPointF, QRectF
+    p.save()
+    p.setPen(_rpen(ink, 2.4))
+    p.setBrush(QColor(ink.red(), ink.green(), ink.blue(), 30))
+    # Draw hand with index finger pointing
+    path = QPainterPath()
+    path.moveTo(18, 40)
+    path.lineTo(18, 22)  # Index finger left
+    path.arcTo(QRectF(18, 16, 8, 8), 180, -180) # Index fingertip
+    path.lineTo(26, 26)  # Index finger right
+    path.lineTo(31, 26)  # Middle finger
+    path.arcTo(QRectF(26, 20, 8, 8), 180, -180)
+    path.lineTo(34, 30)
+    path.lineTo(39, 30)  # Ring finger
+    path.arcTo(QRectF(34, 24, 8, 8), 180, -180)
+    path.lineTo(42, 34)
+    path.lineTo(46, 34)  # Little finger
+    path.arcTo(QRectF(42, 28, 8, 8), 180, -180)
+    path.lineTo(50, 44)
+    path.quadTo(QPointF(48, 56), QPointF(32, 56)) # Palm base
+    path.lineTo(18, 56)
+    path.lineTo(12, 44)  # Thumb
+    path.arcTo(QRectF(10, 38, 8, 8), 270, -180)
+    path.lineTo(18, 40)
+    p.drawPath(path)
+    # Action spark / rays near fingertip
+    p.setPen(_rpen(_accent(), 2.0))
+    p.drawLine(14, 14, 8, 8)
+    p.drawLine(22, 12, 22, 4)
+    p.drawLine(30, 14, 36, 8)
+    p.restore()
+
+
+def _dc_options(p, ink):
+    # Component Options (Window dialog with sliders/controls)
+    from PySide6.QtGui import QPainterPath, QColor
+    from PySide6.QtCore import QRectF
+    p.save()
+    p.setPen(_rpen(ink, 2.6))
+    p.setBrush(QColor(ink.red(), ink.green(), ink.blue(), 25))
+    p.drawRoundedRect(QRectF(10, 10, 44, 44), 4.0, 4.0)
+    # Header bar
+    p.setBrush(_accent())
+    p.setPen(Qt.NoPen)
+    p.drawRoundedRect(QRectF(10, 10, 44, 10), 4.0, 4.0)
+    # Sliders / check lines
+    p.setPen(_rpen(ink, 2.4))
+    p.drawLine(16, 28, 48, 28)
+    p.drawLine(16, 38, 48, 38)
+    p.drawLine(16, 46, 36, 46)
+    # Slider knobs
+    p.setBrush(_accent())
+    p.drawEllipse(QRectF(22, 25, 6, 6))
+    p.drawEllipse(QRectF(38, 35, 6, 6))
+    p.restore()
+
+
+def _dc_attributes(p, ink):
+    # Component Attributes (Formulas / Math fx on table)
+    from PySide6.QtGui import QPainterPath, QColor
+    from PySide6.QtCore import QRectF
+    p.save()
+    p.setPen(_rpen(ink, 2.6))
+    p.setBrush(QColor(ink.red(), ink.green(), ink.blue(), 25))
+    p.drawRoundedRect(QRectF(8, 8, 48, 48), 4.0, 4.0)
+    # Grid lines
+    p.setPen(_rpen(ink, 1.8))
+    p.drawLine(8, 22, 56, 22)
+    p.drawLine(8, 36, 56, 36)
+    p.drawLine(26, 8, 26, 56)
+    # Formula "fx" or "=" badge
+    p.setPen(_rpen(_accent(), 2.8))
+    # Draw 'f'
+    path = QPainterPath()
+    path.moveTo(18, 14)
+    path.quadTo(15, 14, 15, 17)
+    path.lineTo(15, 30)
+    path.moveTo(12, 19)
+    path.lineTo(18, 19)
+    # Draw 'x'
+    path.moveTo(20, 24)
+    path.lineTo(24, 30)
+    path.moveTo(24, 24)
+    path.lineTo(20, 30)
+    p.drawPath(path)
+    # Parameter lines
+    p.setPen(_rpen(ink, 2.2))
+    p.drawLine(32, 17, 50, 17)
+    p.drawLine(32, 29, 46, 29)
+    p.drawLine(14, 46, 50, 46)
+    p.restore()
+
 _DRAW = {
+    'interact': _dc_interact, 'dc_options': _dc_options, 'dc_attributes': _dc_attributes,
     **_SOLID_ICONS,
     "select": _select, "line": _line, "freehand": _freehand,
     "side_collapse": _side_collapse,
