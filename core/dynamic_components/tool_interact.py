@@ -60,8 +60,14 @@ class DCAnimationController:
         if not self._active_animations:
             self._timer.stop()
 
-        if self._viewport and hasattr(self._viewport, "update"):
-            self._viewport.update()
+        if self._viewport:
+            scene = getattr(self._viewport, "scene", None)
+            if scene is not None:
+                scene.version += 1
+            if hasattr(self._viewport, "notify_scene_changed"):
+                self._viewport.notify_scene_changed()
+            elif hasattr(self._viewport, "update"):
+                self._viewport.update()
 
 
 def math_pow(base: float, exp: float) -> float:
@@ -257,9 +263,14 @@ class InteractTool(Tool):
                 if var_name in t_attrs and new_val is not None:
                     t_attrs[var_name]["value"] = new_val
                     evaluate_dc(target_grp)
+                    scene = getattr(viewport, "scene", None)
+                    if scene is not None:
+                        scene.version += 1
                     if hasattr(viewport, "flash_status"):
                         viewport.flash_status(f"{var_name} = {new_val}", 2000)
-                    if hasattr(viewport, "update"):
+                    if hasattr(viewport, "notify_scene_changed"):
+                        viewport.notify_scene_changed()
+                    elif hasattr(viewport, "update"):
                         viewport.update()
                     return
 
