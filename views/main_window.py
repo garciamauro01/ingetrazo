@@ -1704,6 +1704,11 @@ class MainWindow(QMainWindow):
         act_dc_report.setStatusTip(tr("Generate part list and export CSV report."))
         act_dc_report.triggered.connect(self._on_dc_report)
         dc_menu.addAction(act_dc_report)
+        dc_menu.addSeparator()
+        act_dc_sample = QAction(tr("Insert Sample Dynamic Door"), self)
+        act_dc_sample.setStatusTip(tr("Insert a sample dynamic parametric door into the scene."))
+        act_dc_sample.triggered.connect(self._on_insert_dc_sample)
+        dc_menu.addAction(act_dc_sample)
         tools_menu.addMenu(dc_menu)
         self._dc_menu = dc_menu
         tools_menu.addSeparator()
@@ -8252,6 +8257,17 @@ class MainWindow(QMainWindow):
         except Exception:  # noqa: BLE001 — never block quitting on cleanup
             pass
         super().closeEvent(event)
+
+    def _on_insert_dc_sample(self) -> None:
+        from core.dynamic_components.sample import create_sample_dynamic_door
+        door = create_sample_dynamic_door()
+        self.viewport.scene.groups.append(door)
+        self.viewport.scene.clear_selection()
+        self.viewport.scene.select(door)
+        self.viewport.update()
+        if hasattr(self, "_on_zoom_extents"):
+            self._on_zoom_extents()
+        self.statusBar().showMessage(tr("Sample Dynamic Door inserted into scene."), 4000)
 
     def _selected_group_or_warn(self):
         from core.group import Group
