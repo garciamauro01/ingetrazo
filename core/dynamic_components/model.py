@@ -226,8 +226,10 @@ def apply_dc_geometry(group) -> None:
     # Se o grupo veio do SKP com matriz original, preserva ou compõe a rotação relativa
     orig_xf_data = data.get("orig_xform")
     if orig_xf_data and len(orig_xf_data) == 16:
-        # Começa da matriz original do SKP e aplica o delta de rotação/translação
-        m = QMatrix4x4(*orig_xf_data)
+        # data() retorna lista em column-major, enquanto o construtor QMatrix4x4(*args) espera row-major.
+        # Transpõe para restaurar exatamente a matriz 4x4 original do modelo:
+        row_major = [orig_xf_data[c * 4 + r] for r in range(4) for c in range(4)]
+        m = QMatrix4x4(*row_major)
         if rot_z:
             m.rotate(rot_z, 0.0, 0.0, 1.0)
         if rot_y:
