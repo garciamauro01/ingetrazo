@@ -187,12 +187,32 @@ class ScaleTool(Tool):
         if not active:
             self._lo = self._hi = None
             return
+        # Restrição do SketchUp Dynamic Components ScaleTool (bitmask):
+        # 0 = sem escala, 1 = apenas cantos (uniforme), 127 = todos os grips liberados
+        scale_tool_mask = 127
+        if self._groups:
+            from core.dynamic_components.model import get_dc_data
+            for g in self._groups:
+                dc = get_dc_data(g)
+                if dc:
+                    try:
+                        st = int(float(dc.get("attributes", {}).get("ScaleTool", {}).get("value", 127)))
+                        scale_tool_mask = min(scale_tool_mask, st)
+                    except Exception:
+                        pass
+
+        if scale_tool_mask == 0:
+            return  # Totalmente bloqueado para a ferramenta de Escala
+
         choices = [(0.0, 0.5, 1.0) if i in active else (0.5,)
                    for i in range(3)]
         for params in itertools.product(*choices):
             mask = tuple(i for i in active if params[i] != 0.5)
             if not mask:
                 continue                    # the centre is not a grip
+            # Se for ScaleTool = 1, apenas grips de 3 eixos (cantos proporcionais)
+            if scale_tool_mask == 1 and len(mask) < 3:
+                continue
             self._grips.append(_Grip(params, mask))
 
     def _extents(self) -> tuple:

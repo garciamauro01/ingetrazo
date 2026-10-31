@@ -811,11 +811,12 @@ def _collect(defn, xform, by_id, attr_map, out, depth, stack,
             continue
         if proto_uses is not None and cid in proto_ids:
             proto_uses.setdefault((cid, child_inherited), []).append(
-                (placed, out_layer))
+                (placed, out_layer, getattr(ins, "properties", None)))
             continue
-        if layer_uses is not None and getattr(ins, "layer", ""):
-            # Tagged nested instance → its own group carrying the layer.
-            layer_uses.append((child, placed, child_inherited, ins.layer))
+        if layer_uses is not None and (getattr(ins, "layer", "") or getattr(ins, "properties", None)):
+            # Tagged nested instance OU componente dinâmico com propriedades próprias:
+            # extraído como grupo próprio para manter suas animações e fórmulas intactas.
+            layer_uses.append((child, placed, child_inherited, getattr(ins, "layer", "") or None, getattr(ins, "properties", None)))
             continue
         _collect(child, placed, by_id, attr_map, out, depth + 1, stack,
                  proto_ids, proto_uses, child_inherited, image_uses,
@@ -1131,7 +1132,14 @@ def _adapt(model, name: str, skp_path=None):
     proto_ids = set()
     for did, cnt in uses.items():
         d = by_id.get(did)
-        if d is None or cnt < 2 or not _shareable(d):
+        if d is None:
+            continue
+        # Se a definição contiver instâncias com propriedades dinâmicas, SEMPRE preserva como protótipo com filhos
+        has_dc = any(getattr(ins, "properties", None) for ins in getattr(d, "instances", []))
+        if has_dc:
+            proto_ids.add(did)
+            continue
+        if cnt < 2 or not _shareable(d):
             continue
         polys = _subtree_polys(d, by_id, memo, set())
         if polys >= _INST_MIN_POLYS and polys * (cnt - 1) >= _INST_MIN_SAVED:
@@ -1220,7 +1228,7 @@ def _adapt(model, name: str, skp_path=None):
                 continue
             if getattr(child, "id", None) in proto_ids:
                 proto_uses.setdefault((child.id, inh), []).append(
-                    (placed, lay))
+                    (placed, lay, getattr(ins, "properties", None)))
                 continue
             sub: list = []
             sub_edges: list = []
@@ -1233,6 +1241,9 @@ def _adapt(model, name: str, skp_path=None):
                       # The instance's own axes (issue #44): flattened into
                       # world coordinates, it still faces the way it did.
                       "axes": [float(x) for x in placed.data()]}
+                inst_props = getattr(ins, 'properties', None) or {}
+                if inst_props:
+                    gp['skp_dynamic'] = inst_props
                 if lay:
                     gp["layer"] = lay
                 groups.append(gp)
@@ -1243,18 +1254,25 @@ def _adapt(model, name: str, skp_path=None):
     # instance extracts recursively.
     i = 0
     while i < len(layer_uses):
-        child, placed, inh, lay = layer_uses[i]
+        item = layer_uses[i]
         i += 1
+        child, placed, inh = item[0], item[1], item[2]
+        lay = item[3] if len(item) > 3 else None
+        props = item[4] if len(item) > 4 else None
         sub = []
         sub_edges = []
         _collect(child, placed, by_id, attr_map, sub, 0, set(),
                  proto_ids, proto_uses, inh, image_uses, sub_edges,
                  layer_uses=layer_uses, group_layer=lay)
         if sub:
-            groups.append({"name": getattr(child, "name", None) or name,
-                           "faces": sub, "soft_edges": sub_edges,
-                           "layer": lay,
-                           "axes": [float(x) for x in placed.data()]})
+            gp = {"name": getattr(child, "name", None) or name,
+                  "faces": sub, "soft_edges": sub_edges,
+                  "axes": [float(x) for x in placed.data()]}
+            if lay:
+                gp["layer"] = lay
+            if props:
+                gp["skp_dynamic"] = props
+            groups.append(gp)
 
     # Image entities → their own groups; cutout images (real alpha) become
     # face-me billboards that turn toward the camera, opaque photos stay
@@ -1321,10 +1339,15 @@ def _adapt(model, name: str, skp_path=None):
             ci = _build_proto(cid, cinh)
             if ci is None:
                 continue
-            for xf, ly in places:
+            for place_item in places:
+                xf = place_item[0]
+                ly = place_item[1] if len(place_item) > 1 else None
+                inst_props = place_item[2] if len(place_item) > 2 else None
                 kid = {"proto": ci, "xform": xf}
                 if ly:
                     kid["layer"] = ly
+                if inst_props:
+                    kid["skp_dynamic"] = inst_props
                 children.append(kid)
         protos[idx] = {"name": getattr(d, "name", None) or name,
                        "faces": local, "soft_edges": local_edges,
@@ -1337,11 +1360,10 @@ def _adapt(model, name: str, skp_path=None):
         idx = _build_proto(did, inh)
         if idx is None:
             continue
-        protos[idx]["instances"] = [xf for xf, _ly in uses]
-        if any(ly for _xf, ly in uses):
-            # Layer (tag) per PLACEMENT — copies of one component can sit on
-            # different layers.
-            protos[idx]["instance_layers"] = [ly for _xf, ly in uses]
+        protos[idx]["instances"] = [u[0] for u in uses]
+        protos[idx]["instance_props"] = [u[2] if len(u) > 2 else None for u in uses]
+        if any(len(u) > 1 and u[1] for u in uses):
+            protos[idx]["instance_layers"] = [u[1] if len(u) > 1 else None for u in uses]
     # NOT filtered: ``children`` reference prototypes by INDEX, so dropping
     # an entry would silently repoint every reference after it. A container
     # with no faces of its own is real anyway — the hedge's top definition

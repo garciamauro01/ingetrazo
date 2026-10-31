@@ -412,6 +412,15 @@ def _apply_payload_inner(scene, payload, progress=None) -> str:
                                  for c in range(4)])
                 if not m.isIdentity():
                     g.axes = m
+            skp_dyn = gp.get('skp_dynamic')
+            if skp_dyn:
+                from core.dynamic_components.skp_bridge import convert_skp_dynamic_attributes
+                from core.dynamic_components.model import evaluate_dc
+                converted = convert_skp_dynamic_attributes(skp_dyn)
+                if converted:
+                    if not hasattr(g, 'ext') or g.ext is None: g.ext = {}
+                    g.ext['dynamic_components'] = converted
+                    evaluate_dc(g)
             if gp.get("billboard"):
                 # Image-entity cutout (photo person/animal/tree): the real
                 # geometry turns toward the camera each frame, like the DAE
@@ -428,16 +437,32 @@ def _apply_payload_inner(scene, payload, progress=None) -> str:
         _tick(1)
         proto_meshes.append(_build_mesh(pr["faces"], pr.get("soft_edges")))
 
-    def _place(idx, xf, layer=None, depth=0):
+    def _place(idx, xf, layer=None, depth=0, inst_props=None):
         pr = protos[idx]
         g = Group(proto_meshes[idx], name=pr.get("name"))
         g.xform = xf
         if layer:
             g.layer = layer
+        # Injeta propriedades dinâmicas do protótipo ou da instância
+        dyn_data = inst_props or pr.get("skp_dynamic")
+        if dyn_data:
+            from core.dynamic_components.skp_bridge import convert_skp_dynamic_attributes
+            from core.dynamic_components.model import evaluate_dc
+            converted = convert_skp_dynamic_attributes(dyn_data)
+            if converted:
+                if not hasattr(g, 'ext') or g.ext is None: g.ext = {}
+                g.ext['dynamic_components'] = converted
+                evaluate_dc(g)
+
         if depth < 32:      # a malformed file must not spin
-            g.adopt(_place(kid["proto"], kid["xform"], kid.get("layer"),
-                           depth + 1)
-                    for kid in pr.get("children", []) or [])
+            kids = [
+                _place(kid["proto"], kid["xform"], kid.get("layer"),
+                       depth + 1, kid.get("skp_dynamic"))
+                for kid in pr.get("children", []) or []
+            ]
+            g.adopt(kids)
+            for k in kids:
+                k.owner = g
         return g
 
     for idx, pr in enumerate(protos):
@@ -445,8 +470,10 @@ def _apply_payload_inner(scene, payload, progress=None) -> str:
             continue
         _tick(1)
         layers = pr.get("instance_layers") or []
+        inst_props_list = pr.get("instance_props") or []
         for i, xf in enumerate(pr.get("instances", []) or []):
-            g = _place(idx, xf, layers[i] if i < len(layers) else None)
+            prop = inst_props_list[i] if i < len(inst_props_list) else None
+            g = _place(idx, xf, layers[i] if i < len(layers) else None, inst_props=prop)
             scene.groups.append(g)
     back = payload.get("back_color")
     if back and getattr(scene, "back_face_color", None) is None:

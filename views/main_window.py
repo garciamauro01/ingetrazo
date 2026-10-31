@@ -323,6 +323,8 @@ class MainWindow(QMainWindow):
         self._tools["change_axes"] = ChangeAxesTool()
         from tools.scale_manager import ScaleManagerTool
         self._tools["scale_manager"] = ScaleManagerTool()
+        from core.dynamic_components.tool_interact import InteractTool
+        self._tools["interact"] = InteractTool()
         # Tag each tool with its icon key so the viewport can turn the mouse
         # pointer into the tool's icon (tool-shaped cursors).
         for key, tool in self._tools.items():
@@ -935,7 +937,7 @@ class MainWindow(QMainWindow):
 
         # One toolbar per task, each independently movable.
         layout = [
-            ("main", tr("Main"), ["select", "eraser", "paint"]),
+            ("main", tr("Main"), ["select", "interact", "eraser", "paint"]),
             ("draw", tr("Draw"),
              ["line", "freehand", "rectangle", "rotated_rect", "circle",
               "polygon", "arc", "arc3", "center_arc", "pie"]),
@@ -1683,6 +1685,27 @@ class MainWindow(QMainWindow):
             solids_menu.addAction(self._tool_actions[key])
         tools_menu.addMenu(solids_menu)
         self._solids_menu = solids_menu        # a QMenu dies with its locals
+        tools_menu.addSeparator()
+        # Dynamic Components (nativo)
+        dc_menu = QMenu(tr("Dynamic Components"), tools_menu)
+        act_dc_interact = QAction(tool_icon("select"), tr("Interact"), self)
+        act_dc_interact.setStatusTip(tr("Interact with dynamic components (onClick)."))
+        act_dc_interact.triggered.connect(lambda: self._activate_tool("interact"))
+        dc_menu.addAction(act_dc_interact)
+        act_dc_options = QAction(tr("Component Options"), self)
+        act_dc_options.setStatusTip(tr("Configure parameters of the dynamic component."))
+        act_dc_options.triggered.connect(self._on_dc_options)
+        dc_menu.addAction(act_dc_options)
+        act_dc_attrs = QAction(tr("Component Attributes"), self)
+        act_dc_attrs.setStatusTip(tr("Edit variables, formulas and behaviors."))
+        act_dc_attrs.triggered.connect(self._on_dc_attributes)
+        dc_menu.addAction(act_dc_attrs)
+        act_dc_report = QAction(tr("Generate Report..."), self)
+        act_dc_report.setStatusTip(tr("Generate part list and export CSV report."))
+        act_dc_report.triggered.connect(self._on_dc_report)
+        dc_menu.addAction(act_dc_report)
+        tools_menu.addMenu(dc_menu)
+        self._dc_menu = dc_menu
         tools_menu.addSeparator()
         action_3dtext = QAction(tool_icon("text3d"), tr("3D Text…"), self)
         action_3dtext.setStatusTip(tr(_TEXT3D_TIP))
@@ -8229,3 +8252,101 @@ class MainWindow(QMainWindow):
         except Exception:  # noqa: BLE001 — never block quitting on cleanup
             pass
         super().closeEvent(event)
+
+    def _selected_group_or_warn(self):
+        from core.group import Group
+        from core.dynamic_components.model import get_dc_data
+        scene_sel = getattr(self.viewport.scene, "selection", None) or []
+
+        # 1. Se houver grupo selecionado na cena
+        groups = [e for e in scene_sel if isinstance(e, Group)]
+        if groups:
+            cand = groups[0]
+            # Se for subcomponente de um DC, sobe até encontrar o DC
+            curr = cand
+            while curr:
+                if get_dc_data(curr):
+                    return curr
+                curr = getattr(curr, "owner", None)
+            return cand
+
+        # 2. Se houver faces/arestas selecionadas, encontra o grupo pai
+        for e in scene_sel:
+            owner = getattr(e, "owner", None)
+            if isinstance(owner, Group):
+                curr = owner
+                while curr:
+                    if get_dc_data(curr):
+                        return curr
+                    curr = getattr(curr, "owner", None)
+                return owner
+
+        # 3. Se algum grupo estiver com flag selected
+        for g in getattr(self.viewport.scene, "groups", []):
+            if getattr(g, "selected", False):
+                return g
+
+        # 4. Fallback: se houver exatamente um único componente dinâmico ou se houver componentes dinâmicos no modelo
+        dc_groups = [g for g in getattr(self.viewport.scene, "groups", []) if get_dc_data(g)]
+        if len(dc_groups) == 1:
+            return dc_groups[0]
+
+        from PySide6.QtWidgets import QMessageBox
+        QMessageBox.information(
+            self,
+            tr("No Component Selected"),
+            tr("Please select a group or component with the Select tool (Space) first."),
+        )
+        return None
+
+    def _on_dc_options(self) -> None:
+        g = self._selected_group_or_warn()
+        if g is not None:
+            from core.dynamic_components.ui import ComponentOptionsDialog
+            dlg = ComponentOptionsDialog(g, viewport=self.viewport, parent=self)
+            dlg.exec_()
+
+    def _on_dc_attributes(self) -> None:
+        g = self._selected_group_or_warn()
+        if g is not None:
+            from core.dynamic_components.ui import ComponentAttributesDialog
+            dlg = ComponentAttributesDialog(g, viewport=self.viewport, parent=self)
+            dlg.exec_()
+
+    def _on_dc_report(self) -> None:
+        from core.group import Group
+        from core.dynamic_components.model import get_dc_data
+        from core.dynamic_components.report import DCReportDialog, collect_dc_report_rows
+        scene_sel = getattr(self.viewport.scene, "selection", None) or []
+        groups = [e for e in scene_sel if isinstance(e, Group)]
+        if groups:
+            # Sobe na hierarquia se o grupo selecionado for filho de um DC
+            cand = groups[0]
+            curr = cand
+            while curr:
+                if get_dc_data(curr):
+                    cand = curr
+                    break
+                curr = getattr(curr, "owner", None)
+
+            # Se o componente selecionado possuir dados de DC, abre o relatório dele
+            if collect_dc_report_rows(cand):
+                dlg = DCReportDialog(cand, parent=self)
+                dlg.exec_()
+                return
+        # Se nada estiver selecionado, gera relatório de TODOS os componentes dinâmicos do modelo!
+        from core.dynamic_components.model import get_dc_data
+        dc_groups = [g for g in getattr(self.viewport.scene, "groups", []) if get_dc_data(g)]
+        if dc_groups:
+            # Cria um agrupador virtual da cena inteira
+            fake_root = Group(name=tr("Whole Model"))
+            fake_root.children = dc_groups
+            dlg = DCReportDialog(fake_root, parent=self)
+            dlg.exec_()
+        else:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.information(
+                self,
+                tr("No Dynamic Components"),
+                tr("The current model contains no dynamic components."),
+            )
