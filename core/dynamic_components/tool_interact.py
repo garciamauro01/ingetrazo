@@ -166,6 +166,16 @@ class InteractTool(Tool):
             face, place = viewport.pick_face_any(screen_x, screen_y)
             group = place
 
+        # 4. Fallback: se ainda não encontrou e há apenas um grupo dinâmico sob a visão ou selecionado
+        if not group and hasattr(viewport, "scene") and viewport.scene.selection:
+            from core.group import Group
+            for s in viewport.scene.selection:
+                if isinstance(s, Group) and get_dc_data(s):
+                    group = s
+                    break
+
+        print(f"[InteractTool] on_click at ({screen_x}, {screen_y}) -> hit group: {getattr(group, 'name', None)}")
+
         if not group:
             if hasattr(viewport, "flash_status"):
                 viewport.flash_status("No object under cursor.", 2000)
@@ -256,23 +266,28 @@ class InteractTool(Tool):
             if len(parts) == 2:
                 raw_var, expr = parts[0], parts[1]
                 target_grp, var_name = _resolve_target(group, raw_var)
+                evaluator = SafeExpressionEvaluator(target_grp)
+                res = evaluator.evaluate(expr)
                 t_data = get_dc_data(target_grp)
-                t_attrs = t_data.get("attributes", {}) if t_data else {}
-                ctx = {k: v.get("value") for k, v in t_attrs.items()}
-                new_val = SafeExpressionEvaluator.evaluate(expr, ctx)
-                if var_name in t_attrs and new_val is not None:
-                    t_attrs[var_name]["value"] = new_val
-                    evaluate_dc(target_grp)
-                    scene = getattr(viewport, "scene", None)
-                    if scene is not None:
-                        scene.version += 1
-                    if hasattr(viewport, "flash_status"):
-                        viewport.flash_status(f"{var_name} = {new_val}", 2000)
-                    if hasattr(viewport, "notify_scene_changed"):
-                        viewport.notify_scene_changed()
-                    elif hasattr(viewport, "update"):
-                        viewport.update()
-                    return
+                if t_data and "attributes" in t_data:
+                    for ak in t_data["attributes"].keys():
+                        if ak.lower() == var_name.lower():
+                            t_data["attributes"][ak]["value"] = res
+                            evaluate_dc(target_grp)
+                            if viewport:
+                                scene = getattr(viewport, "scene", None)
+                                if scene is not None:
+                                    scene.version += 1
+                                if hasattr(viewport, "notify_scene_changed"):
+                                    viewport.notify_scene_changed()
+                                else:
+                                    viewport.update()
+                            return
 
-        if hasattr(viewport, "flash_status"):
-            viewport.flash_status(f"Command executed: {cmd}", 2000)
+        # ALERT("msg")
+        m_alert = re.match(r"^ALERT\(\s*['\"]?(.*?)['\"]?\s*\)$", cmd, re.IGNORECASE)
+        if m_alert:
+            msg = m_alert.group(1)
+            if viewport and hasattr(viewport, "flash_status"):
+                viewport.flash_status(msg, 3000)
+            return

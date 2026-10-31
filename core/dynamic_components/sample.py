@@ -33,19 +33,49 @@ def _create_box_mesh(lx: float, ly: float, lz: float, dx: float = 0.0, dy: float
 
 
 def create_sample_dynamic_door() -> Group:
-    """Cria uma porta paramétrica dinâmica 100% nativa com batente e folha móvel."""
-    # 1. Batente (Marco da porta)
-    frame_mesh = _create_box_mesh(0.90, 0.15, 2.10)
+    """Cria uma porta paramétrica dinâmica 100% nativa com batente vazado em 'U' e folha móvel."""
+    total_w = 0.90
+    total_h = 2.10
+    wall_th = 0.14
+    post_w = 0.05
+    head_h = 0.05
+
+    # 1. Batente vazado em 'U' invertido (sem fechar o vão onde a folha gira)
+    frame_mesh = Mesh()
+    # Montante esquerdo
+    left_post = _create_box_mesh(post_w, wall_th, total_h, dx=0.0, dy=0.0, dz=0.0)
+    for f in left_post.faces:
+        frame_mesh.add_face([QVector3D(v) for v in f.vertices])
+
+    # Montante direito
+    right_post = _create_box_mesh(post_w, wall_th, total_h, dx=total_w - post_w, dy=0.0, dz=0.0)
+    for f in right_post.faces:
+        frame_mesh.add_face([QVector3D(v) for v in f.vertices])
+
+    # Travessa superior
+    top_head = _create_box_mesh(total_w - 2 * post_w, wall_th, head_h, dx=post_w, dy=0.0, dz=total_h - head_h)
+    for f in top_head.faces:
+        frame_mesh.add_face([QVector3D(v) for v in f.vertices])
+
     door_group = Group(frame_mesh, name="Porta_Dinamica")
     door_group.component = True
 
     # 2. Folha da porta (Leaf)
-    leaf_mesh = _create_box_mesh(0.82, 0.04, 2.05, dx=0.04, dy=0.05, dz=0.02)
+    # A folha tem origem local (0, 0, 0) exatamente no pivô da dobradiça!
+    leaf_w = total_w - 2 * post_w   # 0.80m de largura
+    leaf_th = 0.035                 # 3.5cm de espessura
+    leaf_h = total_h - head_h - 0.01 # 2.04m de altura
+
+    leaf_mesh = _create_box_mesh(leaf_w, leaf_th, leaf_h, dx=0.0, dy=0.0, dz=0.0)
     leaf_group = Group(leaf_mesh, name="Folha")
     leaf_group.component = True
 
+    # Posiciona o pivô da folha em X=0.05 (junto ao montante esquerdo), Y=0.03 (rebaixo), Z=0.01 (folga chão)
     leaf_dc = ensure_dc_data(leaf_group)
     leaf_dc["name"] = "Folha"
+    leaf_dc["attributes"]["X"] = {"label": "X", "value": post_w, "formula": "", "unit": "m", "editable": False}
+    leaf_dc["attributes"]["Y"] = {"label": "Y", "value": 0.03, "formula": "", "unit": "m", "editable": False}
+    leaf_dc["attributes"]["Z"] = {"label": "Z", "value": 0.01, "formula": "", "unit": "m", "editable": False}
     leaf_dc["attributes"]["RotZ"] = {
         "label": "RotZ",
         "value": 0.0,
@@ -60,7 +90,7 @@ def create_sample_dynamic_door() -> Group:
 
     door_dc = ensure_dc_data(door_group)
     door_dc["name"] = "Porta Dinamica Parametrica"
-    door_dc["description"] = "Porta dinamica de teste. Clique na folha ou no batente com a ferramenta Interact para abrir/fechar."
+    door_dc["description"] = "Porta dinamica de teste. Clique na porta com a ferramenta Interact para abrir/fechar."
     door_dc["onClick"] = 'ANIMATE("Folha!RotZ", "0", "-90")'
 
     evaluate_dc(door_group)

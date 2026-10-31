@@ -2317,6 +2317,7 @@ _CURSOR_HOTSPOTS = {
     "walk": (24, 24),
     "look_around": (24, 26),        # the pupil
     "first_person": (24, 24),
+    "interact": (22, 16),
 }
 
 

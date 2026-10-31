@@ -8291,7 +8291,8 @@ class MainWindow(QMainWindow):
         self.viewport.update()
         if hasattr(self, "_on_zoom_extents"):
             self._on_zoom_extents()
-        self.statusBar().showMessage(tr("Sample Dynamic Door inserted into scene."), 4000)
+        self._activate_tool("interact")
+        self.statusBar().showMessage(tr("Sample Dynamic Door inserted. Click on the door with Interact tool to open/close."), 6000)
 
     def _selected_group_or_warn(self):
         from core.group import Group
