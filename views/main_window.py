@@ -8263,7 +8263,7 @@ class MainWindow(QMainWindow):
         door = create_sample_dynamic_door()
         self.viewport.scene.groups.append(door)
         self.viewport.scene.clear_selection()
-        self.viewport.scene.select(door)
+        self.viewport.scene.select([door])
         self.viewport.update()
         if hasattr(self, "_on_zoom_extents"):
             self._on_zoom_extents()
