@@ -740,6 +740,14 @@ class ComponentAttributesDialog(QDialog):
             }
         evaluate_dc(group)
         self._populate_tree()
+        if self.viewport:
+            scene = getattr(self.viewport, 'scene', None)
+            if scene is not None:
+                scene.version += 1
+            if hasattr(self.viewport, 'notify_scene_changed'):
+                self.viewport.notify_scene_changed()
+            elif hasattr(self.viewport, 'update'):
+                self.viewport.update()
 
     def _prompt_custom_attribute(self, group: Any):
         from PySide6.QtWidgets import QInputDialog
@@ -755,6 +763,14 @@ class ComponentAttributesDialog(QDialog):
             del data["attributes"][key]
         evaluate_dc(group)
         self._populate_tree()
+        if self.viewport:
+            scene = getattr(self.viewport, 'scene', None)
+            if scene is not None:
+                scene.version += 1
+            if hasattr(self.viewport, 'notify_scene_changed'):
+                self.viewport.notify_scene_changed()
+            elif hasattr(self.viewport, 'update'):
+                self.viewport.update()
 
     def _open_attr_details(self, group: Any, key: str, info: dict):
         grp_name = getattr(group, "name", "Componente")
@@ -762,6 +778,14 @@ class ComponentAttributesDialog(QDialog):
         if dlg.exec_():
             evaluate_dc(group)
             self._populate_tree()
+            if self.viewport:
+                scene = getattr(self.viewport, 'scene', None)
+                if scene is not None:
+                    scene.version += 1
+                if hasattr(self.viewport, 'notify_scene_changed'):
+                    self.viewport.notify_scene_changed()
+                elif hasattr(self.viewport, 'update'):
+                    self.viewport.update()
 
     def _on_attr_edited(self, group: Any, key: str, text: str):
         text = text.strip()
@@ -779,6 +803,14 @@ class ComponentAttributesDialog(QDialog):
                 except ValueError:
                     attr["value"] = text
         evaluate_dc(group)
+        if self.viewport:
+            scene = getattr(self.viewport, 'scene', None)
+            if scene is not None:
+                scene.version += 1
+            if hasattr(self.viewport, 'notify_scene_changed'):
+                self.viewport.notify_scene_changed()
+            elif hasattr(self.viewport, 'update'):
+                self.viewport.update()
 
     def _on_item_selected(self):
         item = self.tree.currentItem()

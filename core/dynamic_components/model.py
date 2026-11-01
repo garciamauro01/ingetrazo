@@ -239,6 +239,7 @@ def apply_dc_geometry(group) -> None:
             m.rotate(rot_y, 0.0, 1.0, 0.0)
         if rot_x:
             m.rotate(rot_x, 1.0, 0.0, 0.0)
+        m.scale(scale_x, scale_y, scale_z)
     else:
         m = QMatrix4x4()
         m.translate(pos_x, pos_y, pos_z)
