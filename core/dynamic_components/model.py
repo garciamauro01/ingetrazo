@@ -54,19 +54,16 @@ def ensure_dc_data(group) -> dict[str, Any]:
             base_ly = max(abs(hi[1] - lo[1]), 0.001)
             base_lz = max(abs(hi[2] - lo[2]), 0.001)
 
-        init_attrs = copy.deepcopy(STANDARD_ATTRIBUTES)
-        init_attrs["LenX"]["value"] = round(base_lx, 4)
-        init_attrs["LenY"]["value"] = round(base_ly, 4)
-        init_attrs["LenZ"]["value"] = round(base_lz, 4)
-
         orig_xf = [float(x) for x in group.xform.data()] if getattr(group, "xform", None) is not None else None
 
+        # No SketchUp, um novo componente dinâmico inicia LIMPO, sem atributos pré-preenchidos.
+        # Os atributos são adicionados pelo usuário conforme a necessidade.
         group.ext[EXTENSION_KEY] = {
             "name": getattr(group, "name", "Componente Dinâmico"),
             "description": "",
             "base_dims": (base_lx, base_ly, base_lz),
             "orig_xform": orig_xf,
-            "attributes": init_attrs,
+            "attributes": {},
             "onClick": "",
             "is_copy": False,
         }
@@ -87,8 +84,9 @@ def evaluate_dc(group, parent_group=None, copy_index: int = 0) -> dict[str, Any]
     attrs = data.setdefault("attributes", {})
     context: dict[str, Any] = {}
 
-    attrs.setdefault("Copy", {"label": "Índice da Cópia", "value": copy_index, "unit": "", "editable": False})
-    attrs["Copy"]["value"] = copy_index
+    if "Copy" in attrs or copy_index > 0:
+        attrs.setdefault("Copy", {"label": "Índice da Cópia", "value": copy_index, "unit": "", "editable": False})
+        attrs["Copy"]["value"] = copy_index
 
     # Contexto do pai
     if parent_group:
@@ -222,6 +220,11 @@ def apply_dc_geometry(group) -> None:
     scale_x = len_x / base_lx
     scale_y = len_y / base_ly
     scale_z = len_z / base_lz
+
+    # Se nenhum atributo geométrico foi adicionado pelo usuário, mantém xform intacto
+    has_geo_attrs = any(k in attrs for k in ("LenX", "LenY", "LenZ", "X", "Y", "Z", "RotX", "RotY", "RotZ"))
+    if not has_geo_attrs and not data.get("onClick"):
+        return
 
     # Se o grupo veio do SKP com matriz original, preserva ou compõe a rotação relativa
     orig_xf_data = data.get("orig_xform")
