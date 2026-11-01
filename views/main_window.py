@@ -8286,6 +8286,26 @@ class MainWindow(QMainWindow):
         # them down leaks each with a "Texture has not been destroyed"
         # warning; the context's aboutToBeDestroyed hook alone fires too late
         # on app exit, when the Python side is already coming apart.
+        # Fecha e limpa os diálogos de Componentes Dinâmicos se estiverem abertos
+        try:
+            if hasattr(self, "_dc_options_dlg") and self._dc_options_dlg is not None:
+                self._dc_options_dlg.close()
+                self._dc_options_dlg.deleteLater()
+                self._dc_options_dlg = None
+            if hasattr(self, "_dc_attrs_dlg") and self._dc_attrs_dlg is not None:
+                self._dc_attrs_dlg.close()
+                self._dc_attrs_dlg.deleteLater()
+                self._dc_attrs_dlg = None
+        except Exception:
+            pass
+
+        # Para animações ativas de componentes dinâmicos
+        try:
+            from core.dynamic_components.tool_interact import _anim_ctrl
+            _anim_ctrl.stop_all()
+        except Exception:
+            pass
+
         try:
             self.viewport.release_gl_textures()
         except Exception:  # noqa: BLE001 — never block quitting on cleanup

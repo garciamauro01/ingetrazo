@@ -34,6 +34,11 @@ class DCAnimationController:
         if not self._timer.isActive():
             self._timer.start()
 
+    def stop_all(self):
+        self._active_animations.clear()
+        if hasattr(self, "_timer") and self._timer.isActive():
+            self._timer.stop()
+
     def _on_tick(self):
         still_running = []
         for anim in self._active_animations:
