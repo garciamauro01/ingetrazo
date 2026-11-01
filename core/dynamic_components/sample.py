@@ -96,23 +96,31 @@ def create_sample_dynamic_door() -> Group:
     # Adiciona opções de usuário demonstrando paridade com o painel de opções
     door_dc["attributes"]["Abertura"] = {
         "label": "Ângulo de Abertura",
-        "value": "90",
+        "value": 90,
         "formula": "",
         "unit": "graus",
         "display_unit": "deg",
         "user_editable": True,
         "user_visible": True,
-        "options": ["45", "90", "120"],
+        "options": [
+            {"label": "Semiaberta (45°)", "value": 45},
+            {"label": "Aberta (90°)", "value": 90},
+            {"label": "Totalmente aberta (120°)", "value": 120},
+        ],
     }
     door_dc["attributes"]["Material"] = {
         "label": "Cor / Acabamento",
-        "value": "Madeira Clara",
+        "value": "#8B5A2B",
         "formula": "",
         "unit": "",
         "display_unit": "",
         "user_editable": True,
         "user_visible": True,
-        "options": ["Madeira Clara", "Branco", "Madeira Escura"],
+        "options": [
+            {"label": "Madeira Clara", "value": "#D2B48C"},
+            {"label": "Madeira Escura", "value": "#8B5A2B"},
+            {"label": "Branco Neve", "value": "#FFFFFF"},
+        ],
     }
 
     evaluate_dc(door_group)

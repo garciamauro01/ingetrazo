@@ -222,11 +222,28 @@ class ComponentOptionsDialog(QDialog):
 
             if options:
                 cmb = QComboBox()
-                for opt in options:
-                    cmb.addItem(str(opt))
-                idx = cmb.findText(disp_curr)
-                if idx >= 0:
-                    cmb.setCurrentIndex(idx)
+                selected_idx = -1
+                for i, opt in enumerate(options):
+                    if isinstance(opt, dict):
+                        opt_label = str(opt.get("label", opt.get("value", "")))
+                        opt_val = opt.get("value", "")
+                    else:
+                        opt_label = str(opt)
+                        opt_val = opt
+                    
+                    cmb.addItem(opt_label, opt_val)
+                    # Verifica se corresponde ao valor atual (ou ao rótulo)
+                    if str(opt_val) == str(raw_curr) or str(opt_label) == str(raw_curr):
+                        selected_idx = i
+
+                if selected_idx >= 0:
+                    cmb.setCurrentIndex(selected_idx)
+                else:
+                    # Tenta encontrar por texto de exibição
+                    idx = cmb.findText(disp_curr)
+                    if idx >= 0:
+                        cmb.setCurrentIndex(idx)
+
                 cmb.setEnabled(not has_formula)
                 cmb.setProperty("disp_unit", disp_unit)
                 form.addRow(label_text, cmb)
@@ -261,20 +278,37 @@ class ComponentOptionsDialog(QDialog):
         attrs = data.get("attributes", {})
         for name, widget in self._fields.items():
             if name in attrs and widget.isEnabled():
-                val_str = widget.currentText() if isinstance(widget, QComboBox) else widget.text()
                 disp_unit = widget.property("disp_unit") or ""
-                try:
-                    val_num = float(val_str)
-                    if disp_unit == "cm":
-                        val = round(val_num / 100.0, 4)
-                    elif disp_unit == "mm":
-                        val = round(val_num / 1000.0, 4)
-                    elif disp_unit == "in":
-                        val = round(val_num * 0.0254, 4)
-                    else:
-                        val = val_num
-                except ValueError:
-                    val = val_str
+                if isinstance(widget, QComboBox):
+                    # Se houver valor associado (userData), usa o valor real aceito; senão, usa currentText
+                    c_data = widget.currentData()
+                    raw_selected = c_data if c_data is not None else widget.currentText()
+                    try:
+                        val_num = float(raw_selected)
+                        if disp_unit == "cm":
+                            val = round(val_num / 100.0, 4)
+                        elif disp_unit == "mm":
+                            val = round(val_num / 1000.0, 4)
+                        elif disp_unit == "in":
+                            val = round(val_num * 0.0254, 4)
+                        else:
+                            val = val_num
+                    except (ValueError, TypeError):
+                        val = raw_selected
+                else:
+                    val_str = widget.text()
+                    try:
+                        val_num = float(val_str)
+                        if disp_unit == "cm":
+                            val = round(val_num / 100.0, 4)
+                        elif disp_unit == "mm":
+                            val = round(val_num / 1000.0, 4)
+                        elif disp_unit == "in":
+                            val = round(val_num * 0.0254, 4)
+                        else:
+                            val = val_num
+                    except ValueError:
+                        val = val_str
                 attrs[name]["value"] = val
 
         evaluate_dc(self.group)
@@ -296,7 +330,7 @@ class AttributeDetailsDialog(QDialog):
         self.attr_key = attr_key
         self.attr_info = attr_info
         self.setWindowTitle("Atributos de componente")
-        self.resize(360, 480)
+        self.resize(440, 520)
         self._setup_ui(group_name)
 
     def _setup_ui(self, group_name: str):
@@ -310,7 +344,7 @@ class AttributeDetailsDialog(QDialog):
         h_lay = QHBoxLayout(header)
         h_lay.setContentsMargins(8, 8, 8, 8)
 
-        icon_lbl = QLabel("🏷️")
+        icon_lbl = QLabel("📦")
         icon_font = QFont()
         icon_font.setPointSize(20)
         icon_lbl.setFont(icon_font)
@@ -377,15 +411,51 @@ class AttributeDetailsDialog(QDialog):
         lbl_lay.addRow("Unidades:", self.cmb_units)
         layout.addWidget(self.lbl_row)
 
-        # Painel da Lista de Opções (quando selecionado item 3)
-        self.list_box = QGroupBox("Opções da Lista")
+        # Painel da Lista de Opções (Tabela exatamente como no SketchUp: Rótulo de exibição e Valor real aceito)
+        self.list_box = QGroupBox("Opções da Lista (Rótulo de exibição & Valor real aceito)")
         list_vbox = QVBoxLayout(self.list_box)
-        self.options_edit = QPlainTextEdit()
-        self.options_edit.setPlaceholderText("Digite uma opção por linha...")
+        list_vbox.setContentsMargins(6, 6, 6, 6)
+
+        self.options_table = QTableWidget()
+        self.options_table.setColumnCount(2)
+        self.options_table.setHorizontalHeaderLabels(["Opção da lista (Exibição)", "Valor real aceito"])
+        self.options_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.options_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self.options_table.verticalHeader().setDefaultSectionSize(26)
+        self.options_table.setStyleSheet("QTableWidget { background-color: palette(base); color: palette(text); gridline-color: palette(mid); }")
+
+        # Preenche com as opções atuais
         curr_opts = self.attr_info.get("options", [])
-        self.options_edit.setPlainText("\n".join(str(o) for o in curr_opts))
-        self.options_edit.setStyleSheet("color: palette(text); background-color: palette(base);")
-        list_vbox.addWidget(self.options_edit)
+        self.options_table.setRowCount(len(curr_opts))
+        for r, opt in enumerate(curr_opts):
+            if isinstance(opt, dict):
+                l_txt = str(opt.get("label", opt.get("value", "")))
+                v_txt = str(opt.get("value", ""))
+            else:
+                l_txt = str(opt)
+                v_txt = str(opt)
+            it_label = QTableWidgetItem(l_txt)
+            it_val = QTableWidgetItem(v_txt)
+            self.options_table.setItem(r, 0, it_label)
+            self.options_table.setItem(r, 1, it_val)
+
+        list_vbox.addWidget(self.options_table)
+
+        # Botões de Adicionar e Remover linha da tabela
+        tbl_btn_lay = QHBoxLayout()
+        btn_add_opt = QPushButton("➕ Adicionar Opção")
+        btn_add_opt.setStyleSheet("font-size: 11px; padding: 4px 10px;")
+        btn_add_opt.clicked.connect(self._add_option_row)
+
+        btn_del_opt = QPushButton("➖ Remover Selecionada")
+        btn_del_opt.setStyleSheet("font-size: 11px; padding: 4px 10px;")
+        btn_del_opt.clicked.connect(self._remove_option_row)
+
+        tbl_btn_lay.addWidget(btn_add_opt)
+        tbl_btn_lay.addWidget(btn_del_opt)
+        tbl_btn_lay.addStretch()
+        list_vbox.addLayout(tbl_btn_lay)
+
         layout.addWidget(self.list_box)
 
         layout.addStretch()
@@ -404,6 +474,20 @@ class AttributeDetailsDialog(QDialog):
         layout.addLayout(btn_layout)
 
         self._on_rule_changed(self.cmb_rule.currentIndex())
+
+    def _add_option_row(self):
+        row = self.options_table.rowCount()
+        self.options_table.insertRow(row)
+        self.options_table.setItem(row, 0, QTableWidgetItem(f"Opção {row + 1}"))
+        self.options_table.setItem(row, 1, QTableWidgetItem(f"{row + 1}"))
+        self.options_table.setCurrentCell(row, 0)
+
+    def _remove_option_row(self):
+        cur_row = self.options_table.currentRow()
+        if cur_row >= 0:
+            self.options_table.removeRow(cur_row)
+        elif self.options_table.rowCount() > 0:
+            self.options_table.removeRow(self.options_table.rowCount() - 1)
 
     def _on_rule_changed(self, index: int):
         # 0: Não podem ver
@@ -436,8 +520,28 @@ class AttributeDetailsDialog(QDialog):
         elif idx == 3:
             self.attr_info["user_editable"] = True
             self.attr_info["user_visible"] = True
-            raw_lines = self.options_edit.toPlainText().splitlines()
-            opts = [line.strip() for line in raw_lines if line.strip()]
+            opts = []
+            for r in range(self.options_table.rowCount()):
+                it_label = self.options_table.item(r, 0)
+                it_val = self.options_table.item(r, 1)
+                l_str = it_label.text().strip() if it_label else ""
+                v_str = it_val.text().strip() if it_val else ""
+                if not l_str and not v_str:
+                    continue
+                # Tenta converter v_str para float ou int se for número
+                parsed_val: Any = v_str
+                try:
+                    if "." in v_str:
+                        parsed_val = float(v_str)
+                    else:
+                        parsed_val = int(v_str)
+                except ValueError:
+                    parsed_val = v_str
+                
+                opts.append({
+                    "label": l_str or str(parsed_val),
+                    "value": parsed_val
+                })
             self.attr_info["options"] = opts
 
         self.accept()
