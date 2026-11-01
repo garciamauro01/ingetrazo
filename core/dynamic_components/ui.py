@@ -123,11 +123,24 @@ class ComponentOptionsDialog(QDialog):
         h_layout = QHBoxLayout(header_widget)
         h_layout.setContentsMargins(8, 8, 8, 8)
 
-        # Ícone do cubo / thumbnail
-        icon_lbl = QLabel("📦")
-        icon_font = QFont()
-        icon_font.setPointSize(24)
-        icon_lbl.setFont(icon_font)
+        # Miniatura real do componente (estilo SketchUp Thumbnail)
+        icon_lbl = QLabel()
+        pm = None
+        if self.group:
+            try:
+                from views.component_thumbs import thumbnail
+                pm = thumbnail(self.group, size=64)
+            except Exception:
+                pm = None
+
+        if pm is not None and not pm.isNull():
+            icon_lbl.setPixmap(pm)
+            icon_lbl.setStyleSheet("border: 1px solid palette(mid); border-radius: 3px; background-color: palette(base);")
+        else:
+            icon_lbl.setText("📦")
+            icon_font = QFont()
+            icon_font.setPointSize(24)
+            icon_lbl.setFont(icon_font)
         h_layout.addWidget(icon_lbl)
 
         # Nome do componente
@@ -313,16 +326,29 @@ class AttributeDetailsDialog(QDialog):
         rule_lay.addWidget(self.cmb_rule)
         layout.addLayout(rule_lay)
 
-        # Rótulo de exibição (Label amigável)
+        # Rótulo de exibição e Unidades
         self.lbl_row = QWidget()
-        lbl_lay = QHBoxLayout(self.lbl_row)
+        lbl_lay = QFormLayout(self.lbl_row)
         lbl_lay.setContentsMargins(0, 4, 0, 4)
-        lbl_caption = QLabel("Rótulo de exibição:")
-        lbl_caption.setStyleSheet("color: palette(text);")
+
         self.edit_label = QLineEdit(str(self.attr_info.get("label", self.attr_key)))
         self.edit_label.setStyleSheet("color: palette(text); background-color: palette(base);")
-        lbl_lay.addWidget(lbl_caption)
-        lbl_lay.addWidget(self.edit_label)
+        lbl_lay.addRow("Rótulo de exibição:", self.edit_label)
+
+        self.cmb_units = QComboBox()
+        self.cmb_units.addItem("Padrão do componente", "")
+        self.cmb_units.addItem("Metros (m)", "m")
+        self.cmb_units.addItem("Centímetros (cm)", "cm")
+        self.cmb_units.addItem("Milímetros (mm)", "mm")
+        self.cmb_units.addItem('Polegadas (")', "in")
+        self.cmb_units.addItem("Graus (°)", "deg")
+
+        curr_unit = str(self.attr_info.get("display_unit", self.attr_info.get("unit", "")))
+        for i in range(self.cmb_units.count()):
+            if self.cmb_units.itemData(i) == curr_unit:
+                self.cmb_units.setCurrentIndex(i)
+                break
+        lbl_lay.addRow("Unidades:", self.cmb_units)
         layout.addWidget(self.lbl_row)
 
         # Painel da Lista de Opções (quando selecionado item 3)
@@ -365,6 +391,9 @@ class AttributeDetailsDialog(QDialog):
         idx = self.cmb_rule.currentIndex()
         lbl_txt = self.edit_label.text().strip() or self.attr_key
         self.attr_info["label"] = lbl_txt
+        unit_val = self.cmb_units.currentData()
+        if unit_val:
+            self.attr_info["display_unit"] = unit_val
 
         if idx == 0:
             self.attr_info["user_editable"] = False
