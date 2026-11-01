@@ -6,6 +6,7 @@ from __future__ import annotations
 import ast
 import datetime
 import math
+import random
 import re
 from typing import Any
 
@@ -14,6 +15,12 @@ class CycleInFormulaError(Exception):
     """Exceção levantada quando há dependência circular entre fórmulas."""
     pass
 
+
+class _CallableFloat(float):
+    def __call__(self):
+        return float(self)
+
+PI_CONST = _CallableFloat(math.pi)
 
 class SafeExpressionEvaluator:
     """Avaliador seguro para expressões com todas as funções matemáticas, texto, lógicas e detecção de ciclos."""
@@ -31,8 +38,79 @@ class SafeExpressionEvaluator:
                 return candidates[0] if candidates else target
 
         def _current(attr_name: str):
-            clean_name = str(attr_name).strip("\"'")
+            clean_name = str(attr_name).strip("'\"")
             return ctx_data.get(clean_name, 0.0)
+
+        # Matematicas adicionais do SketchUp
+        def _even(val):
+            x = math.ceil(float(val))
+            return x if x % 2 == 0 else x + 1
+
+        def _odd(val):
+            x = math.ceil(float(val))
+            return x if x % 2 != 0 else x + 1
+
+        def _iseven(val):
+            return int(float(val)) % 2 == 0
+
+        def _isodd(val):
+            return int(float(val)) % 2 != 0
+
+        def _sign(val):
+            v = float(val)
+            if v > 0: return 1
+            if v < 0: return -1
+            return 0
+
+        # Opcoes de lista (OPTIONINDEX e OPTIONLABEL)
+        def _option_index(attr_name: str):
+            clean_name = str(attr_name).strip("'\"")
+            opts = ctx_data.get(f"__{clean_name}__options") or ctx_data.get(f"__options__{clean_name}") or []
+            cur_val = ctx_data.get(clean_name)
+            for i, o in enumerate(opts, start=1):
+                if isinstance(o, dict):
+                    if o.get("value") == cur_val or str(o.get("value")) == str(cur_val) or o.get("label") == cur_val:
+                        return i
+                elif str(o) == str(cur_val):
+                    return i
+            return 1
+
+        def _option_label(attr_name: str):
+            clean_name = str(attr_name).strip("'\"")
+            opts = ctx_data.get(f"__{clean_name}__options") or ctx_data.get(f"__options__{clean_name}") or []
+            cur_val = ctx_data.get(clean_name)
+            for o in opts:
+                if isinstance(o, dict):
+                    if o.get("value") == cur_val or str(o.get("value")) == str(cur_val) or o.get("label") == cur_val:
+                        return str(o.get("label", cur_val))
+                elif str(o) == str(cur_val):
+                    return str(o)
+            return str(cur_val) if cur_val is not None else ""
+
+        # Geometria do SketchUp (FACES, EDGES, FACEAREA)
+        def _faces():
+            return int(ctx_data.get("__faces_count", 0))
+
+        def _edges():
+            return int(ctx_data.get("__edges_count", 0))
+
+        def _face_area():
+            return float(ctx_data.get("__total_face_area", 0.0))
+
+        # Solar e Geolocalizacao (LAT, LNG, SUNANGLE, SUNELEVATION)
+        def _lat():
+            return float(ctx_data.get("__lat", -16.409))
+
+        def _lng():
+            return float(ctx_data.get("__lng", -71.537))
+
+        def _sun_angle():
+            # Azimute solar em graus a partir do norte
+            return float(ctx_data.get("__sun_azimuth", 0.0))
+
+        def _sun_elevation():
+            # Elevacao solar em graus acima do horizonte
+            return float(ctx_data.get("__sun_elevation", 0.0))
 
         return {
             # Matemáticas
@@ -56,9 +134,21 @@ class SafeExpressionEvaluator:
             "str": str,
             "len": len,
             "pi": math.pi,
+            "PI": PI_CONST,
+            "pi": PI_CONST,
             "exp": math.exp,
+            "EXP": math.exp,
             "log": math.log,
+            "LN": math.log,
             "log10": math.log10,
+            "LOG10": math.log10,
+            "EVEN": _even,
+            "ODD": _odd,
+            "ISEVEN": _iseven,
+            "ISODD": _isodd,
+            "SIGN": _sign,
+            "RAND": lambda: random.random(),
+            "RANDBETWEEN": lambda lo, hi: random.randint(int(lo), int(hi)),
 
             # Funções SketchUp DC
             "ABS": abs,
@@ -71,10 +161,24 @@ class SafeExpressionEvaluator:
             "RADIANS": math.radians,
             "FLOOR": math.floor,
             "CEILING": math.ceil,
+            "INT": lambda x: int(float(x)),
             "SMALLEST": min,
             "LARGEST": max,
             "NEAREST": _nearest,
             "CURRENT": _current,
+            "OPTIONINDEX": _option_index,
+            "OPTIONLABEL": _option_label,
+
+            # Funções Geométricas
+            "FACES": _faces,
+            "EDGES": _edges,
+            "FACEAREA": _face_area,
+
+            # Solar e Geolocalização
+            "LAT": _lat,
+            "LNG": _lng,
+            "SUNANGLE": _sun_angle,
+            "SUNELEVATION": _sun_elevation,
 
             # Lógica e Escolha
             "IF": lambda cond, val_true, val_false: val_true if cond else val_false,

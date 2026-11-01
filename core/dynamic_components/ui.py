@@ -43,6 +43,9 @@ DC_ATTRIBUTE_CATEGORIES = [
             ("Summary", "Resumo", ""),
             ("Description", "Descrição", ""),
             ("ItemCode", "Código do Item", ""),
+            ("ImageURL", "URL da Imagem", ""),
+            ("DialogWidth", "Largura do Diálogo", ""),
+            ("DialogHeight", "Altura do Diálogo", ""),
         ],
     ),
     (
@@ -118,6 +121,16 @@ class ComponentOptionsDialog(QDialog):
         if not data and self.group:
             data = ensure_dc_data(self.group)
 
+        attrs_data = (data.get("attributes", {}) if data else {})
+        # Redimensionamento dinâmico baseado em DialogWidth e DialogHeight se definidos
+        try:
+            dw = int(float(attrs_data.get("DialogWidth", {}).get("value", 360)))
+            dh = int(float(attrs_data.get("DialogHeight", {}).get("value", 480)))
+            if 200 <= dw <= 1200 and 200 <= dh <= 1200:
+                self.resize(dw, dh)
+        except Exception:
+            pass
+
         # Cabeçalho no estilo SketchUp (Banner / Caixa de Título)
         header_widget = QWidget()
         header_widget.setStyleSheet("background-color: palette(midlight); border-bottom: 1px solid palette(mid); border-radius: 2px;")
@@ -133,6 +146,24 @@ class ComponentOptionsDialog(QDialog):
                 pm = thumbnail(self.group, size=64)
             except Exception:
                 pm = None
+
+        # Verifica se há ImageURL definida pelo componente
+        img_url = str(attrs_data.get("ImageURL", {}).get("value", "")).strip()
+        if img_url:
+            try:
+                from PySide6.QtGui import QImage
+                q_img = QImage()
+                if img_url.startswith("http://") or img_url.startswith("https://"):
+                    import urllib.request
+                    req = urllib.request.Request(img_url, headers={'User-Agent': 'Mozilla/5.0'})
+                    with urllib.request.urlopen(req, timeout=3) as resp:
+                        q_img.loadFromData(resp.read())
+                else:
+                    q_img.load(img_url)
+                if not q_img.isNull():
+                    pm = QPixmap.fromImage(q_img).scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            except Exception:
+                pass
 
         if pm is not None and not pm.isNull():
             icon_lbl.setPixmap(pm)
@@ -657,6 +688,18 @@ class ComponentAttributesDialog(QDialog):
             ("ROUND", '=ROUND(LenX * 100)', "Arredonda para número inteiro"),
             ("SIN / COS / TAN", '=SIN(RotZ)', "Funções trigonométricas em graus"),
             ("SQRT", '=SQRT(LenX^2 + LenY^2)', "Raiz quadrada"),
+            ("EVEN / ODD", '=EVEN(LenX)', "Arredonda para número par / ímpar"),
+            ("ISEVEN / ISODD", '=ISEVEN(LenX)', "Testa se é número par / ímpar"),
+            ("SIGN", '=SIGN(RotZ)', "Identifica o sinal do número (-1, 0, 1)"),
+            ("LN / LOG10 / EXP", '=LN(LenX)', "Logaritmo natural, base 10 e exponencial"),
+            ("PI", '=PI()', "Constante Pi (3.14159...)"),
+            ("RAND / RANDBETWEEN", '=RANDBETWEEN(1, 10)', "Gera número aleatório"),
+            ("OPTIONINDEX", '=OPTIONINDEX("Opcao")', "Índice da opção selecionada (1, 2...)"),
+            ("OPTIONLABEL", '=OPTIONLABEL("Opcao")', "Texto legível da opção selecionada"),
+            ("FACES / EDGES", '=FACES()', "Quantidade de faces e arestas da malha"),
+            ("FACEAREA", '=FACEAREA()', "Área superficial total da malha em m²"),
+            ("LAT / LNG", '=LAT()', "Latitude e longitude do modelo"),
+            ("SUNANGLE / SUNELEVATION", '=SUNANGLE()', "Azimute e elevação do sol"),
         ]
         help_table.setRowCount(len(funcs))
         for row, (fn, ex, desc) in enumerate(funcs):
@@ -947,7 +990,14 @@ class ComponentAttributesDialog(QDialog):
                 "Copies": "Número de cópias a serem criadas a partir do componente.",
                 "Hidden": "1 para ocultar o componente, 0 para mostrá-lo.",
                 "onClick": "Comportamento ao clicar na entidade com a ferramenta Interagir.",
-                "ScaleTool": "Restringe os eixos da ferramenta Escala."
+                "ScaleTool": "Restringe os eixos da ferramenta Escala.",
+                "Name": "Nome do componente exibido na janela de opções.",
+                "Summary": "Resumo rápido do componente.",
+                "Description": "Descrição detalhada do componente.",
+                "ItemCode": "Código do produto ou SKU.",
+                "ImageURL": "URL da imagem exibida nas opções do componente.",
+                "DialogWidth": "Largura da janela de opções do componente.",
+                "DialogHeight": "Altura da janela de opções do componente."
             }
             d_text = attr_descriptions.get(attr_k, f"Atributo {attr_k} do componente.")
             self.summary_text.setText(f"<b>{attr_k}</b> &middot; {d_text}")

@@ -33,6 +33,14 @@ STANDARD_ATTRIBUTES = {
     "Hidden": {"label": "Oculto (Hidden)", "value": 0, "unit": "", "formula": "", "options": [], "editable": True},
     "Material": {"label": "Material / Cor", "value": "", "unit": "", "formula": "", "options": [], "editable": True},
     "ScaleTool": {"label": "Bloqueio Escala (ScaleTool)", "value": 127, "unit": "", "formula": "", "options": [], "editable": True},
+    # Metadados e Apresentação de Opções
+    "Name": {"label": "Nome (Name)", "value": "", "unit": "", "formula": "", "options": [], "editable": True},
+    "Summary": {"label": "Resumo (Summary)", "value": "", "unit": "", "formula": "", "options": [], "editable": True},
+    "Description": {"label": "Descrição (Description)", "value": "", "unit": "", "formula": "", "options": [], "editable": True},
+    "ItemCode": {"label": "Código do Item (ItemCode)", "value": "", "unit": "", "formula": "", "options": [], "editable": True},
+    "ImageURL": {"label": "Imagem das Opções (ImageURL)", "value": "", "unit": "", "formula": "", "options": [], "editable": True},
+    "DialogWidth": {"label": "Largura da Janela (DialogWidth)", "value": 360, "unit": "", "formula": "", "options": [], "editable": True},
+    "DialogHeight": {"label": "Altura da Janela (DialogHeight)", "value": 480, "unit": "", "formula": "", "options": [], "editable": True},
 }
 
 
@@ -108,6 +116,39 @@ def evaluate_dc(group, parent_group=None, copy_index: int = 0) -> dict[str, Any]
 
     for name, item in attrs.items():
         context[name] = item.get("value")
+        # Registra opções do atributo para OPTIONINDEX e OPTIONLABEL
+        if "options" in item:
+            context[f"__{name}__options"] = item["options"]
+
+    # Popula metadados de geometria para FACES(), EDGES(), FACEAREA()
+    mesh = getattr(group, "mesh", None)
+    if mesh is not None:
+        context["__faces_count"] = len(getattr(mesh, "faces", []))
+        context["__edges_count"] = len(getattr(mesh, "edges", []))
+        try:
+            total_area = sum(f.area() for f in getattr(mesh, "faces", []))
+        except Exception:
+            total_area = 0.0
+        context["__total_face_area"] = total_area
+    else:
+        context["__faces_count"] = 0
+        context["__edges_count"] = 0
+        context["__total_face_area"] = 0.0
+
+    # Popula dados de sol e geolocalização se disponíveis na cena
+    context["__lat"] = -16.409
+    context["__lng"] = -71.537
+    context["__sun_azimuth"] = 0.0
+    context["__sun_elevation"] = 45.0
+    try:
+        from core import sun
+        from datetime import datetime, timezone
+        now_utc = datetime.now(timezone.utc)
+        elev, azim = sun.solar_position(-16.409, -71.537, now_utc)
+        context["__sun_elevation"] = elev
+        context["__sun_azimuth"] = azim
+    except Exception:
+        pass
 
     # Múltiplos passes de avaliação
     for _ in range(4):
