@@ -487,8 +487,7 @@ class ComponentAttributesDialog(QDialog):
         font = QFont()
         font.setPointSize(16)
         icon_lbl.setFont(font)
-        self.summary_text = QLabel("Adicione os atributos abaixo para criar suas opções de componente. Visite nosso <u>guia de introdução</u> para tutoriais.")
-        self.summary_text.setWordWrap(True)
+        self.summary_text = QLabel("<b>Atributos</b> &middot; Adicione os atributos abaixo para criar opções de componente.")
         sum_layout.addWidget(icon_lbl)
         sum_layout.addWidget(self.summary_text)
         sum_layout.addStretch()
@@ -629,14 +628,24 @@ class ComponentAttributesDialog(QDialog):
         btn_plus.setText("⊕")
         btn_plus.setStyleSheet("color: #1976D2; font-weight: bold; border: none; font-size: 14px;")
         btn_plus.setToolTip("Adicionar atributo")
-        btn_plus.clicked.connect(lambda _c=None, b=btn_plus, g=group: self._show_add_menu(b, g))
         c0_lay.addWidget(btn_plus)
 
-        lbl_add = QLabel("<i>Adicionar atributo</i>")
-        lbl_add.setStyleSheet("color: palette(placeholder-text); cursor: pointer;")
-        lbl_add.mousePressEvent = lambda _e, b=btn_plus, g=group: self._show_add_menu(b, g)
-        c0_lay.addWidget(lbl_add)
-        c0_lay.addStretch()
+        # Campo editável "Digite um nome" exatamente como no SketchUp
+        edit_add = QLineEdit()
+        edit_add.setPlaceholderText("Digite um nome")
+        edit_add.setStyleSheet("border: 1px solid palette(highlight); border-radius: 2px; padding: 1px 4px; color: palette(text); background-color: palette(base);")
+
+        def _on_enter():
+            name = edit_add.text().strip()
+            if name:
+                self._add_attribute(group, name, name, "")
+            else:
+                self._show_add_menu(edit_add, group)
+
+        edit_add.returnPressed.connect(_on_enter)
+        btn_plus.clicked.connect(lambda _c=None, w=edit_add, g=group: self._show_add_menu(w, g))
+        edit_add.mousePressEvent = lambda _e, w=edit_add, g=group: (QLineEdit.mousePressEvent(edit_add, _e), self._show_add_menu(w, g))
+        c0_lay.addWidget(edit_add)
 
         self.tree.setItemWidget(add_item, 0, col0_w)
 
@@ -776,12 +785,36 @@ class ComponentAttributesDialog(QDialog):
         if not item:
             return
         node_info = item.data(0, Qt.UserRole)
-        if node_info and node_info[0] == "group":
+        if not node_info:
+            return
+
+        if node_info[0] == "group":
             g = node_info[1]
             d = ensure_dc_data(g)
             name = getattr(g, "name", "Componente")
-            desc = d.get("description", "Sem descrição.")
-            self.summary_text.setText(f"<b>{name}</b><br><small>{desc}</small>")
+            desc = d.get("description", "Adicione os atributos abaixo para criar suas opções de componente.")
+            self.summary_text.setText(f"<b>{name}</b> &middot; {desc}")
+        elif node_info[0] == "attr":
+            g, attr_k = node_info[1], node_info[2]
+            # Descrições oficiais do SketchUp para os atributos
+            attr_descriptions = {
+                "LenX": "Tamanho ao longo do eixo vermelho.",
+                "LenY": "Tamanho ao longo do eixo verde.",
+                "LenZ": "Tamanho ao longo do eixo azul.",
+                "X": "Posição ao longo do eixo vermelho.",
+                "Y": "Posição ao longo do eixo verde.",
+                "Z": "Posição ao longo do eixo azul.",
+                "RotX": "Rotação em torno do eixo vermelho.",
+                "RotY": "Rotação em torno do eixo verde.",
+                "RotZ": "Rotação em torno do eixo azul.",
+                "Material": "Como \"Verde\" ou \"#FF0000\".",
+                "Copies": "Número de cópias a serem criadas a partir do componente.",
+                "Hidden": "1 para ocultar o componente, 0 para mostrá-lo.",
+                "onClick": "Comportamento ao clicar na entidade com a ferramenta Interagir.",
+                "ScaleTool": "Restringe os eixos da ferramenta Escala."
+            }
+            d_text = attr_descriptions.get(attr_k, f"Atributo {attr_k} do componente.")
+            self.summary_text.setText(f"<b>{attr_k}</b> &middot; {d_text}")
 
     def _on_refresh_all(self):
         all_groups = []
