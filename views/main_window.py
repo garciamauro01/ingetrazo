@@ -824,6 +824,8 @@ class MainWindow(QMainWindow):
         self.layers_toolbar = LayersToolbar(self, layers_tb)
         self.viewport.sceneVersionChanged.connect(
             lambda _v: self.layers_toolbar.on_scene_changed())
+        self.viewport.sceneVersionChanged.connect(
+            lambda _v: self._sync_dc_dialogs())
 
         # Styles, Shadows and Dimension style hang OFF THE TOOLBAR as
         # dropdown panels (user: the lateral bar was drowning, and floating
@@ -8346,19 +8348,68 @@ class MainWindow(QMainWindow):
         )
         return None
 
+    def _get_active_dc_group(self):
+        """Retorna o grupo selecionado atual se houver, ou None silencioso para sincronização."""
+        from core.group import Group
+        from core.dynamic_components.model import get_dc_data
+        scene_sel = getattr(self.viewport.scene, "selection", None) or []
+        groups = [e for e in scene_sel if isinstance(e, Group)]
+        if groups:
+            cand = groups[0]
+            curr = cand
+            while curr:
+                if get_dc_data(curr):
+                    return curr
+                curr = getattr(curr, "owner", None)
+            return cand
+        for e in scene_sel:
+            owner = getattr(e, "owner", None)
+            if isinstance(owner, Group):
+                curr = owner
+                while curr:
+                    if get_dc_data(curr):
+                        return curr
+                    curr = getattr(curr, "owner", None)
+                return owner
+        return None
+
+    def _sync_dc_dialogs(self) -> None:
+        """Atualiza as janelas de opções e atributos quando a seleção da viewport muda."""
+        opts_open = hasattr(self, "_dc_options_dlg") and self._dc_options_dlg is not None and self._dc_options_dlg.isVisible()
+        attrs_open = hasattr(self, "_dc_attrs_dlg") and self._dc_attrs_dlg is not None and self._dc_attrs_dlg.isVisible()
+        if not (opts_open or attrs_open):
+            return
+
+        g = self._get_active_dc_group()
+        if g is not None:
+            if opts_open:
+                self._dc_options_dlg.set_group(g)
+            if attrs_open:
+                self._dc_attrs_dlg.set_group(g)
+
     def _on_dc_options(self) -> None:
         g = self._selected_group_or_warn()
         if g is not None:
             from core.dynamic_components.ui import ComponentOptionsDialog
-            dlg = ComponentOptionsDialog(g, viewport=self.viewport, parent=self)
-            dlg.exec_()
+            if getattr(self, "_dc_options_dlg", None) is None:
+                self._dc_options_dlg = ComponentOptionsDialog(g, viewport=self.viewport, parent=self)
+            else:
+                self._dc_options_dlg.set_group(g)
+            self._dc_options_dlg.show()
+            self._dc_options_dlg.raise_()
+            self._dc_options_dlg.activateWindow()
 
     def _on_dc_attributes(self) -> None:
         g = self._selected_group_or_warn()
         if g is not None:
             from core.dynamic_components.ui import ComponentAttributesDialog
-            dlg = ComponentAttributesDialog(g, viewport=self.viewport, parent=self)
-            dlg.exec_()
+            if getattr(self, "_dc_attrs_dlg", None) is None:
+                self._dc_attrs_dlg = ComponentAttributesDialog(g, viewport=self.viewport, parent=self)
+            else:
+                self._dc_attrs_dlg.set_group(g)
+            self._dc_attrs_dlg.show()
+            self._dc_attrs_dlg.raise_()
+            self._dc_attrs_dlg.activateWindow()
 
     def _on_dc_report(self) -> None:
         from core.group import Group

@@ -82,46 +82,113 @@ DC_ATTRIBUTE_CATEGORIES = [
 
 
 class ComponentOptionsDialog(QDialog):
-    """Janela 'Opções do Componente' (estilo Component Options do SketchUp)."""
+    """Janela 'Opções do componente' (estilo Component Options do SketchUp, não-modal)."""
 
     def __init__(self, group, viewport=None, parent=None):
         super().__init__(parent)
         self.group = group
         self.viewport = viewport
-        self.setWindowTitle(f"Opções do componente - {getattr(group, 'name', 'Componente')}")
-        self.resize(380, 480)
+        self.setModal(False)
+        self.setWindowTitle("Opções de componente")
+        self.resize(360, 480)
         self._fields: dict[str, QWidget] = {}
+        self.btn_apply: QPushButton | None = None
+        self._setup_ui()
+
+    def set_group(self, group):
+        """Atualiza o grupo exibido sem recriar o diálogo."""
+        self.group = group
         self._setup_ui()
 
     def _setup_ui(self):
+        # Limpa layout anterior se houver
+        if self.layout() is not None:
+            QWidget().setLayout(self.layout())
+
         layout = QVBoxLayout(self)
-        data = ensure_dc_data(self.group)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(10)
+        self._fields.clear()
 
-        # Cabeçalho
-        title_box = QGroupBox("Parâmetros do Componente")
-        title_layout = QVBoxLayout(title_box)
+        grp_name = getattr(self.group, 'name', 'Componente') if self.group else 'Componente'
+        self.setWindowTitle(f"Opções de componente - {grp_name}")
 
-        name_lbl = QLabel(f"<b>{data.get('name', 'Componente')}</b>")
-        title_layout.addWidget(name_lbl)
+        data = get_dc_data(self.group) if self.group else None
+        if not data and self.group:
+            data = ensure_dc_data(self.group)
 
-        desc = data.get("description", "").strip()
+        # Cabeçalho no estilo SketchUp (Banner / Caixa de Título)
+        header_widget = QWidget()
+        header_widget.setStyleSheet("background-color: #f0ede8; border-bottom: 1px solid #d0ccc6; border-radius: 2px;")
+        h_layout = QHBoxLayout(header_widget)
+        h_layout.setContentsMargins(8, 8, 8, 8)
+
+        # Ícone do cubo / thumbnail
+        icon_lbl = QLabel("📦")
+        icon_font = QFont()
+        icon_font.setPointSize(24)
+        icon_lbl.setFont(icon_font)
+        h_layout.addWidget(icon_lbl)
+
+        # Nome do componente
+        title_lbl = QLabel(f"<h3>{grp_name}</h3>")
+        title_lbl.setStyleSheet("color: #222; font-weight: bold;")
+        h_layout.addWidget(title_lbl)
+        h_layout.addStretch()
+
+        layout.addWidget(header_widget)
+
+        # Descrição opcional
+        desc = (data.get("description", "") if data else "").strip()
         if desc:
             lbl_desc = QLabel(desc)
             lbl_desc.setWordWrap(True)
-            title_layout.addWidget(lbl_desc)
+            lbl_desc.setStyleSheet("color: #555; font-size: 11px;")
+            layout.addWidget(lbl_desc)
 
-        layout.addWidget(title_box)
-
-        # Formulário dinâmico
-        form = QFormLayout()
-        attrs = data.get("attributes", {})
+        # Filtrar atributos configurados para o usuário final
+        # No SketchUp: o painel de opções só exibe campos que foram configurados
+        # como opção do usuário (user_editable, options lista pré-definida, ou rótulo explícito que não seja atributo interno)
+        attrs = (data.get("attributes", {}) if data else {})
+        user_options = {}
 
         for name, info in attrs.items():
-            if not info.get("editable", True):
-                continue
+            # Atributos internos geométricos padrão nunca aparecem em Opções a menos que tenham opções ou user_editable
+            is_standard = name in ("X", "Y", "Z", "LenX", "LenY", "LenZ", "RotX", "RotY", "RotZ", "Copies", "Copy", "Hidden", "Material", "ScaleTool")
+            has_options = bool(info.get("options"))
+            is_user_editable = bool(info.get("user_editable", False))
+
+            if has_options or is_user_editable:
+                user_options[name] = info
+
+        if not user_options:
+            # Estado vazio idêntico ao SketchUp
+            empty_lbl = QLabel("<i>Não há nenhuma opção para escolher neste componente.</i>")
+            empty_lbl.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+            empty_lbl.setStyleSheet("color: #444; padding: 16px 4px; font-size: 12px;")
+            empty_lbl.setWordWrap(True)
+            layout.addWidget(empty_lbl)
+            layout.addStretch()
+
+            btn_layout = QHBoxLayout()
+            btn_layout.addStretch()
+            self.btn_apply = QPushButton("Aplicar")
+            self.btn_apply.setEnabled(False)
+            self.btn_apply.setStyleSheet("padding: 4px 18px;")
+            btn_layout.addWidget(self.btn_apply)
+            btn_layout.addStretch()
+            layout.addLayout(btn_layout)
+            return
+
+        # Formulário dinâmico com as opções do usuário
+        form = QFormLayout()
+        form.setSpacing(8)
+
+        for name, info in user_options.items():
             has_formula = bool(str(info.get("formula", "")).strip())
             unit = info.get("unit", "")
-            label_text = f"{info.get('label', name)} ({unit}):" if unit else f"{info.get('label', name)}:"
+            lbl_text = info.get("label", name)
+            label_text = f"{lbl_text} ({unit}):" if unit else f"{lbl_text}:"
 
             options = info.get("options", [])
             if options:
@@ -144,19 +211,19 @@ class ComponentOptionsDialog(QDialog):
         layout.addLayout(form)
         layout.addStretch()
 
-        # Botões de Ação
+        # Botão Aplicar
         btn_layout = QHBoxLayout()
-        btn_apply = QPushButton("Aplicar")
-        btn_apply.setStyleSheet("font-weight: bold; padding: 6px 16px; background-color: #1976D2; color: white;")
-        btn_apply.clicked.connect(self._on_apply)
-        btn_close = QPushButton("Fechar")
-        btn_close.clicked.connect(self.accept)
-
-        btn_layout.addWidget(btn_apply)
-        btn_layout.addWidget(btn_close)
+        btn_layout.addStretch()
+        self.btn_apply = QPushButton("Aplicar")
+        self.btn_apply.setStyleSheet("font-weight: bold; padding: 6px 20px; background-color: #1976D2; color: white; border-radius: 3px;")
+        self.btn_apply.clicked.connect(self._on_apply)
+        btn_layout.addWidget(self.btn_apply)
+        btn_layout.addStretch()
         layout.addLayout(btn_layout)
 
     def _on_apply(self):
+        if not self.group:
+            return
         data = get_dc_data(self.group)
         if not data:
             return
@@ -172,21 +239,37 @@ class ComponentOptionsDialog(QDialog):
                 attrs[name]["value"] = val
 
         evaluate_dc(self.group)
-        if self.viewport and hasattr(self.viewport, "update"):
-            self.viewport.update()
-        QMessageBox.information(self, "Sucesso", "Parâmetros aplicados e geometria recalculada!")
+        if self.viewport:
+            scene = getattr(self.viewport, "scene", None)
+            if scene is not None:
+                scene.version += 1
+            if hasattr(self.viewport, "notify_scene_changed"):
+                self.viewport.notify_scene_changed()
+            elif hasattr(self.viewport, "update"):
+                self.viewport.update()
 
 
 class ComponentAttributesDialog(QDialog):
-    """Janela 'Atributos de componente' com 100% de paridade ao SketchUp."""
+    """Janela 'Atributos de componente' com 100% de paridade ao SketchUp (não-modal)."""
 
     def __init__(self, group, viewport=None, parent=None):
         super().__init__(parent)
         self.root_group = group
         self.viewport = viewport
-        self.setWindowTitle(f"Atributos de componente - {getattr(group, 'name', 'Componente')}")
+        self.setModal(False)
+        self.setWindowTitle("Atributos de componente")
         self.resize(520, 680)
         self._setup_ui()
+
+    def set_group(self, group):
+        """Atualiza o grupo raiz exibido sem recriar a janela."""
+        self.root_group = group
+        grp_name = getattr(group, 'name', 'Componente') if group else 'Componente'
+        self.setWindowTitle(f"Atributos de componente - {grp_name}")
+        self._populate_tree()
+        d = ensure_dc_data(group) if group else {}
+        desc = d.get("description", "Sem descrição.")
+        self.summary_text.setText(f"<b>{grp_name}</b><br><small>{desc}</small>")
 
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
