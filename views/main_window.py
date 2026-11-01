@@ -4832,6 +4832,12 @@ class MainWindow(QMainWindow):
             if len(groups) == 1 and len(sel) == 1:
                 menu.addAction(tr("Change Axes"),
                                lambda g=groups[0]: self._on_change_axes(g))
+            # Componentes Dinamicos no menu de contexto (estilo SketchUp)
+            if len(groups) == 1:
+                dc_sub = menu.addMenu(tool_icon("interact"), tr("Dynamic Components"))
+                dc_sub.addAction(tool_icon("interact"), tr("Interact"), lambda: self._activate_tool("interact"))
+                dc_sub.addAction(tool_icon("dc_options"), tr("Component Options"), self._on_dc_options)
+                dc_sub.addAction(tool_icon("dc_attributes"), tr("Component Attributes"), self._on_dc_attributes)
             # The Solid Tools are offered on a selection of solids.
             from core.solids import is_solid
             solid = [e for e in sel if isinstance(e, Group) and is_solid(e)]
