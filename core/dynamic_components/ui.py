@@ -293,7 +293,8 @@ class ComponentAttributesDialog(QDialog):
         font = QFont()
         font.setPointSize(16)
         icon_lbl.setFont(font)
-        self.summary_text = QLabel("<b>Componente Dinâmico</b><br><small>Clique no (+) para adicionar atributos.</small>")
+        self.summary_text = QLabel("Adicione os atributos abaixo para criar suas opções de componente. Visite nosso <u>guia de introdução</u> para tutoriais.")
+        self.summary_text.setWordWrap(True)
         sum_layout.addWidget(icon_lbl)
         sum_layout.addWidget(self.summary_text)
         sum_layout.addStretch()
@@ -414,9 +415,36 @@ class ComponentAttributesDialog(QDialog):
         if onclick_val:
             self._build_attr_row(item, group, "onClick", {"value": onclick_val, "formula": onclick_val, "label": "onClick"})
 
+        # Linha 'Adicionar atributo' no final do grupo (estilo SketchUp)
+        self._build_add_attr_row(item, group)
+
         # Recursão para subcomponentes filhos
         for child in getattr(group, "children", []) or []:
             self._build_group_node(child, parent_item=item)
+
+    def _build_add_attr_row(self, group_item: QTreeWidgetItem, group: Any):
+        add_item = QTreeWidgetItem(group_item)
+        add_item.setData(0, Qt.UserRole, ("add_btn", group))
+
+        col0_w = QWidget()
+        c0_lay = QHBoxLayout(col0_w)
+        c0_lay.setContentsMargins(18, 0, 2, 0)
+        c0_lay.setSpacing(6)
+
+        btn_plus = QToolButton()
+        btn_plus.setText("⊕")
+        btn_plus.setStyleSheet("color: #1976D2; font-weight: bold; border: none; font-size: 14px;")
+        btn_plus.setToolTip("Adicionar atributo")
+        btn_plus.clicked.connect(lambda _c=None, b=btn_plus, g=group: self._show_add_menu(b, g))
+        c0_lay.addWidget(btn_plus)
+
+        lbl_add = QLabel("<i>Adicionar atributo</i>")
+        lbl_add.setStyleSheet("color: palette(placeholder-text); cursor: pointer;")
+        lbl_add.mousePressEvent = lambda _e, b=btn_plus, g=group: self._show_add_menu(b, g)
+        c0_lay.addWidget(lbl_add)
+        c0_lay.addStretch()
+
+        self.tree.setItemWidget(add_item, 0, col0_w)
 
     def _build_attr_row(self, group_item: QTreeWidgetItem, group: Any, attr_key: str, attr_info: dict):
         attr_item = QTreeWidgetItem(group_item)
