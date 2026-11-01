@@ -76,12 +76,21 @@ def create_sample_dynamic_door() -> Group:
     leaf_dc["attributes"]["X"] = {"label": "X", "value": post_w, "formula": "", "unit": "m", "editable": False}
     leaf_dc["attributes"]["Y"] = {"label": "Y", "value": 0.03, "formula": "", "unit": "m", "editable": False}
     leaf_dc["attributes"]["Z"] = {"label": "Z", "value": 0.01, "formula": "", "unit": "m", "editable": False}
+    # A rotação RotZ da Folha herda dinamicamente do atributo Abertura do componente pai (sinal negativo para abrir para fora)
     leaf_dc["attributes"]["RotZ"] = {
         "label": "RotZ",
-        "value": 0.0,
-        "formula": "",
-        "unit": "graus",
-        "editable": True,
+        "value": -90.0,
+        "formula": "=-Parent!Abertura",
+        "unit": "deg",
+        "editable": False,
+    }
+    # O material da folha também herda do atributo Material do pai
+    leaf_dc["attributes"]["Material"] = {
+        "label": "Material",
+        "value": "#8B5A2B",
+        "formula": "=Parent!Material",
+        "unit": "",
+        "editable": False,
     }
 
     # Vincula a folha dentro do componente pai da porta
@@ -91,7 +100,7 @@ def create_sample_dynamic_door() -> Group:
     door_dc = ensure_dc_data(door_group)
     door_dc["name"] = "Porta Dinamica Parametrica"
     door_dc["description"] = "Porta dinamica com batente e folha articulada. Use a ferramenta Interagir para abrir/fechar."
-    door_dc["onClick"] = 'ANIMATE("Folha!RotZ", "0", "-90")'
+    door_dc["onClick"] = 'ANIMATE("Folha!RotZ", 0, -Abertura)'
 
     # Adiciona opções de usuário demonstrando paridade com o painel de opções
     door_dc["attributes"]["Abertura"] = {
@@ -103,6 +112,7 @@ def create_sample_dynamic_door() -> Group:
         "user_editable": True,
         "user_visible": True,
         "options": [
+            {"label": "Fechada (0°)", "value": 0},
             {"label": "Semiaberta (45°)", "value": 45},
             {"label": "Aberta (90°)", "value": 90},
             {"label": "Totalmente aberta (120°)", "value": 120},
