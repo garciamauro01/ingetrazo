@@ -4840,6 +4840,8 @@ class MainWindow(QMainWindow):
                 dc_sub.addAction(tool_icon("interact"), tr("Interact"), lambda: self._activate_tool("interact"))
                 dc_sub.addAction(tool_icon("dc_options"), tr("Component Options"), self._on_dc_options)
                 dc_sub.addAction(tool_icon("dc_attributes"), tr("Component Attributes"), self._on_dc_attributes)
+                dc_sub.addSeparator()
+                dc_sub.addAction(tr("Redraw"), self._on_dc_redraw)
             # The Solid Tools are offered on a selection of solids.
             from core.solids import is_solid
             solid = [e for e in sel if isinstance(e, Group) and is_solid(e)]
@@ -8410,6 +8412,20 @@ class MainWindow(QMainWindow):
             self._dc_attrs_dlg.show()
             self._dc_attrs_dlg.raise_()
             self._dc_attrs_dlg.activateWindow()
+
+    def _on_dc_redraw(self) -> None:
+        """Força o redesenho e reavaliação completa das fórmulas do componente dinâmico (Redraw do SketchUp)."""
+        g = self._selected_group_or_warn()
+        if g is not None:
+            from core.dynamic_components.model import evaluate_dc
+            evaluate_dc(g)
+            self.viewport.scene.version += 1
+            if hasattr(self.viewport, "notify_scene_changed"):
+                self.viewport.notify_scene_changed()
+            else:
+                self.viewport.update()
+            self._sync_dc_dialogs()
+            self.statusBar().showMessage(tr("Dynamic Component recalculated (Redraw)."), 3000)
 
     def _on_dc_report(self) -> None:
         from core.group import Group
