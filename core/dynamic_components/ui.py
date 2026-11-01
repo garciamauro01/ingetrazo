@@ -119,7 +119,7 @@ class ComponentOptionsDialog(QDialog):
 
         # Cabeçalho no estilo SketchUp (Banner / Caixa de Título)
         header_widget = QWidget()
-        header_widget.setStyleSheet("background-color: #f0ede8; border-bottom: 1px solid #d0ccc6; border-radius: 2px;")
+        header_widget.setStyleSheet("background-color: palette(midlight); border-bottom: 1px solid palette(mid); border-radius: 2px;")
         h_layout = QHBoxLayout(header_widget)
         h_layout.setContentsMargins(8, 8, 8, 8)
 
@@ -132,7 +132,7 @@ class ComponentOptionsDialog(QDialog):
 
         # Nome do componente
         title_lbl = QLabel(f"<h3>{grp_name}</h3>")
-        title_lbl.setStyleSheet("color: #222; font-weight: bold;")
+        title_lbl.setStyleSheet("color: palette(text); font-weight: bold;")
         h_layout.addWidget(title_lbl)
         h_layout.addStretch()
 
@@ -143,7 +143,7 @@ class ComponentOptionsDialog(QDialog):
         if desc:
             lbl_desc = QLabel(desc)
             lbl_desc.setWordWrap(True)
-            lbl_desc.setStyleSheet("color: #555; font-size: 11px;")
+            lbl_desc.setStyleSheet("color: palette(placeholder-text); font-size: 11px;")
             layout.addWidget(lbl_desc)
 
         # Filtrar atributos configurados para o usuário final
@@ -165,7 +165,7 @@ class ComponentOptionsDialog(QDialog):
             # Estado vazio idêntico ao SketchUp
             empty_lbl = QLabel("<i>Não há nenhuma opção para escolher neste componente.</i>")
             empty_lbl.setAlignment(Qt.AlignLeft | Qt.AlignTop)
-            empty_lbl.setStyleSheet("color: #444; padding: 16px 4px; font-size: 12px;")
+            empty_lbl.setStyleSheet("color: palette(placeholder-text); padding: 16px 4px; font-size: 12px;")
             empty_lbl.setWordWrap(True)
             layout.addWidget(empty_lbl)
             layout.addStretch()
@@ -428,14 +428,14 @@ class ComponentAttributesDialog(QDialog):
         c0_lay.setContentsMargins(18, 0, 2, 0)
 
         lbl = QLabel(attr_key)
-        lbl.setStyleSheet("color: #37474F; font-weight: 500;")
+        lbl.setStyleSheet("color: palette(text); font-weight: 500;")
         c0_lay.addWidget(lbl)
         c0_lay.addStretch()
 
         btn_del = QToolButton()
         btn_del.setText("✕")
         btn_del.setToolTip(f"Remover {attr_key}")
-        btn_del.setStyleSheet("color: #9E9E9E; border: none; font-size: 10px;")
+        btn_del.setStyleSheet("color: palette(placeholder-text); border: none; font-size: 11px;")
         btn_del.clicked.connect(lambda _c=None, g=group, k=attr_key: self._remove_attribute(g, k))
         c0_lay.addWidget(btn_del)
 
@@ -447,9 +447,9 @@ class ComponentAttributesDialog(QDialog):
         display_text = formula if formula else val
 
         val_input = QLineEdit(display_text)
-        val_input.setStyleSheet("border: 1px solid #B0BEC5; border-radius: 2px; padding: 2px 4px;")
+        val_input.setStyleSheet("border: 1px solid palette(mid); border-radius: 2px; padding: 2px 4px; color: palette(text); background-color: palette(base);")
         if formula.startswith("="):
-            val_input.setStyleSheet("border: 1px solid #4CAF50; background-color: #F1F8E9; border-radius: 2px; padding: 2px 4px;")
+            val_input.setStyleSheet("border: 1px solid #4CAF50; background-color: rgba(76, 175, 80, 0.18); color: palette(text); border-radius: 2px; padding: 2px 4px;")
 
         val_input.editingFinished.connect(lambda g=group, k=attr_key, w=val_input: self._on_attr_edited(g, k, w.text()))
         self.tree.setItemWidget(attr_item, 1, val_input)
