@@ -249,6 +249,145 @@ class ComponentOptionsDialog(QDialog):
                 self.viewport.update()
 
 
+class AttributeDetailsDialog(QDialog):
+    """Janela de detalhes e regras de exibição do atributo (estilo SketchUp Component Attributes)."""
+
+    def __init__(self, group_name: str, attr_key: str, attr_info: dict, parent=None):
+        super().__init__(parent)
+        self.attr_key = attr_key
+        self.attr_info = attr_info
+        self.setWindowTitle("Atributos de componente")
+        self.resize(360, 480)
+        self._setup_ui(group_name)
+
+    def _setup_ui(self, group_name: str):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(10)
+
+        # Cabeçalho com ícone de caixa/amostra e nome do atributo
+        header = QWidget()
+        header.setStyleSheet("background-color: palette(midlight); border-bottom: 1px solid palette(mid); border-radius: 2px;")
+        h_lay = QHBoxLayout(header)
+        h_lay.setContentsMargins(8, 8, 8, 8)
+
+        icon_lbl = QLabel("🏷️")
+        icon_font = QFont()
+        icon_font.setPointSize(20)
+        icon_lbl.setFont(icon_font)
+        h_lay.addWidget(icon_lbl)
+
+        title_lbl = QLabel(f"<b>{group_name}!{self.attr_key}</b>")
+        title_lbl.setStyleSheet("color: palette(text);")
+        h_lay.addWidget(title_lbl)
+        h_lay.addStretch()
+        layout.addWidget(header)
+
+        # Regra de exibição
+        rule_lay = QHBoxLayout()
+        rule_lbl = QLabel("Regra de exibição:")
+        rule_lbl.setStyleSheet("font-weight: bold; color: palette(text);")
+        rule_lay.addWidget(rule_lbl)
+
+        self.cmb_rule = QComboBox()
+        self.cmb_rule.addItem("Os usuários não podem ver este atributo.")       # 0: invisível
+        self.cmb_rule.addItem("Os usuários podem ver este atributo.")           # 1: somente leitura
+        self.cmb_rule.addItem("Os usuários podem editar o texto.")              # 2: caixa de texto editável
+        self.cmb_rule.addItem("Os usuários podem selecionar de uma lista.")     # 3: lista suspensa
+
+        # Determina estado atual
+        has_options = bool(self.attr_info.get("options"))
+        user_editable = bool(self.attr_info.get("user_editable", False))
+        user_visible = bool(self.attr_info.get("user_visible", False))
+
+        if has_options:
+            self.cmb_rule.setCurrentIndex(3)
+        elif user_editable:
+            self.cmb_rule.setCurrentIndex(2)
+        elif user_visible:
+            self.cmb_rule.setCurrentIndex(1)
+        else:
+            self.cmb_rule.setCurrentIndex(0)
+
+        self.cmb_rule.currentIndexChanged.connect(self._on_rule_changed)
+        rule_lay.addWidget(self.cmb_rule)
+        layout.addLayout(rule_lay)
+
+        # Rótulo de exibição (Label amigável)
+        self.lbl_row = QWidget()
+        lbl_lay = QHBoxLayout(self.lbl_row)
+        lbl_lay.setContentsMargins(0, 4, 0, 4)
+        lbl_caption = QLabel("Rótulo de exibição:")
+        lbl_caption.setStyleSheet("color: palette(text);")
+        self.edit_label = QLineEdit(str(self.attr_info.get("label", self.attr_key)))
+        self.edit_label.setStyleSheet("color: palette(text); background-color: palette(base);")
+        lbl_lay.addWidget(lbl_caption)
+        lbl_lay.addWidget(self.edit_label)
+        layout.addWidget(self.lbl_row)
+
+        # Painel da Lista de Opções (quando selecionado item 3)
+        self.list_box = QGroupBox("Opções da Lista")
+        list_vbox = QVBoxLayout(self.list_box)
+        self.options_edit = QPlainTextEdit()
+        self.options_edit.setPlaceholderText("Digite uma opção por linha...")
+        curr_opts = self.attr_info.get("options", [])
+        self.options_edit.setPlainText("\n".join(str(o) for o in curr_opts))
+        self.options_edit.setStyleSheet("color: palette(text); background-color: palette(base);")
+        list_vbox.addWidget(self.options_edit)
+        layout.addWidget(self.list_box)
+
+        layout.addStretch()
+
+        # Botões Aplicar e Cancelar
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        btn_apply = QPushButton("Aplicar")
+        btn_apply.setStyleSheet("font-weight: bold; padding: 6px 18px; background-color: #1976D2; color: white; border-radius: 3px;")
+        btn_apply.clicked.connect(self._on_apply)
+        btn_cancel = QPushButton("Cancelar")
+        btn_cancel.clicked.connect(self.reject)
+        btn_layout.addWidget(btn_apply)
+        btn_layout.addWidget(btn_cancel)
+        btn_layout.addStretch()
+        layout.addLayout(btn_layout)
+
+        self._on_rule_changed(self.cmb_rule.currentIndex())
+
+    def _on_rule_changed(self, index: int):
+        # 0: Não podem ver
+        # 1: Podem ver (read only)
+        # 2: Podem editar o texto
+        # 3: Podem selecionar de uma lista
+        self.lbl_row.setVisible(index > 0)
+        self.list_box.setVisible(index == 3)
+
+    def _on_apply(self):
+        idx = self.cmb_rule.currentIndex()
+        lbl_txt = self.edit_label.text().strip() or self.attr_key
+        self.attr_info["label"] = lbl_txt
+
+        if idx == 0:
+            self.attr_info["user_editable"] = False
+            self.attr_info["user_visible"] = False
+            self.attr_info["options"] = []
+        elif idx == 1:
+            self.attr_info["user_editable"] = False
+            self.attr_info["user_visible"] = True
+            self.attr_info["options"] = []
+        elif idx == 2:
+            self.attr_info["user_editable"] = True
+            self.attr_info["user_visible"] = True
+            self.attr_info["options"] = []
+        elif idx == 3:
+            self.attr_info["user_editable"] = True
+            self.attr_info["user_visible"] = True
+            raw_lines = self.options_edit.toPlainText().splitlines()
+            opts = [line.strip() for line in raw_lines if line.strip()]
+            self.attr_info["options"] = opts
+
+        self.accept()
+
+
 class ComponentAttributesDialog(QDialog):
     """Janela 'Atributos de componente' com 100% de paridade ao SketchUp (não-modal)."""
 
@@ -469,7 +608,12 @@ class ComponentAttributesDialog(QDialog):
 
         self.tree.setItemWidget(attr_item, 0, col0_w)
 
-        # Coluna 1: Input para valor ou fórmula (iniciando com =)
+        # Coluna 1: Input para valor ou fórmula + botão de detalhes (Regra de Exibição)
+        col1_w = QWidget()
+        c1_lay = QHBoxLayout(col1_w)
+        c1_lay.setContentsMargins(0, 0, 4, 0)
+        c1_lay.setSpacing(4)
+
         formula = str(attr_info.get("formula", "")).strip()
         val = str(attr_info.get("value", ""))
         display_text = formula if formula else val
@@ -480,7 +624,18 @@ class ComponentAttributesDialog(QDialog):
             val_input.setStyleSheet("border: 1px solid #4CAF50; background-color: rgba(76, 175, 80, 0.18); color: palette(text); border-radius: 2px; padding: 2px 4px;")
 
         val_input.editingFinished.connect(lambda g=group, k=attr_key, w=val_input: self._on_attr_edited(g, k, w.text()))
-        self.tree.setItemWidget(attr_item, 1, val_input)
+        c1_lay.addWidget(val_input)
+
+        # Botão de regras de exibição e opções do usuário (estilo SketchUp)
+        btn_details = QToolButton()
+        has_rule = bool(attr_info.get("options") or attr_info.get("user_editable") or attr_info.get("user_visible"))
+        btn_details.setText("🏷️" if has_rule else "»")
+        btn_details.setToolTip("Regra de exibição e opções do usuário...")
+        btn_details.setStyleSheet("color: #1976D2; font-weight: bold; border: 1px solid palette(mid); border-radius: 2px; padding: 1px 4px;")
+        btn_details.clicked.connect(lambda _c=None, g=group, k=attr_key, info=attr_info: self._open_attr_details(g, k, info))
+        c1_lay.addWidget(btn_details)
+
+        self.tree.setItemWidget(attr_item, 1, col1_w)
 
     def _show_add_menu(self, btn: QToolButton, group: Any):
         """Menu Popup categorizado exatamente como no SketchUp."""
@@ -536,6 +691,13 @@ class ComponentAttributesDialog(QDialog):
             del data["attributes"][key]
         evaluate_dc(group)
         self._populate_tree()
+
+    def _open_attr_details(self, group: Any, key: str, info: dict):
+        grp_name = getattr(group, "name", "Componente")
+        dlg = AttributeDetailsDialog(grp_name, key, info, parent=self)
+        if dlg.exec_():
+            evaluate_dc(group)
+            self._populate_tree()
 
     def _on_attr_edited(self, group: Any, key: str, text: str):
         text = text.strip()
