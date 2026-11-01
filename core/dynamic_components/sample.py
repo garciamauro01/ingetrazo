@@ -90,8 +90,30 @@ def create_sample_dynamic_door() -> Group:
 
     door_dc = ensure_dc_data(door_group)
     door_dc["name"] = "Porta Dinamica Parametrica"
-    door_dc["description"] = "Porta dinamica de teste. Clique na porta com a ferramenta Interact para abrir/fechar."
+    door_dc["description"] = "Porta dinamica com batente e folha articulada. Use a ferramenta Interagir para abrir/fechar."
     door_dc["onClick"] = 'ANIMATE("Folha!RotZ", "0", "-90")'
+
+    # Adiciona opções de usuário demonstrando paridade com o painel de opções
+    door_dc["attributes"]["Abertura"] = {
+        "label": "Ângulo de Abertura",
+        "value": "90",
+        "formula": "",
+        "unit": "graus",
+        "display_unit": "deg",
+        "user_editable": True,
+        "user_visible": True,
+        "options": ["45", "90", "120"],
+    }
+    door_dc["attributes"]["Material"] = {
+        "label": "Cor / Acabamento",
+        "value": "Madeira Clara",
+        "formula": "",
+        "unit": "",
+        "display_unit": "",
+        "user_editable": True,
+        "user_visible": True,
+        "options": ["Madeira Clara", "Branco", "Madeira Escura"],
+    }
 
     evaluate_dc(door_group)
     return door_group
