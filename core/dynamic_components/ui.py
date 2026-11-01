@@ -197,27 +197,43 @@ class ComponentOptionsDialog(QDialog):
         form = QFormLayout()
         form.setSpacing(8)
 
+        def _to_display_val(raw_val, d_unit: str):
+            if d_unit == "cm":
+                try: return round(float(raw_val) * 100.0, 2)
+                except Exception: return raw_val
+            elif d_unit == "mm":
+                try: return round(float(raw_val) * 1000.0, 1)
+                except Exception: return raw_val
+            elif d_unit == "in":
+                try: return round(float(raw_val) / 0.0254, 2)
+                except Exception: return raw_val
+            return raw_val
+
         for name, info in user_options.items():
             has_formula = bool(str(info.get("formula", "")).strip())
-            unit = info.get("unit", "")
+            disp_unit = info.get("display_unit") or info.get("unit", "")
             lbl_text = info.get("label", name)
-            label_text = f"{lbl_text} ({unit}):" if unit else f"{lbl_text}:"
+            label_text = f"{lbl_text} ({disp_unit}):" if disp_unit else f"{lbl_text}:"
 
             options = info.get("options", [])
+            raw_curr = info.get("value", "")
+            disp_curr = str(_to_display_val(raw_curr, disp_unit))
+
             if options:
                 cmb = QComboBox()
                 for opt in options:
                     cmb.addItem(str(opt))
-                curr = str(info.get("value", ""))
-                idx = cmb.findText(curr)
+                idx = cmb.findText(disp_curr)
                 if idx >= 0:
                     cmb.setCurrentIndex(idx)
                 cmb.setEnabled(not has_formula)
+                cmb.setProperty("disp_unit", disp_unit)
                 form.addRow(label_text, cmb)
                 self._fields[name] = cmb
             else:
-                edit = QLineEdit(str(info.get("value", "")))
+                edit = QLineEdit(disp_curr)
                 edit.setEnabled(not has_formula)
+                edit.setProperty("disp_unit", disp_unit)
                 form.addRow(label_text, edit)
                 self._fields[name] = edit
 
@@ -245,8 +261,17 @@ class ComponentOptionsDialog(QDialog):
         for name, widget in self._fields.items():
             if name in attrs and widget.isEnabled():
                 val_str = widget.currentText() if isinstance(widget, QComboBox) else widget.text()
+                disp_unit = widget.property("disp_unit") or ""
                 try:
-                    val = float(val_str)
+                    val_num = float(val_str)
+                    if disp_unit == "cm":
+                        val = round(val_num / 100.0, 4)
+                    elif disp_unit == "mm":
+                        val = round(val_num / 1000.0, 4)
+                    elif disp_unit == "in":
+                        val = round(val_num * 0.0254, 4)
+                    else:
+                        val = val_num
                 except ValueError:
                     val = val_str
                 attrs[name]["value"] = val
