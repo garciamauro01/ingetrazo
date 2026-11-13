@@ -1208,6 +1208,22 @@ class ComponentsPanel(QWidget):
             "Browse the online library and download a model as a component"))
         more.clicked.connect(window._on_open_library)
         lay.addWidget(more)
+        # Your own models: files you already have, indexed here (by type,
+        # brand, model) instead of downloaded from anyone.
+        mine = QPushButton(tr("My components…"))
+        mine.setToolTip(tr(
+            "Your own model files, indexed by type and brand — browse and "
+            "insert one into the drawing"))
+        mine.clicked.connect(
+            lambda _c=False: window._on_open_user_library())
+        lay.addWidget(mine)
+        import_one = QPushButton(tr("Import component…"))
+        import_one.setToolTip(tr(
+            "Index a model file (OBJ, GLB, DAE, STL, SKP, IGZ) in your "
+            "library and place it"))
+        import_one.clicked.connect(
+            lambda _c=False: window.import_user_component())
+        lay.addWidget(import_one)
         custom = QPushButton(tr("Face-me image (PNG)…"))
         custom.setToolTip(tr(
             "Insert your own cutout PNG at real height, always facing "

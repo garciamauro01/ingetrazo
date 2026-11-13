@@ -63,6 +63,38 @@ def user_log_dir() -> Path:
     return Path(tempfile.gettempdir())
 
 
+def user_data_dir() -> Path:
+    """A writable folder for data the USER owns: imported components, their
+    thumbnails and the library manifest. Kept apart from the install folder
+    for the same reason as :func:`user_log_dir` — on Windows the app lives in
+    Program Files. Windows: ``%LOCALAPPDATA%\\IngeTrazo``; macOS:
+    ``~/Library/Application Support/IngeTrazo``; elsewhere
+    ``$XDG_DATA_HOME/ingetrazo`` or ``~/.local/share/ingetrazo``; the temp
+    dir as the last resort."""
+    import os
+    import tempfile
+    home = Path.home()
+    if sys.platform.startswith("win"):
+        base = os.environ.get("LOCALAPPDATA") or str(home / "AppData" / "Local")
+        candidates = [Path(base) / "IngeTrazo"]
+    elif sys.platform == "darwin":
+        candidates = [home / "Library" / "Application Support" / "IngeTrazo"]
+    else:
+        data = os.environ.get("XDG_DATA_HOME") or str(home / ".local" / "share")
+        candidates = [Path(data) / "ingetrazo"]
+    candidates.append(Path(tempfile.gettempdir()) / "ingetrazo-data")
+    for d in candidates:
+        try:
+            d.mkdir(parents=True, exist_ok=True)
+            probe = d / ".write-test"
+            probe.write_text("", encoding="utf-8")
+            probe.unlink()
+            return d
+        except OSError:
+            continue
+    return Path(tempfile.gettempdir())
+
+
 def open_crash_log(name: str = "ingetrazo-crash.log"):
     """An append handle for the faulthandler black box, or None when no
     location is writable at all — callers must then leave faulthandler on

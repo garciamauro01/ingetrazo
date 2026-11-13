@@ -34,7 +34,12 @@ def main() -> int:
     ap.add_argument("path", nargs="?", default="tests")
     args = ap.parse_args()
 
-    files = sorted(str(p) for p in Path(args.path).glob("test_*.py"))
+    root = Path(args.path)
+    files = sorted(str(p) for p in root.glob("test_*.py"))
+    if not files:
+        # Subdiretórios (ex.: plugins/<nome>/tests) não eram alcançados pelo
+        # glob simples: os testes do plugin nunca rodavam no CI.
+        files = sorted(str(p) for p in root.rglob("test_*.py"))
     n = max(1, min(args.batches, len(files)))
     chunks = [files[i::n] for i in range(n)]   # interleaved: even weights
     totals: dict[str, int] = {}

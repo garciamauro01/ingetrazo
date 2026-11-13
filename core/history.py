@@ -4886,7 +4886,9 @@ class DeleteGroupCommand(Command):
     def do(self, scene) -> None:
         owner = group_owner_list(scene, self.group)
         if owner is None:
-            raise ValueError("group is not in the scene")
+            # Se o grupo ja nao esta na cena (ex: filho removido junto com o container), descarta da selecao
+            scene.selection.discard(self.group)
+            return
         self._owner = owner
         self.index = owner.index(self.group)
         owner.remove(self.group)

@@ -7327,6 +7327,51 @@ class MainWindow(QMainWindow):
         from views.library_dialog import LibraryDialog
         LibraryDialog(self).exec()
 
+    # ---- the user's own components -----------------------------------
+    def insert_user_component(self, entry: dict) -> None:
+        """Hand one of the user's indexed models to the placement tool.
+
+        The file is read the first time and shared thereafter; the source
+        key carries the size and orientation recorded in the entry, so an
+        edit to those becomes a new definition instead of silently reusing
+        the old one (a metadata-only edit keeps sharing).
+        """
+        self.viewport.end_group_edit()
+        signature = (tuple(entry.get("cm") or ()),
+                     tuple(entry.get("matrix") or ()),
+                     entry.get("unidad"), entry.get("escala"),
+                     entry.get("y_up"))
+        source = "user:%s:%s" % (entry.get("id", ""), signature)
+        self._start_place_shared(
+            source, lambda: self._build_user_component(entry))
+
+    def _build_user_component(self, entry: dict):
+        """The user's model file, as a group ready to place — ``None`` (the
+        user told why) when it is missing or cannot be read."""
+        from views import component_loader
+        try:
+            loaded = component_loader.load_component(entry, strict=True)
+        except component_loader.ComponentLoadError as exc:
+            QMessageBox.warning(
+                self, tr("My components"),
+                tr("Could not read “{name}”: {e}",
+                   name=entry.get("nombre", ""), e=exc))
+            return None
+        return None if loaded is None else loaded.group
+
+    def import_user_component(self, path: str | None = None) -> dict | None:
+        """Import (or index) one model and place it. Returns the entry."""
+        from views.user_library_dialog import open_import_dialog
+        entry = open_import_dialog(self, path)
+        if entry is not None:
+            self.insert_user_component(entry)
+        return entry
+
+    def _on_open_user_library(self, brand: str | None = None) -> None:
+        from views.user_library_dialog import UserLibraryDialog
+        UserLibraryDialog(self, brand=brand if isinstance(brand, str)
+                          else None).exec()
+
     def _text3d_dialog(self, params=None):
         """The 3D Text dialog (text, font, bold, italic, height,
         thickness) → the parameters dict, or ``None`` when cancelled or
