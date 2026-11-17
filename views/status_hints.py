@@ -19,6 +19,7 @@ HINTS: dict = {
     "change_axes": ("Click the new origin.",
                     "Click the red direction, then the green one."),
     "scale_manager": "Type the X, Y, Z scale in the window; Enter or leaving the field applies it.",
+    "interact": "Click a dynamic component to run its onClick action (open, close, animate).",
     "outer_shell": ("Click a solid group or component (1).",
                     "Click another solid (2) — and more to add them."),
     "solid_union": ("Click a solid group or component (1).",
@@ -104,7 +105,7 @@ HINTS: dict = {
 }
 
 NAV_HINTS: dict = {
-    "orbit": "Drag to orbit. Shift = pan. Wheel = zoom. The middle button orbits from any tool.",
+    "orbit": "Drag to orbit. Shift or right button = pan. Wheel = zoom. The middle button orbits from any tool.",
     "pan": "Drag to pan. Wheel = zoom.",
     "zoom": "Drag up to zoom in, down to zoom out. Wheel zooms at the cursor.",
     "zoom_window": "Drag a box to zoom into it.",

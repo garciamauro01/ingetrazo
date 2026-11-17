@@ -18,6 +18,16 @@ def _move(vp, x, y, buttons=Qt.NoButton, modifiers=Qt.NoModifier):
     vp.mouseMoveEvent(ev)
 
 
+def _button(vp, kind, x, y, button, buttons, modifiers=Qt.NoModifier):
+    ev = QMouseEvent(kind, QPointF(x, y), QPointF(x, y),
+                     button, buttons, modifiers)
+    if kind == QMouseEvent.MouseButtonPress:
+        vp.mousePressEvent(ev)
+    else:
+        vp.mouseReleaseEvent(ev)
+    return ev
+
+
 def _window():
     from views.main_window import MainWindow
     win = MainWindow()
@@ -79,6 +89,102 @@ def test_shift_switches_an_active_middle_drag_between_orbit_and_pan(monkeypatch)
     _move(vp, 130, 130, Qt.MiddleButton)
     assert modes == ["orbit", "pan", "orbit"]
 
+    win._saved_version = vp.scene.version
+    win.close()
+
+
+def _record_camera_modes(vp, monkeypatch):
+    modes = []
+    monkeypatch.setattr(vp.camera, "orbit_about",
+                        lambda *args: modes.append("orbit"))
+    monkeypatch.setattr(vp.camera, "pan",
+                        lambda *args, **kwargs: modes.append("pan"))
+    return modes
+
+
+def test_right_button_added_to_the_wheel_pans(monkeypatch):
+    """MMB orbits; adding RMB to the same drag pans until RMB is released."""
+    win = _window()
+    vp = win.viewport
+    modes = _record_camera_modes(vp, monkeypatch)
+
+    _button(vp, QMouseEvent.MouseButtonPress, 100, 100,
+            Qt.MiddleButton, Qt.MiddleButton)
+    _move(vp, 110, 110, Qt.MiddleButton)
+    assert modes == ["orbit"]
+
+    _button(vp, QMouseEvent.MouseButtonPress, 110, 110,
+            Qt.RightButton, Qt.MiddleButton | Qt.RightButton)
+    assert vp._pan_mode and vp._right_pan_active
+    _move(vp, 120, 120, Qt.MiddleButton | Qt.RightButton)
+    assert modes == ["orbit", "pan"]
+
+    _button(vp, QMouseEvent.MouseButtonRelease, 120, 120,
+            Qt.RightButton, Qt.MiddleButton)
+    assert not vp._pan_mode and not vp._right_pan_active
+    _move(vp, 130, 130, Qt.MiddleButton)
+    assert modes == ["orbit", "pan", "orbit"]
+
+    _button(vp, QMouseEvent.MouseButtonRelease, 130, 130,
+            Qt.MiddleButton, Qt.NoButton)
+    assert not vp._middle_drag_active
+    win._saved_version = vp.scene.version
+    win.close()
+
+
+def test_right_button_before_the_wheel_also_pans(monkeypatch):
+    """The other press order (RMB first, then MMB) must pan too."""
+    win = _window()
+    vp = win.viewport
+    modes = _record_camera_modes(vp, monkeypatch)
+
+    _button(vp, QMouseEvent.MouseButtonPress, 100, 100,
+            Qt.RightButton, Qt.RightButton)
+    _button(vp, QMouseEvent.MouseButtonPress, 100, 100,
+            Qt.MiddleButton, Qt.MiddleButton | Qt.RightButton)
+    assert vp._pan_mode
+    assert vp._look_drag is None          # right did not start a tool look
+    _move(vp, 120, 120, Qt.MiddleButton | Qt.RightButton)
+    assert modes == ["pan"]
+
+    # Wheel up first: no drag left; the pending right click is still swallowed.
+    _button(vp, QMouseEvent.MouseButtonRelease, 120, 120,
+            Qt.MiddleButton, Qt.RightButton)
+    assert not vp._middle_drag_active and not vp._pan_mode
+    assert vp._suppress_next_context_menu
+    win._saved_version = vp.scene.version
+    win.close()
+
+
+def test_middle_right_drag_does_not_open_the_context_menu(monkeypatch):
+    from PySide6.QtGui import QContextMenuEvent
+
+    win = _window()
+    vp = win.viewport
+    menus = []
+    win.show_viewport_context_menu = lambda *a, **kw: menus.append((a, kw))
+
+    def menu_event(x, y):
+        return QContextMenuEvent(QContextMenuEvent.Mouse,
+                                 QPoint(x, y), QPoint(x, y))
+
+    _button(vp, QMouseEvent.MouseButtonPress, 100, 100,
+            Qt.MiddleButton, Qt.MiddleButton)
+    _button(vp, QMouseEvent.MouseButtonPress, 100, 100,
+            Qt.RightButton, Qt.MiddleButton | Qt.RightButton)
+    vp.contextMenuEvent(menu_event(120, 120))
+    assert menus == []
+    assert not vp._suppress_next_context_menu
+
+    # A normal right click still opens it.
+    _button(vp, QMouseEvent.MouseButtonRelease, 120, 120,
+            Qt.RightButton, Qt.MiddleButton)
+    _button(vp, QMouseEvent.MouseButtonRelease, 120, 120,
+            Qt.MiddleButton, Qt.NoButton)
+    _button(vp, QMouseEvent.MouseButtonPress, 200, 200,
+            Qt.RightButton, Qt.RightButton)
+    vp.contextMenuEvent(menu_event(200, 200))
+    assert menus
     win._saved_version = vp.scene.version
     win.close()
 

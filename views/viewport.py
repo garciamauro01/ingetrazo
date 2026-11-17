@@ -12,6 +12,7 @@ calls ``glClear`` first to avoid showing stale GPU memory.
 Navigation:
 - Middle-button drag: orbit
 - Shift + Middle-button drag: pan
+- Middle + right-button drag: pan
 - Wheel: zoom
 - P: toggle perspective / parallel projection
 
@@ -2039,6 +2040,11 @@ class Viewport(QOpenGLWidget):
         self._last_pos = None
         self._pan_mode = False
         self._middle_drag_active = False
+        # Middle+right drag pans (SketchUp-style). These flags keep the right
+        # button from opening the context menu or starting a tool's look drag
+        # while it is being used as a camera modifier.
+        self._right_pan_active = False
+        self._suppress_next_context_menu = False
         #: where the current orbit gesture turns (#164); None = the target
         self._orbit_pivot = None
         # A mouse-look drag for a tool with ``on_look`` (First Person):
@@ -17420,6 +17426,9 @@ class Viewport(QOpenGLWidget):
         self._orbit_pivot = None
         self._pan_mode = False
         self._middle_drag_active = False
+        self._right_pan_active = False
+        # Keep the context-menu suppression until that right button is
+        # released: the wheel may have gone up first.
         if self.nav_mode is not None:
             self._apply_nav_cursor()
         else:
@@ -17456,6 +17465,8 @@ class Viewport(QOpenGLWidget):
         self._orbit_pivot = None
         self._pan_mode = False
         self._middle_drag_active = False
+        self._right_pan_active = False
+        self._suppress_next_context_menu = False
         if mode is not None:
             self._apply_nav_cursor()      # orbit / pan / magnifier icons
         else:
@@ -17530,6 +17541,11 @@ class Viewport(QOpenGLWidget):
     def contextMenuEvent(self, ev) -> None:
         """Right-click: select what's under the cursor and open
         a context menu of actions relevant to the current selection."""
+        if self._suppress_next_context_menu:
+            # The right button was a modifier on a middle-button camera drag,
+            # not a request for the menu (its release arrives here too).
+            self._suppress_next_context_menu = False
+            return
         win = self.window()
         # A tool with its own right-click menu (Position Texture: Done /
         # Reset / Flip / Rotate) takes the click instead.
@@ -17560,14 +17576,38 @@ class Viewport(QOpenGLWidget):
         self._release_linear_mode()
         self._input_t = _time_mod.monotonic()   # P0: input→paint latency
         self._input_serial = getattr(self, "_input_serial", 0) + 1
+        if ev.button() == Qt.RightButton:
+            # A plain right press starts a fresh gesture: any suppression left
+            # by a cancelled middle+right drag ends here.
+            if not self._middle_drag_active:
+                self._suppress_next_context_menu = False
+            else:
+                # Wheel already down: the right button turns the orbit into
+                # pan. It is a camera modifier here, never a tool/menu click.
+                self._right_pan_active = True
+                self._suppress_next_context_menu = True
+                if self.nav_mode is not None:
+                    self._pan_mode = True
+                else:
+                    self._set_middle_drag_pan_mode(True)
+                return
         if (ev.button() in (Qt.LeftButton, Qt.RightButton)
                 and self.nav_mode is None and self._look_drag is None
                 and callable(getattr(self.active_tool, "on_look", None))):
             self._begin_look(ev)
             return
         if ev.button() == Qt.MiddleButton:
+            if self._look_drag is not None:
+                # The right button may have started a tool's look drag before
+                # the wheel went down; camera navigation wins now.
+                self._end_look()
+                self._suppress_next_context_menu = True
             self._last_pos = ev.position().toPoint()
-            self._pan_mode = bool(ev.modifiers() & Qt.ShiftModifier)
+            self._right_pan_active = bool(ev.buttons() & Qt.RightButton)
+            if self._right_pan_active:
+                self._suppress_next_context_menu = True
+            self._pan_mode = (bool(ev.modifiers() & Qt.ShiftModifier)
+                              or self._right_pan_active)
             self._middle_drag_active = True
             self._orbit_pivot = self._orbit_pivot_at(
                 ev.position().x(), ev.position().y())
@@ -17804,8 +17844,13 @@ class Viewport(QOpenGLWidget):
             # (Andrés Rodríguez, Windows 11 + NVIDIA, 0.5.0).
             self._end_camera_drag()
         if self._middle_drag_active:
-            self._set_middle_drag_pan_mode(
-                bool(ev.modifiers() & Qt.ShiftModifier))
+            # Shift OR the right button held during a wheel drag = pan.
+            pan = (bool(ev.modifiers() & Qt.ShiftModifier)
+                   or bool(ev.buttons() & Qt.RightButton))
+            if self.nav_mode is not None:
+                self._pan_mode = pan
+            else:
+                self._set_middle_drag_pan_mode(pan)
         if self._last_pos is not None:
             p = ev.position().toPoint()
             dx = p.x() - self._last_pos.x()
@@ -18080,15 +18125,18 @@ class Viewport(QOpenGLWidget):
         if self._look_drag is not None and ev.button() == self._look_drag[0]:
             self._end_look()
             return
-        if ev.button() == Qt.MiddleButton:
-            self._last_pos = None
-            self._orbit_pivot = None
-            self._pan_mode = False
-            self._middle_drag_active = False
+        if ev.button() == Qt.RightButton and self._right_pan_active:
+            # Right button let go first: back to orbiting for the rest of the
+            # wheel drag (unless Shift is still holding it in pan).
+            self._right_pan_active = False
+            pan = bool(ev.modifiers() & Qt.ShiftModifier)
             if self.nav_mode is not None:
-                self._apply_nav_cursor()
+                self._pan_mode = pan
             else:
-                self._apply_tool_cursor()
+                self._set_middle_drag_pan_mode(pan)
+            return
+        if ev.button() == Qt.MiddleButton:
+            self._end_camera_drag()
             return
 
         if ev.button() == Qt.LeftButton and self._zoom_box_active:
@@ -18796,7 +18844,9 @@ class Viewport(QOpenGLWidget):
                 ev.accept()
                 return
         if ev.key() == Qt.Key_Shift and not ev.isAutoRepeat():
-            self._set_middle_drag_pan_mode(False)
+            # Releasing Shift must not drop pan while the right button is
+            # still holding the wheel drag in pan mode.
+            self._set_middle_drag_pan_mode(self._right_pan_active)
             self._shift_lock = None
             self._shift_lock_ref = None
             self._release_shift_plane_mark()

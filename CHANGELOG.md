@@ -13,6 +13,10 @@ follow [SemVer](https://semver.org).
   (`meta/thumbnail.png`) y el instalador registra un proveedor COM firmado
   para que Windows la muestre en los iconos grandes. El `.igz` pasa a ser un
   contenedor ZIP; `document.json` sigue siendo el mismo JSON de siempre.
+- **Arrastrar con el botón central y el derecho desplaza la vista**: el botón
+  derecho pasa a ser un modificador de la cámara mientras el central está
+  pulsado, igual que Mayús. Al soltarlo se vuelve a orbitar, y no se abre el
+  menú contextual.
 
 ## [0.6.1] — 2026-11-08
 
