@@ -125,6 +125,9 @@ Source: "..\resources\icons\mimetypes\ingetrazo-dae.ico"; DestDir: "{app}"; \
     Flags: ignoreversion
 Source: "..\resources\icons\mimetypes\ingetrazo-skp.ico"; DestDir: "{app}"; \
     Flags: ignoreversion
+; Windows Explorer thumbnail provider for .igz (built from the .cs by CI).
+Source: "IngeTrazoThumbnailProvider.dll"; DestDir: "{app}"; \
+    Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
@@ -151,6 +154,27 @@ Root: HKA; Subkey: "Software\Classes\IngeTrazo.Document\DefaultIcon"; \
     ValueType: string; ValueData: "{app}\ingetrazo-igz.ico,0"
 Root: HKA; Subkey: "Software\Classes\IngeTrazo.Document\shell\open\command"; \
     ValueType: string; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
+
+; ── Thumbnail Handler (IThumbnailProvider COM) for Windows Explorer ──────────
+; Explorer asks the handler registered on .igz for the preview stored inside
+; the ZIP at meta/thumbnail.png. mscoree.dll hosts the managed COM class;
+; the DLL itself is a generated, Authenticode-signed artifact.
+Root: HKA; Subkey: "Software\Classes\.igz\ShellEx\{{e357fccd-a995-4576-b01f-234630154e96}"; \
+    ValueType: string; ValueData: "{{A4C84E91-2E97-4D99-8FE5-E8B2B7D60D2B}"; Flags: uninsdeletekey
+Root: HKA; Subkey: "Software\Classes\CLSID\{{A4C84E91-2E97-4D99-8FE5-E8B2B7D60D2B}"; \
+    ValueType: string; ValueData: "IngeTrazo Thumbnail Provider"; Flags: uninsdeletekey
+Root: HKA; Subkey: "Software\Classes\CLSID\{{A4C84E91-2E97-4D99-8FE5-E8B2B7D60D2B}\InprocServer32"; \
+    ValueType: string; ValueData: "mscoree.dll"; Flags: uninsdeletekey
+Root: HKA; Subkey: "Software\Classes\CLSID\{{A4C84E91-2E97-4D99-8FE5-E8B2B7D60D2B}\InprocServer32"; \
+    ValueType: string; ValueName: "ThreadingModel"; ValueData: "Both"
+Root: HKA; Subkey: "Software\Classes\CLSID\{{A4C84E91-2E97-4D99-8FE5-E8B2B7D60D2B}\InprocServer32"; \
+    ValueType: string; ValueName: "Class"; ValueData: "IngeTrazo.Shell.IngeTrazoThumbnailProvider"
+Root: HKA; Subkey: "Software\Classes\CLSID\{{A4C84E91-2E97-4D99-8FE5-E8B2B7D60D2B}\InprocServer32"; \
+    ValueType: string; ValueName: "Assembly"; ValueData: "IngeTrazoThumbnailProvider, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null"
+Root: HKA; Subkey: "Software\Classes\CLSID\{{A4C84E91-2E97-4D99-8FE5-E8B2B7D60D2B}\InprocServer32"; \
+    ValueType: string; ValueName: "RuntimeVersion"; ValueData: "v4.0.30319"
+Root: HKA; Subkey: "Software\Classes\CLSID\{{A4C84E91-2E97-4D99-8FE5-E8B2B7D60D2B}\InprocServer32"; \
+    ValueType: string; ValueName: "CodeBase"; ValueData: "file:///{app}\IngeTrazoThumbnailProvider.dll"
 
 ; ── .dae / .skp — standard interchange formats: "Open with" only ────────────
 ; We DO NOT take over the default program or the file icon (Windows ties the
@@ -198,8 +222,8 @@ Filename: "{app}\{#MyAppExeName}"; \
 [Code]
 // Explorer previews a file with the thumbnail handler of its ProgID, so making
 // IngeTrazo.skp the default for .skp hides the previews of the program that
-// owned the extension before (issue #804). IngeTrazo has no handler of its own,
-// so IngeTrazo.skp borrows the one Windows used until now.
+// owned the extension before (issue #804). Our own handler is registered on
+// .igz only, so IngeTrazo.skp borrows the one Windows used until now.
 const
   SkpProgId = 'IngeTrazo.skp';
   ThumbnailHandlerKey = 'ShellEx\{E357FCCD-A995-4576-B01F-234630154E96}';

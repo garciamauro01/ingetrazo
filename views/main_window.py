@@ -6563,6 +6563,39 @@ class MainWindow(QMainWindow):
         return img.scaledToWidth(self.TAB_PREVIEW_PX,
                                  _Qt.SmoothTransformation)
 
+    #: Side of the PNG embedded in .igz: big enough for the Explorer preview
+    #: pane, still small enough not to bloat every saved document.
+    THUMB_PX = 512
+
+    def _igz_thumbnail_bytes(self, vp) -> bytes | None:
+        """The current viewport as a small PNG for the .igz container.
+
+        None when there is no frame (headless --check, a viewport not shown
+        yet): a missing preview must never stop the save.
+        """
+        try:
+            if vp is None or not vp.isValid():
+                return None
+            img = vp.grabFramebuffer()
+        except Exception:                  # noqa: BLE001 — graphics gone
+            return None
+        if img.isNull():
+            return None
+        from PySide6.QtCore import QBuffer, QByteArray, QIODevice
+        from PySide6.QtCore import Qt as _Qt
+        img = img.scaled(self.THUMB_PX, self.THUMB_PX,
+                         _Qt.AspectRatioMode.KeepAspectRatio,
+                         _Qt.TransformationMode.SmoothTransformation)
+        data = QByteArray()
+        buf = QBuffer(data)
+        buf.open(QIODevice.OpenModeFlag.WriteOnly)
+        try:
+            if not img.save(buf, "PNG"):
+                return None
+        finally:
+            buf.close()
+        return bytes(data)
+
     #: Panel caches keyed by the scene's content version: two projects can
     #: be at the same number, so a switch forgets them all.
     _VERSION_CACHES = ("_in_model_cv", "_counted_version", "_drawn_signature",
@@ -7689,7 +7722,11 @@ class MainWindow(QMainWindow):
         try:
             vp.scene.camera_home = self._camera_dict(vp)
             vp.scene.views_home = self._views_dict(doc)
-            stats = igz_format.save_scene(vp.scene, path) or {}
+            # Explorer previews the document, not a file beside it: embed the
+            # frame as meta/thumbnail.png so the .igz stays portable.
+            thumb_bytes = self._igz_thumbnail_bytes(vp)
+            stats = igz_format.save_scene(vp.scene, path,
+                                          thumbnail_bytes=thumb_bytes) or {}
         except Exception as exc:  # noqa: BLE001
             QMessageBox.critical(self, tr("Save failed"), str(exc))
             return

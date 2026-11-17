@@ -34,9 +34,12 @@ image share the file and the GPU upload) and points the entries back at real
 paths — the rest of the app keeps seeing ``attrs["texture"]["path"]`` and knows
 nothing about containers.
 
-Untextured documents stay **plain JSON at format 1**: the common case remains
-diffable, hand-editable, and readable by older builds. ``load_into`` sniffs the
-ZIP magic, so both shapes open transparently.
+A preview turns any document into that same ZIP container, under
+``meta/thumbnail.png`` — Windows Explorer reads it through the COM handler in
+``installer/``. Without a preview, untextured documents stay **plain JSON at
+format 1**: the common case remains diffable, hand-editable, and readable by
+older builds. ``load_into`` sniffs the ZIP magic, so both shapes open
+transparently.
 
 **Large documents are format 3** (see ``_LARGE_DOCUMENT``): always a ZIP, and
 each big mesh is a ``{"geom": {...}}`` block instead of ``edges``/``faces``
@@ -69,6 +72,10 @@ GEOMETRY_FORMAT = 3     # + big meshes as binary blocks under geom/
 CURRENT_FORMAT = GEOMETRY_FORMAT   # the newest this build reads
 _ZIP_MAGIC = b"PK\x03\x04"
 _DOC_ENTRY = "document.json"
+# Windows Explorer reads this member through the IThumbnailProvider in
+# installer/IngeTrazoThumbnailProvider.cs. A preview forces the ZIP container
+# even for an otherwise untextured document; document.json is unchanged.
+_THUMB_ENTRY = "meta/thumbnail.png"
 _TEX_PREFIX = "textures/"
 # Fixed timestamp for every archive member: two saves of the same scene must
 # produce byte-identical files (diffable documents, and no pointless churn in
@@ -605,10 +612,18 @@ def _pack_plan(mesh, plan, sink: dict) -> dict:
     return _write_geometry(arrays, table, layer_table, sink)
 
 
-def save_scene(scene, path: Path) -> dict:
+def save_scene(scene, path: Path,
+               thumbnail_bytes: bytes | None = None) -> dict:
     """Write ``scene`` to ``path``. Returns ``{"embedded", "missing"}``: how
     many texture images were packed into the document, and how many could not
-    be read (those keep pointing at their original path)."""
+    be read (those keep pointing at their original path). The thumbnail is
+    not counted as a texture.
+
+    When ``thumbnail_bytes`` is given it goes into ``meta/thumbnail.png`` and
+    the document is written as a ZIP even when it has no textures. That is the
+    member Windows Explorer's thumbnail handler reads. Without a preview the
+    common case stays plain JSON at format 1.
+    """
     # Accept a Scene or a bare Mesh (the M1 read-compat path feeds a Mesh).
     mesh = scene.mesh if hasattr(scene, "mesh") else scene
     # Decided BEFORE anything is serialized: a large document writes its
@@ -838,6 +853,11 @@ def save_scene(scene, path: Path) -> dict:
     # that actually has textures pays for the container; everything else stays
     # plain JSON at format 1, readable by older builds.
     blobs, missing = _pack_textures(payload)
+    # The Explorer preview travels with the document for the same reason the
+    # textures do: a .png sitting next to the .igz is one move away from being
+    # lost, and IThumbnailProvider only receives the document itself.
+    if thumbnail_bytes:
+        blobs[_THUMB_ENTRY] = thumbnail_bytes
     # The photogrammetric survey (Track G, G6) rides inside the document too,
     # for the same reason the textures do: a reference mesh that lives in a
     # folder next to the .igz is one move away from being lost.
@@ -867,7 +887,33 @@ def save_scene(scene, path: Path) -> dict:
         _write_container(path, doc, blobs, fast=large, deflated=geom)
     else:
         _write_atomic(path, doc.encode("utf-8"))
-    return {"embedded": len(blobs), "missing": missing}
+    # ``embedded`` keeps counting textures only: the save dialog says
+    # "texture(s) packed", and a thumbnail is not one.
+    return {"embedded": len(blobs) - int(bool(thumbnail_bytes)),
+            "missing": missing}
+
+
+def read_thumbnail(path: Path | str) -> bytes | None:
+    """The embedded PNG preview, without parsing the 3D scene. ``None`` for a
+    plain-JSON document or one saved without a preview."""
+    path = Path(path)
+    if not path.is_file():
+        return None
+    try:
+        with open(path, "rb") as f:
+            if f.read(4) != _ZIP_MAGIC:
+                return None
+        import zipfile
+        from core import zip_limits
+        with zipfile.ZipFile(path) as zf:
+            for name in (_THUMB_ENTRY, "thumbnail.png", "thumb.png"):
+                try:
+                    return zip_limits.read(zf, name)
+                except KeyError:
+                    continue
+    except Exception:                    # noqa: BLE001 — no preview is not fatal
+        return None
+    return None
 
 
 def _live_element_count(scene) -> int:

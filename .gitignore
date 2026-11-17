@@ -16,6 +16,9 @@ dist/
 *.egg-info/
 # PyInstaller (ingetrazo.spec is versioned deliberately)
 !ingetrazo.spec
+# The Explorer thumbnail provider is compiled from installer/*.cs by
+# installer/build-thumbnail-provider.ps1 (also in the Windows CI).
+installer/IngeTrazoThumbnailProvider.dll
 
 # IDE / editor
 .vscode/

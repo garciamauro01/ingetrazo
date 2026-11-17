@@ -33,6 +33,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      # Provider de miniaturas de .igz para el Explorador: se COMPILA desde
+      # el .cs (el DLL no está versionado). Falla aquí si no compila, antes
+      # de pasar por PyInstaller o Inno Setup.
+      - name: Compilar provider de miniaturas (C#)
+        shell: pwsh
+        run: |
+          .\installer\build-thumbnail-provider.ps1
+          if (-Not (Test-Path 'installer\IngeTrazoThumbnailProvider.dll')) {
+            throw 'DLL del provider no generada'
+          }
+
       # 3.12: la versión de referencia para wheels en CI (misma que
       # IngePresupuestos). El código corre igual en 3.10+.
       - name: Setup Python 3.12
@@ -178,6 +189,34 @@ jobs:
             echo "on=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # La DLL se carga dentro de explorer.exe: también va firmada. La
+      # Artifact Configuration «thumbnail-provider» hay que crearla una vez
+      # en SignPath con solo IngeTrazoThumbnailProvider.dll.
+      - name: Subir la DLL para firmar
+        id: dll-sin-firmar
+        if: steps.firma.outputs.on == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dll-sin-firmar
+          path: installer/IngeTrazoThumbnailProvider.dll
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Firmar la DLL (SignPath)
+        if: steps.firma.outputs.on == 'true'
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: 45ff474d-922e-4e28-bc0a-837061f69143
+          project-slug: ingetrazo
+          signing-policy-slug: ${{ vars.SIGNPATH_POLICY || 'test-signing' }}
+          artifact-configuration-slug: thumbnail-provider
+          github-artifact-id: ${{ steps.dll-sin-firmar.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          # Sustituye la DLL recién compilada por la firmada, antes del ISCC.
+          output-artifact-directory: installer
+
       - name: Subir los .exe para firmar
         id: exe-sin-firmar
         if: steps.firma.outputs.on == 'true'
@@ -297,7 +336,7 @@ jobs:
         if: steps.firma.outputs.on == 'true'
         shell: pwsh
         run: |
-          $files = @("dist/ingetrazo/ingetrazo.exe", "dist/ingetrazo/ingetrazo-mcp.exe") + (Get-ChildItem dist/ingetrazo-setup-v*.exe).FullName
+          $files = @("dist/ingetrazo/ingetrazo.exe", "dist/ingetrazo/ingetrazo-mcp.exe", "installer/IngeTrazoThumbnailProvider.dll") + (Get-ChildItem dist/ingetrazo-setup-v*.exe).FullName
           foreach ($f in $files) {
             $sig = Get-AuthenticodeSignature $f
             "{0}: {1} — {2}" -f (Split-Path $f -Leaf), $sig.Status, $sig.SignerCertificate.Subject

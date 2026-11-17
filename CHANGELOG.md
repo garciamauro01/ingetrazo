@@ -6,6 +6,14 @@ follow [SemVer](https://semver.org).
 
 ## [Unreleased]
 
+### Añadido
+
+- **Miniaturas de `.igz` en el Explorador de Windows** (#522): al guardar se
+  incrusta una vista previa de 512 px dentro del documento
+  (`meta/thumbnail.png`) y el instalador registra un proveedor COM firmado
+  para que Windows la muestre en los iconos grandes. El `.igz` pasa a ser un
+  contenedor ZIP; `document.json` sigue siendo el mismo JSON de siempre.
+
 ## [0.6.1] — 2026-11-08
 
 **Vistas en la misma pestaña: una, dos, tres o cuatro, con líneas que se
