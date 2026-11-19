@@ -234,10 +234,19 @@ def test_the_status_bar_keeps_the_ctrl_clause_up():
     app = QApplication.instance() or QApplication([])
     from views.main_window import MainWindow
 
+    from PySide6.QtGui import QCursor
+
     win = MainWindow()
     win.show()
     app.processEvents()
     vp = win.viewport
+    # The Tape starts a guide from whatever is under the *global* cursor when
+    # it is picked (``start_from_hover``). Other windows may have left that
+    # cursor over an axis; park it off-canvas so this test measures the status
+    # hint before the first click, whatever the window layout / toolbars are.
+    old_cursor = QCursor.pos()
+    QCursor.setPos(0, 0)
+    app.processEvents()
     try:
         win._activate_tool("tape")
         tool = vp.active_tool
@@ -273,6 +282,7 @@ def test_the_status_bar_keeps_the_ctrl_clause_up():
         for text in (*seen, midway):
             assert fm.horizontalAdvance(text) <= cap, text
     finally:
+        QCursor.setPos(old_cursor)
         win._saved_version = vp.scene.version
         win.close()
 

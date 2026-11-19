@@ -1042,6 +1042,10 @@ class OutlinerPanel(QWidget):
         self.state_filter = "all"
         self.invert_filter = False
         self._kind_providers: tuple = ()
+        # A first-party provider (TrazoMob) reads only group.ext, so rows it
+        # owns can still be patched in place. Only third-party providers,
+        # which may add sizes or anything else, force a full rebuild.
+        self._external_kind_providers: tuple = ()
         self._root = None
         self._sec_root = None               # the «Section planes» folder
         self._sec_items: dict = {}          # id(plane) -> its row
@@ -1284,6 +1288,9 @@ class OutlinerPanel(QWidget):
         self._alone_ids = {id(g) for g in self._alone_now()}
         self._kind_providers = tuple(
             getattr(self._window, "_outliner_kinds", None) or ())
+        self._external_kind_providers = tuple(
+            fn for fn in self._kind_providers
+            if not getattr(fn, "is_first_party", False))
         scene = self._scene()
         shape = self._rows_shape(scene)
         struct = shape[0]               # _rows_shape already walked it
@@ -1301,7 +1308,7 @@ class OutlinerPanel(QWidget):
         # count of a component that gained or lost one.
         groups_only = (rows_if_changed and old_key is not None
                        and rows_key[0] is not None
-                       and not self._kind_providers
+                       and not self._external_kind_providers
                        and old_key[1] == rows_key[1]
                        and old_key[3:] == rows_key[3:]
                        and hist is not None
@@ -1314,7 +1321,7 @@ class OutlinerPanel(QWidget):
         # of #158 read as they did (~0.15 s each way).
         ctx_only = (rows_if_changed and old_key is not None
                     and rows_key[0] is not None
-                    and not self._kind_providers
+                    and not self._external_kind_providers
                     and shape == self._shape
                     and old_key[1:3] == rows_key[1:3]
                     and old_key[4:] == rows_key[4:]
@@ -1333,7 +1340,7 @@ class OutlinerPanel(QWidget):
             self._struct_shape = struct
         # Nor does a Move (History.rows_cv) — unless an extension's kind
         # adds properties to the rows, which may well be sizes.
-        moved_only = (old_key is not None and not self._kind_providers
+        moved_only = (old_key is not None and not self._external_kind_providers
                       and old_key[1:] == rows_key[1:]
                       and getattr(hist, "rows_cv", None) == rows_key[0])
         if (not rows_if_changed or rows_key[0] is None

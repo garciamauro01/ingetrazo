@@ -429,6 +429,9 @@ class MainWindow(QMainWindow):
         area.installEventFilter(self)
 
         self._extension_docks: list = []   # side panels added by plugins
+        # First-party features use ExtensionApp too, but they are part of the
+        # app: keep their docks apart from the third-party plugin list.
+        self._first_party_docks: list = []
         self._build_toolbar()
         self._build_tray()
         self._build_menubar()
@@ -2169,7 +2172,7 @@ class MainWindow(QMainWindow):
         """The trays in their factory place: every one on the right, tabbed
         in the default order, extension panels after them."""
         order = self._default_tray_order()
-        order += [d for d in getattr(self, "_extension_docks", ())
+        order += [d for d in self._all_extension_docks()
                   if d not in order]
         # Each one straight into the tabs: docked one under the other first,
         # their heights added up past the window, which grew to hold them.
@@ -2297,7 +2300,7 @@ class MainWindow(QMainWindow):
                             getattr(self, "georef_tray", None),
                             getattr(self, "project_browser", None),
                             getattr(self, "layers_dock", None),
-                            *getattr(self, "_extension_docks", ()))
+                            *self._all_extension_docks())
                 if d is not None]
 
     def _build_sidebar_handle(self) -> None:
@@ -3009,11 +3012,24 @@ class MainWindow(QMainWindow):
         self._extensions_loaded = True
         import logging
         from core.extensions import discover_plugins
+        from views.extension_api import ExtensionApp
 
         log = logging.getLogger("ingetrazo.plugins")
         ext_menu = self._ext_menu
         anchor = self._ext_anchor
         bars_before = set(self.findChildren(QToolBar))
+        # TrazoMob is first-party: it no longer lives in plugins/ and is no
+        # longer discovered as an extension. Its setup runs here, BEFORE the
+        # shortcut reservation below, so its keys stay reserved like the
+        # built-in ones and a third-party extension cannot steal them.
+        try:
+            from trazomob import setup as _setup_trazomob
+
+            _setup_trazomob(ExtensionApp(self, "trazomob", first_party=True))
+        except Exception:  # noqa: BLE001 — the rest of the app still starts
+            log.exception("first-party trazomob setup failed")
+            from core.extensions import note_failure
+            note_failure("first-party trazomob setup failed")
         plugins, errors = discover_plugins()
         from core.extension_manager import extension_startup_state
         self._extension_startup_state = extension_startup_state()
@@ -3048,7 +3064,6 @@ class MainWindow(QMainWindow):
         self._ext_taken_keys = taken
 
         count = 0
-        from views.extension_api import ExtensionApp
         for plug in list(plugins):
             if plug.setup is None:
                 continue
@@ -3230,7 +3245,7 @@ class MainWindow(QMainWindow):
         open_url(self.PLUGIN_GUIDE_URL)
 
     # ---- Extension panels (views.extension_api.ExtensionApp.add_panel) -------
-    def _register_extension_dock(self, dock) -> None:
+    def _register_extension_dock(self, dock, *, first_party: bool = False) -> None:
         """Give an extension's panel what the built-in trays get for free.
 
         ``setup(app)`` may add a panel after ``restoreState`` laid the window
@@ -3252,7 +3267,8 @@ class MainWindow(QMainWindow):
                 area = Qt.RightDockWidgetArea
             self.addDockWidget(area, dock)
             self.tabifyDockWidget(self.tray, dock)
-        self._extension_docks.append(dock)
+        (self._first_party_docks if first_party
+         else self._extension_docks).append(dock)
         self._keep_docked(dock)
         # A panel added after start-up (the first time its tool runs) gets
         # the same rule as the others: closed if the user closed it, or if
@@ -3275,9 +3291,14 @@ class MainWindow(QMainWindow):
             from PySide6.QtCore import QTimer
             QTimer.singleShot(0, self, self._fit_docks_to_screen)
 
+    def _all_extension_docks(self) -> list:
+        """Every panel added through ExtensionApp, first-party included."""
+        return ([*getattr(self, "_extension_docks", ()),
+                 *getattr(self, "_first_party_docks", ())])
+
     def extension_panels(self) -> dict:
         """``objectName`` → dock for every panel an extension added."""
-        return {d.objectName(): d for d in self._extension_docks}
+        return {d.objectName(): d for d in self._all_extension_docks()}
 
     def _activate_plugin_tool(self, key: str) -> None:
         """Run a plugin tool from the Extensions menu.

@@ -37,7 +37,7 @@ from PySide6.QtWidgets import (
 
 from core import user_library
 from core.i18n import tr
-from views import component_loader
+from views import component_loader, library_grid
 from views.filedialogs import file_dialogs
 from views.length_field import LengthSpinBox
 
@@ -173,6 +173,11 @@ class ComponentDialog(QDialog):
             "QLabel { border: 1px solid palette(midlight);"
             " border-radius: 6px; background: palette(base); }")
         side.addWidget(self._preview)
+        self._btn_render_mats = QPushButton(tr("🎨 Acabamentos de Render…"))
+        self._btn_render_mats.setToolTip(tr("Definir presets procedurais de render por material/cor"))
+        self._btn_render_mats.clicked.connect(self._edit_render_materials)
+        side.addWidget(self._btn_render_mats)
+        self._render_materials: dict[str, str] = {}
         self._status = QLabel("")
         self._status.setWordWrap(True)
         side.addWidget(self._status)
@@ -203,6 +208,7 @@ class ComponentDialog(QDialog):
         self._tags.setText(", ".join(entry.get("tags") or []))
         self._fuente.setText(entry.get("fuente", ""))
         self._licencia.setText(entry.get("licencia", ""))
+        self._render_materials = dict(entry.get("render_materials") or {})
         self._autor.setText(entry.get("autor", ""))
         self._notas.setText(entry.get("notas", ""))
         unit = entry.get("unidad") or "m"
@@ -311,6 +317,26 @@ class ComponentDialog(QDialog):
         self._preview.setPixmap(
             component_loader.thumbnail_pixmap(loaded.group, 180))
 
+    def _edit_render_materials(self) -> None:
+        if self._group is None and self._source is not None and self._source.is_file():
+            self._measure()
+        if self._group is None:
+            QMessageBox.information(
+                self, tr("Acabamentos de Render"),
+                tr("Escolha primeiro um arquivo de modelo válido."))
+            return
+        from trazomob.domain.render_materials import (
+            get_group_render_materials,
+            set_group_render_materials,
+        )
+        from trazomob.ui.render_materials_dialog import RenderMaterialsDialog
+
+        if self._render_materials:
+            set_group_render_materials(self._group, self._render_materials)
+        dlg = RenderMaterialsDialog(self._group, parent=self)
+        if dlg.exec():
+            self._render_materials = get_group_render_materials(self._group)
+
     def _dimensions_cm(self) -> list | None:
         values = [spin.value() * 100.0
                   for spin in (self._width, self._depth, self._height)]
@@ -335,6 +361,7 @@ class ComponentDialog(QDialog):
             licencia=self._licencia.text().strip(),
             autor=self._autor.text().strip(),
             notas=self._notas.text().strip(),
+            render_materials=dict(self._render_materials),
         )
         if self._edit:
             updated = user_library.update(
@@ -398,12 +425,8 @@ class UserLibraryDialog(QDialog):
         lay.addLayout(top)
 
         self._list = QListWidget()
-        self._list.setViewMode(QListWidget.IconMode)
-        self._list.setIconSize(QSize(ICON, ICON))
-        self._list.setGridSize(QSize(ICON + 40, ICON + 54))
-        self._list.setResizeMode(QListWidget.Adjust)
-        self._list.setMovement(QListWidget.Static)
-        self._list.setWordWrap(True)
+        library_grid.configure(self._list, icon=ICON,
+                               grid=QSize(ICON + 40, ICON + 54))
         self._list.itemDoubleClicked.connect(lambda _i: self._insert())
         self._list.currentItemChanged.connect(self._show_credit)
         lay.addWidget(self._list, 1)

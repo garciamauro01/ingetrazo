@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (QComboBox, QDialog, QHBoxLayout, QLabel,
 
 from core import library
 from core.i18n import tr
+from views import library_grid
 
 ICON = 96
 
@@ -48,12 +49,8 @@ class LibraryDialog(QDialog):
         lay.addLayout(top)
 
         self._list = QListWidget()
-        self._list.setViewMode(QListWidget.IconMode)
-        self._list.setIconSize(QSize(ICON, ICON))
-        self._list.setGridSize(QSize(ICON + 34, ICON + 46))
-        self._list.setResizeMode(QListWidget.Adjust)
-        self._list.setMovement(QListWidget.Static)
-        self._list.setWordWrap(True)
+        library_grid.configure(self._list, icon=ICON,
+                               grid=QSize(ICON + 34, ICON + 46))
         self._list.itemDoubleClicked.connect(lambda _i: self._insert())
         self._list.currentItemChanged.connect(self._show_credit)
         lay.addWidget(self._list, 1)

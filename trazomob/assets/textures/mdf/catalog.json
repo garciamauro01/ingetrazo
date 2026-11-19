@@ -1,0 +1,72 @@
+[
+  {
+    "nome": "MDF Autentic Arauco",
+    "arquivo": "mdf_autentic_arauco.jpg",
+    "sw": 1.2,
+    "sh": 1.2,
+    "permite_giro": false,
+    "sentido_veio": "longitudinal",
+    "espessuras": [15.0, 18.0],
+    "cor_rgb": [0.776, 0.647, 0.498]
+  },
+  {
+    "nome": "MDF Carvalho",
+    "arquivo": "mdf_carvalho.jpg",
+    "sw": 1.2,
+    "sh": 1.2,
+    "permite_giro": false,
+    "sentido_veio": "longitudinal",
+    "espessuras": [15.0, 18.0],
+    "cor_rgb": [0.76, 0.63, 0.48]
+  },
+  {
+    "nome": "MDF Carvalho Boreal",
+    "arquivo": "mdf_carvalho_boreal.jpg",
+    "sw": 1.2,
+    "sh": 1.2,
+    "permite_giro": false,
+    "sentido_veio": "longitudinal",
+    "espessuras": [15.0, 18.0],
+    "cor_rgb": [0.80, 0.68, 0.54]
+  },
+  {
+    "nome": "MDF Castanho",
+    "arquivo": "mdf_castanho.jpg",
+    "sw": 1.2,
+    "sh": 1.2,
+    "permite_giro": false,
+    "sentido_veio": "longitudinal",
+    "espessuras": [15.0, 18.0],
+    "cor_rgb": [0.48, 0.34, 0.24]
+  },
+  {
+    "nome": "MDF Ciliegio Florenca",
+    "arquivo": "mdf_ciliegio_florenca.jpg",
+    "sw": 1.2,
+    "sh": 1.2,
+    "permite_giro": false,
+    "sentido_veio": "longitudinal",
+    "espessuras": [15.0, 18.0],
+    "cor_rgb": [0.58, 0.36, 0.25]
+  },
+  {
+    "nome": "MDF Louro Freijo",
+    "arquivo": "mdf_louro_freijo.jpg",
+    "sw": 1.2,
+    "sh": 1.2,
+    "permite_giro": false,
+    "sentido_veio": "longitudinal",
+    "espessuras": [15.0, 18.0],
+    "cor_rgb": [0.68, 0.50, 0.35]
+  },
+  {
+    "nome": "MDF Nogueira",
+    "arquivo": "mdf_nogueira.jpg",
+    "sw": 1.2,
+    "sh": 1.2,
+    "permite_giro": false,
+    "sentido_veio": "longitudinal",
+    "espessuras": [15.0, 18.0],
+    "cor_rgb": [0.42, 0.28, 0.20]
+  }
+]

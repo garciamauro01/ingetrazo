@@ -1,0 +1,121 @@
+[
+  {
+    "nome": "Granito Preto São Gabriel 20mm",
+    "arquivo": "granito_preto_sao_gabriel.jpg",
+    "sw": 0.50,
+    "sh": 0.336,
+    "cor_rgb": [0.12, 0.12, 0.13]
+  },
+  {
+    "nome": "Granito Preto Absoluto 20mm",
+    "arquivo": "granito_preto_absoluto.jpg",
+    "sw": 0.60,
+    "sh": 0.60,
+    "cor_rgb": [0.08, 0.08, 0.09]
+  },
+  {
+    "nome": "Granito Preto Escovado 20mm",
+    "arquivo": "granito_preto_escovado.jpg",
+    "sw": 0.60,
+    "sh": 0.60,
+    "cor_rgb": [0.14, 0.14, 0.15]
+  },
+  {
+    "nome": "Granito Branco Siena 20mm",
+    "arquivo": "granito_branco_siena.jpg",
+    "sw": 0.60,
+    "sh": 0.60,
+    "cor_rgb": [0.85, 0.85, 0.84]
+  },
+  {
+    "nome": "Granito Branco Veios 20mm",
+    "arquivo": "granito_branco_veios.jpg",
+    "sw": 0.80,
+    "sh": 0.80,
+    "cor_rgb": [0.88, 0.88, 0.87]
+  },
+  {
+    "nome": "Granito Cinza Castelo 20mm",
+    "arquivo": "granito_cinza_castelo.jpg",
+    "sw": 0.60,
+    "sh": 0.60,
+    "cor_rgb": [0.55, 0.55, 0.56]
+  },
+  {
+    "nome": "Mármore Calacatta 20mm",
+    "arquivo": "marmore_calacatta.jpg",
+    "sw": 0.80,
+    "sh": 0.80,
+    "cor_rgb": [0.94, 0.93, 0.91]
+  },
+  {
+    "nome": "Mármore Calacatta Gold 20mm",
+    "arquivo": "marmore_calacatta_gold.jpg",
+    "sw": 0.80,
+    "sh": 0.80,
+    "cor_rgb": [0.93, 0.91, 0.87]
+  },
+  {
+    "nome": "Mármore Nero Marquina 20mm",
+    "arquivo": "marmore_nero_marquina.jpg",
+    "sw": 0.80,
+    "sh": 0.80,
+    "cor_rgb": [0.10, 0.10, 0.11]
+  },
+  {
+    "nome": "Mármore Nero Absoluto 20mm",
+    "arquivo": "marmore_nero_absoluto.jpg",
+    "sw": 0.80,
+    "sh": 0.80,
+    "cor_rgb": [0.09, 0.09, 0.10]
+  },
+  {
+    "nome": "Mármore Pietra Grey 20mm",
+    "arquivo": "marmore_pietra_grey.jpg",
+    "sw": 0.80,
+    "sh": 0.80,
+    "cor_rgb": [0.35, 0.35, 0.36]
+  },
+  {
+    "nome": "Mármore Armani Gris 20mm",
+    "arquivo": "marmore_armani_gris.jpg",
+    "sw": 0.80,
+    "sh": 0.80,
+    "cor_rgb": [0.42, 0.40, 0.38]
+  },
+  {
+    "nome": "Mármore Travertino Bege 20mm",
+    "arquivo": "marmore_travertino_bege.jpg",
+    "sw": 0.80,
+    "sh": 0.80,
+    "cor_rgb": [0.84, 0.78, 0.68]
+  },
+  {
+    "nome": "Quartzo Branco Silestone 20mm",
+    "arquivo": "quartzo_branco_silestone.jpg",
+    "sw": 0.60,
+    "sh": 0.60,
+    "cor_rgb": [0.95, 0.95, 0.94]
+  },
+  {
+    "nome": "Concreto Cimento Queimado 20mm",
+    "arquivo": "concreto_cimento_queimado.jpg",
+    "sw": 0.80,
+    "sh": 0.80,
+    "cor_rgb": [0.52, 0.53, 0.54]
+  },
+  {
+    "nome": "Bancada Carvalho Lamelado 30mm",
+    "arquivo": "bancada_carvalho_lamelado.jpg",
+    "sw": 1.00,
+    "sh": 1.00,
+    "cor_rgb": [0.72, 0.58, 0.42]
+  },
+  {
+    "nome": "Bancada Madeira Teca 30mm",
+    "arquivo": "bancada_madeira_teca.jpg",
+    "sw": 1.00,
+    "sh": 1.00,
+    "cor_rgb": [0.58, 0.40, 0.25]
+  }
+]

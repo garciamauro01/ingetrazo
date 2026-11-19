@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint:
+    name: Lint (ruff) + syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar ruff
+        run: pip install ruff==0.17.4
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Checagem de sintaxe
+        run: python -m compileall -q .
+
+# Observação: a suíte de testes (pytest) importa o pacote `core` do repositório
+# principal do IngeTrazo, que não existe neste repositório isolado. Por isso o
+# CI aqui cobre lint + sintaxe. Os testes completos rodam no repositório pai:
+#   python -m pytest trazomob/tests

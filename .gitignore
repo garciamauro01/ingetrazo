@@ -83,7 +83,6 @@ CLAUDE.md
 # city-XL alone is ~580 MB)
 benchmarks/models/
 
-# TrazoMob (projeto/plugin separado)
-plugins/trazomob/
+# TrazoMob is first-party now (trazomob/ at the repo root).
 Proposta_Cliente_TrazoMob.html
 

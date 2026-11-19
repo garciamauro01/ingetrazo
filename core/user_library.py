@@ -340,6 +340,23 @@ def _entry(ident: str, src: Path, *, nombre, categoria, tipo, marca, modelo,
     }
 
 
+def _bake_decoration(entry: dict) -> None:
+    """Pré-assa uma decoração ao cadastrar (TrazoMob first-party).
+
+    O custo da conversão estrangeira é pago uma vez, aqui — nunca na primeira
+    inserção. Falha no assado nunca pode impedir o cadastro da ficha.
+    """
+    import logging
+
+    try:
+        from trazomob.integrations import decor_bake
+
+        decor_bake.ensure_for_entry(entry)
+    except Exception:  # noqa: BLE001 - otimização, não requisito
+        logging.getLogger(__name__).exception(
+            "pré-assado falhou ao registrar decoração")
+
+
 def register(source, *, nombre: str | None = None, categoria: str = "",
              tipo: str = "", marca: str = "", modelo: str = "",
              tags=None, fuente: str = "", licencia: str = "",
@@ -399,6 +416,7 @@ def register(source, *, nombre: str | None = None, categoria: str = "",
             e["escala"] = float(escala)
             e["y_up"] = bool(y_up)
             _write(data)
+            _bake_decoration(e)
             return e
 
     ident = _new_id(nombre or src.stem, origin,
@@ -422,6 +440,7 @@ def register(source, *, nombre: str | None = None, categoria: str = "",
                    unidad=unidad)
     entries.append(entry)
     _write(data)
+    _bake_decoration(entry)
     return entry
 
 

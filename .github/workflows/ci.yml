@@ -74,15 +74,8 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: python scripts/pytest_batches.py -m "not slow" tests
 
-      - name: Tests (TrazoMob plugin)
-        # The plugin ships inside plugins/ and used to be invisible to this
-        # gate: its suite never ran on a PR. Guarded because the directory is
-        # absent in checkouts that don't carry the plugin.
+      - name: Tests (TrazoMob / first-party)
+        # Integrated into the fork: always present, always gated.
         env:
           QT_QPA_PLATFORM: offscreen
-        run: |
-          if [ -d plugins/trazomob/tests ]; then
-            python scripts/pytest_batches.py -m "not slow" plugins/trazomob/tests
-          else
-            echo "plugins/trazomob/tests ausente neste checkout; nada a rodar."
-          fi
+        run: python scripts/pytest_batches.py -m "not slow" trazomob/tests

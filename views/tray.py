@@ -58,7 +58,7 @@ from core.i18n import tr
 from views.theme import style as theme_style
 from views.rtl import set_arrow
 from views.filedialogs import file_dialogs
-from core.mesh import Edge, Face
+from core.mesh import Edge, Face, face_count
 from core.bim import face_net_area
 from core.group import Group
 from core.dimension import Dimension
@@ -4045,6 +4045,12 @@ class EntityInfoPanel(QWidget):
 
     #: Past this many selected entities the totals are left out (#274).
     TOTALS_UP_TO = 20000
+    #: A solidity check welds and triangulates the WHOLE mesh (core.solids).
+    #: On an imported decoration that means materialising a deferred 100k-face
+    #: mesh for a badge nobody asked for — several seconds on the first click.
+    #: Beyond this size Entity Info simply reports the face count, as it does
+    #: for a multi-selection (#decor-bake).
+    SOLID_CHECK_MAX_FACES = 20000
 
     def _describe(self, sel: list) -> str:
         if not sel:
@@ -4079,11 +4085,11 @@ class EntityInfoPanel(QWidget):
                     title = (tr("Solid Component") if vol is not None
                              else tr("Component"))
                     return (f"<b>{title}</b><br>"
-                            f"{tr('Faces')}: {len(e.mesh.faces)}<br>"
+                            f"{tr('Faces')}: {face_count(e.mesh)}<br>"
                             f"{tr('In model')}: {kin}{solid}")
                 title = tr("Solid Group") if vol is not None else tr("Group")
                 return (f"<b>{title}</b><br>"
-                        f"{tr('Faces')}: {len(e.mesh.faces)}{solid}")
+                        f"{tr('Faces')}: {face_count(e.mesh)}{solid}")
             return f"<b>{tr('1 entity')}</b>"
         curve = self._describe_curve(sel)
         if curve is not None:
@@ -4169,10 +4175,15 @@ class EntityInfoPanel(QWidget):
             f"{tr('Perimeter')}: {fmt_len(length)}"])
 
     def _solid_volume(self, group):
-        """Cached per scene version: the panel refreshes on every change and
-        the check walks the whole mesh."""
+        """Cached per CONTENT version: the check walks the whole mesh and a
+        selection is a view-only ``bump_view`` — keying on ``scene.version``
+        threw the cache away on every click, so the time to select a decoration
+        grew with its face count (#decor-bake)."""
+        if face_count(group.mesh) > self.SOLID_CHECK_MAX_FACES:
+            return None
         from core.solids import solid_volume
-        version = self._window.viewport.scene.version
+        scene = self._window.viewport.scene
+        version = (id(scene), getattr(scene, "content_version", scene.version))
         cache = getattr(self, "_solid_cache", None)
         if cache is None or cache[0] != version:
             cache = self._solid_cache = (version, {})

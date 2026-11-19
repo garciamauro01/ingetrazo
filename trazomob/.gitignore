@@ -1,0 +1,19 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local / OS files
+.DS_Store
+Thumbs.db
+*.log
+
+# Local test/cache directories
+.pytest_cache/
+.ruff_cache/
+dist/
+*.zip
+
+# Ferramental local de agentes (não faz parte do plugin)
+.agents/
+.ag-kit-backups/

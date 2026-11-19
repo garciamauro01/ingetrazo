@@ -1,0 +1,27 @@
+# Configuração de qualidade do plugin TrazoMob.
+# O plugin faz parte do IngeTrazo, mas mantém repositório Git próprio
+# (https://github.com/garciamauro01/trazomob), por isso tem tooling local.
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+# Conjunto base (pycodestyle + pyflakes + pycodestyle-warnings + isort).
+select = ["E", "F", "W", "I"]
+
+# Dívida técnica legada explicitamente tolerada ("ratchet"). A ideia é remover
+# itens desta lista com o tempo, sem quebrar o CI hoje:
+#   E501  linha longa (strings/HTML embutidos)
+#   F401  import não usado (muitos são reexportações intencionais de mixins/__init__)
+#   I001  imports fora de ordem
+#   F811  nome redefinido (mixins reimportam nomes por compatibilidade)
+#   F841  variável local não usada
+#   E701  múltiplos statements por linha (`if x: return`)
+#   E702  múltiplos statements separados por `;`
+#   E402  import fora do topo (imports lazy por dependência de runtime)
+#   E741  nome ambíguo (`l`, `I`, `O`)
+ignore = ["E501", "F401", "I001", "F811", "F841", "E701", "E702", "E402", "E741"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E402", "F841"]

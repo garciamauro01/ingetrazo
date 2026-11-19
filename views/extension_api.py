@@ -67,9 +67,13 @@ class ExtensionApp:
 
     api_version = API_VERSION
 
-    def __init__(self, window, key: str) -> None:
+    def __init__(self, window, key: str, *, first_party: bool = False) -> None:
         self._window = window
         self.key = str(key)
+        # First-party features (TrazoMob) use this same API but are not
+        # extensions: their panels must not appear in lists that mean
+        # "third-party plugins the user installed".
+        self._first_party = bool(first_party)
 
     # ---- Where things are ------------------------------------------------
     @property
@@ -218,7 +222,7 @@ class ExtensionApp:
             win._start_hidden.add(object_name)
         dock.setWidget(widget)
         dock.setTitleBarWidget(QWidget(dock))   # the tab already names it
-        win._register_extension_dock(dock)
+        win._register_extension_dock(dock, first_party=self._first_party)
         if panel is not None:
             shared[panel] = (dock, box)
         tray = getattr(win, "tray", None)
@@ -238,6 +242,10 @@ class ExtensionApp:
         what it does, in a sentence — shows in the status bar and in F3.
         Returns the QAction (``None`` outside a window with that menu)."""
         from PySide6.QtGui import QAction, QKeySequence
+        if self._first_party:
+            # Built-in features have their own toolbar/panel entry; the
+            # Extensions menu must stay a list of what the user installed.
+            return None
         win = self._window
         menu = getattr(win, "_ext_menu", None)
         if menu is None:
@@ -270,7 +278,7 @@ class ExtensionApp:
         for an extension with several commands; returns the QMenu to fill
         (``None`` outside a window with that menu)."""
         menu = getattr(self._window, "_ext_menu", None)
-        if menu is None:
+        if menu is None or self._first_party:
             return None
         # Its name, for the submenu of its right-click entries.
         self._window.__dict__.setdefault("_ext_menu_titles", {}).setdefault(

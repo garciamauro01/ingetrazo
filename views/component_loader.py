@@ -93,6 +93,17 @@ def load_group(path, *, matrix=None, name: str | None = None) -> Group:
     p = Path(path)
     if not p.is_file():
         raise ComponentLoadError(f"file not found: {p}")
+    # First-party TrazoMob: a decoration is read from its pre-baked .igz,
+    # with the matrix already applied. Marcenaria/other formats keep the path
+    # below unchanged.
+    try:
+        from trazomob.integrations import decor_bake
+
+        baked = decor_bake.load_group_fast(p, matrix=matrix, name=name)
+    except Exception:  # noqa: BLE001 - the normal importer is the fallback
+        baked = None
+    if baked is not None:
+        return baked
     suffix = p.suffix.lower()
     temp = Scene()
     try:
@@ -243,6 +254,17 @@ def load_component(entry: dict, *, anchor: str = "base",
         if path is None:
             raise ComponentLoadError(
                 "the model file is missing from where it was indexed")
+        # First-party TrazoMob: the baked prototype arrives fitted and
+        # centred, so neither fit() nor flatten() runs on insertion.
+        try:
+            from trazomob.integrations import decor_bake
+
+            quick = decor_bake.load_component_fast(
+                entry, anchor=anchor, thumbnail_size=thumbnail_size)
+        except Exception:  # noqa: BLE001 - fall back to the normal reader
+            quick = None
+        if quick is not None:
+            return quick
         matrix = entry.get("matrix")
         if matrix:
             m = tuple(float(v) for v in matrix)

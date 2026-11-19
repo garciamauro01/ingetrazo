@@ -47,6 +47,17 @@ lists — its distinct points once as float32, edges and face rings as int32
 indices, edge flags and a shared table of face attributes, in one raw
 member under ``geom/`` (layout in the JSON, no pickles). Builds that read
 only up to format 2 refuse it with a message instead of opening it empty.
+
+**A big face-attribute table is format 4** (see ``_ATTRS_MIN``): the table
+that a textured import leaves behind — one entry per face, a texture
+placement each — is the largest thing in a real document (66 MB of JSON on a
+half-furnished house), so from 512 entries on it travels as bytes in the same
+block: one string pool, one shape per group of equal-shaped entries, and the
+values as columns, a texture placement becoming eight planar float columns
+instead of a JSON object per face (layout in ``_pack_face_attrs``). Below
+that it stays JSON and the document stays at format 3, so a small document
+keeps opening in the builds before this one; builds that read only up to
+format 3 refuse format 4 with the same message.
 """
 from __future__ import annotations
 
@@ -69,7 +80,8 @@ from georef.geopath import GeoPath
 PLAIN_FORMAT = 1        # bare JSON document (no images to carry)
 CONTAINER_FORMAT = 2    # ZIP container: document.json + textures/
 GEOMETRY_FORMAT = 3     # + big meshes as binary blocks under geom/
-CURRENT_FORMAT = GEOMETRY_FORMAT   # the newest this build reads
+ATTRS_FORMAT = 4        # + a big mesh's face-attribute table as bytes
+CURRENT_FORMAT = ATTRS_FORMAT      # the newest this build reads
 _ZIP_MAGIC = b"PK\x03\x04"
 _DOC_ENTRY = "document.json"
 # Windows Explorer reads this member through the IThumbnailProvider in
@@ -107,6 +119,33 @@ _BULK_MIN = 1024
 #: The dtypes a geometry block may declare — anything else is refused, so a
 #: crafted document cannot make the reader build arbitrary objects.
 _GEOM_DTYPES = frozenset(("<f4", "<i4", "<i8", "|u1"))
+
+# Format 4 — a face-attribute table of at least this many entries is written
+# as bytes (see :func:`_pack_face_attrs`) instead of JSON. Below it the table
+# costs a few kilobytes at most, not worth a format bump: a small document
+# keeps opening in the builds that came before this one.
+_ATTRS_MIN = 512
+#: The node kinds of that codec — the shape of what ``_face_attrs_json``
+#: writes, stored once per group of equal-shaped entries: a scalar leaf, a
+#: dict, a list, and a fixed-length run of numbers (``uvw``, ``color``).
+_N_LEAF, _N_DICT, _N_LIST, _N_VECTOR = range(4)
+#: The leaf kinds, in the order a crafted blob may name them.
+(_L_NULL, _L_BOOL, _L_INT, _L_FLOAT, _L_STR,
+ _L_EMPTY_DICT, _L_EMPTY_LIST) = range(7)
+#: How deep a value may nest — a crafted blob must not recurse forever.
+_ATTRS_MAX_DEPTH = 8
+
+
+class _GeomSink(dict):
+    """The sink a save collects geometry blocks in (member name → bytes).
+
+    It also remembers whether any block took the format-4 attribute codec,
+    which is what decides the document's ``igz_format``. A plain ``dict``
+    (the tests build blocks with one) never takes it, so a document can never
+    claim format 4 while carrying a JSON table.
+    """
+
+    binary_attrs = False
 
 
 # Keys the texture walk never needs to enter: pure coordinate blocks, and
@@ -493,6 +532,16 @@ def _pack_geometry(mesh, sink: dict) -> dict:
 def _write_geometry(arrays, table, layer_table, sink: dict) -> dict:
     """The blob of a format-3 block into ``sink``; its JSON side."""
     import numpy as np
+    # Format 4: the attribute table as bytes (see _pack_face_attrs). The
+    # table is the biggest thing a textured import leaves in a document —
+    # 66 MB of JSON in a real house — and it is one table per mesh, so it
+    # rides in the same block as the geometry it describes.
+    packed = None
+    if table and len(table) >= _ATTRS_MIN and isinstance(sink, _GeomSink):
+        packed = _pack_face_attrs(table)
+        if packed is not None:
+            arrays = dict(arrays)
+            arrays["attrs"] = np.frombuffer(packed, dtype=np.uint8)
     # One raw blob, each array at an 8-byte-aligned offset: no pickles, no
     # per-save timestamps (an .npz carries them), so two saves of the same
     # model stay byte-identical.
@@ -509,11 +558,539 @@ def _write_geometry(arrays, table, layer_table, sink: dict) -> dict:
     member = f"{_GEOM_PREFIX}{len(sink)}.bin"
     sink[member] = b"".join(chunks)
     meta = {"member": member, "arrays": layout}
-    if table:
+    if packed is not None:
+        sink.binary_attrs = True
+    elif table:
         meta["face_attrs"] = table
     if layer_table:
         meta["edge_layers"] = layer_table
     return meta
+
+
+class _Unsupported(Exception):
+    """A value the attribute codec does not describe — the table goes JSON."""
+
+
+def _attrs_leaf(value) -> int:
+    """The leaf kind of a scalar, or ``_Unsupported`` for anything else."""
+    kind = type(value)
+    if value is None:
+        return _L_NULL
+    if kind is bool:
+        return _L_BOOL
+    if kind is int:
+        return _L_INT
+    if kind is float:
+        if not math.isfinite(value):
+            raise _Unsupported
+        return _L_FLOAT
+    if kind is str:
+        return _L_STR
+    raise _Unsupported
+
+
+def _attrs_template(value, leaves, depth=0):
+    """The shape of ``value``, with one entry appended to ``leaves`` per
+    column the encoder will write, in the order it writes them."""
+    if depth > _ATTRS_MAX_DEPTH:
+        raise _Unsupported
+    kind = type(value)
+    if kind is dict:
+        if not value:
+            leaves.append(None)
+            return (_N_LEAF, _L_EMPTY_DICT)
+        items = []
+        for key, item in value.items():
+            if type(key) is not str:
+                raise _Unsupported
+            items.append((key, _attrs_template(item, leaves, depth + 1)))
+        return (_N_DICT, tuple(items))
+    if kind is list or kind is tuple:
+        if not value:
+            leaves.append(None)
+            return (_N_LEAF, _L_EMPTY_LIST)
+        first = type(value[0])
+        # A run of numbers is ONE column, written planar (every first
+        # component, then every second…): a texture placement is eight
+        # floats per face, and keeping the components together is what
+        # makes them compress — interleaved, the exponents of unrelated
+        # components break each other's runs.
+        if (first is float or first is int) and \
+                all(type(item) is first for item in value):
+            if first is float and not all(math.isfinite(item)
+                                          for item in value):
+                raise _Unsupported
+            leaves.append(tuple(value))
+            return (_N_VECTOR, _L_FLOAT if first is float else _L_INT,
+                    len(value))
+        return (_N_LIST, tuple(_attrs_template(item, leaves, depth + 1)
+                               for item in value))
+    leaves.append(value)
+    return (_N_LEAF, _attrs_leaf(value))
+
+
+def _attrs_specs(node, out=None) -> list:
+    """The columns of a template, in write order: ``(leaf kind, length)``,
+    length 0 for a scalar and the run length for a vector."""
+    if out is None:
+        out = []
+    kind = node[0]
+    if kind == _N_LEAF:
+        out.append((node[1], 0))
+    elif kind == _N_VECTOR:
+        out.append((node[1], node[2]))
+    elif kind == _N_DICT:
+        for _, child in node[1]:
+            _attrs_specs(child, out)
+    else:
+        for child in node[1]:
+            _attrs_specs(child, out)
+    return out
+
+
+def _attrs_columns(node) -> int:
+    """How many columns a template writes (what the reader must skip)."""
+    kind = node[0]
+    if kind == _N_LEAF or kind == _N_VECTOR:
+        return 1
+    if kind == _N_DICT:
+        return sum(_attrs_columns(child) for _, child in node[1])
+    return sum(_attrs_columns(child) for child in node[1])
+
+
+def _attrs_write_node(node, intern) -> bytes:
+    """The template, as bytes — once per group, however many rows it has."""
+    import struct
+
+    kind = node[0]
+    if kind == _N_LEAF:
+        return struct.pack("<BB", _N_LEAF, node[1])
+    if kind == _N_VECTOR:
+        return struct.pack("<BBH", _N_VECTOR, node[1], node[2])
+    if kind == _N_DICT:
+        if len(node[1]) > 0xFFFF:
+            raise _Unsupported
+        out = bytearray(struct.pack("<BH", _N_DICT, len(node[1])))
+        for key, child in node[1]:
+            out += struct.pack("<H", intern(key))
+            out += _attrs_write_node(child, intern)
+        return bytes(out)
+    if len(node[1]) > 0xFFFF:
+        raise _Unsupported
+    out = bytearray(struct.pack("<BH", _N_LIST, len(node[1])))
+    for child in node[1]:
+        out += _attrs_write_node(child, intern)
+    return bytes(out)
+
+
+def _pack_face_attrs(table) -> bytes | None:
+    """The face-attribute table as bytes, or ``None`` to keep it as JSON.
+
+    Layout: a string pool (every key and every name once), then one group per
+    distinct shape — same keys in the same order, same kinds — its shape
+    written once and its values as columns. A texture placement, the bulk of
+    a real table, becomes eight planar float columns instead of a JSON object
+    per face.
+
+    Numbers go as float32: a placement at 1e-7 is the same picture, and the
+    block's own points are float32 already. A value float32 cannot hold, or
+    anything the codec does not describe, sends the whole table back to JSON,
+    so a save never loses what it cannot carry.
+    """
+    import struct
+
+    import numpy as np
+
+    groups: dict = {}
+    try:
+        for index, entry in enumerate(table):
+            leaves: list = []
+            node = _attrs_template(entry, leaves)
+            got = groups.get(node)
+            if got is None:
+                got = groups[node] = ([], [])
+            got[0].append(index)
+            got[1].append(tuple(leaves))
+    except _Unsupported:
+        return None
+    order = list(groups.items())
+    if len(order) > 0xFFFF:
+        return None
+    pool: dict = {}
+    strings: list = []
+
+    def intern(text: str) -> int:
+        k = pool.get(text)
+        if k is None:
+            if len(strings) > 0xFFFF:
+                raise _Unsupported
+            k = pool[text] = len(strings)
+            strings.append(text)
+        return k
+
+    bodies = []
+    mapping = b""
+    if len(order) > 1:
+        # Which group each entry belongs to, and its row inside it: a table
+        # is a sequence, so entry k must come back as entry k whatever
+        # order the groups ended up in.
+        group_of = np.zeros(len(table), dtype="<u2")
+        row_of = np.zeros(len(table), dtype="<i4")
+        for g, (_node, (rows, _flat)) in enumerate(order):
+            at = np.asarray(rows, dtype="<i4")
+            group_of[at] = g
+            row_of[at] = np.arange(len(at), dtype="<i4")
+        mapping = group_of.tobytes() + row_of.tobytes()
+    try:
+        for node, (rows, flat) in order:
+            body = bytearray(struct.pack("<I", len(rows)))
+            body += _attrs_write_node(node, intern)
+            for j, (leaf, length) in enumerate(_attrs_specs(node)):
+                values = [row[j] for row in flat]
+                if leaf == _L_FLOAT:
+                    wide = np.asarray(values, dtype="<f8")
+                    if not np.isfinite(wide).all() or (
+                            wide.size and np.abs(wide).max()
+                            > np.finfo(np.float32).max):
+                        raise _Unsupported
+                    arr = wide.astype("<f4")
+                    body += (arr.T.copy() if length else arr).tobytes()
+                elif leaf == _L_INT:
+                    arr = np.asarray(values, dtype="<i8")
+                    body += (arr.T.copy() if length else arr).tobytes()
+                elif leaf == _L_BOOL:
+                    body += np.asarray([1 if v else 0 for v in values],
+                                       dtype="|u1").tobytes()
+                elif leaf == _L_STR:
+                    body += np.asarray([intern(v) for v in values],
+                                       dtype="<i4").tobytes()
+            bodies.append(bytes(body))
+    except (_Unsupported, OverflowError, TypeError, ValueError):
+        return None
+    head = bytearray(struct.pack("<BII", 1, len(table), len(strings)))
+    for text in strings:
+        raw = text.encode("utf-8")
+        head += struct.pack("<I", len(raw))
+        head += raw
+    head += struct.pack("<I", len(order))
+    return bytes(head) + mapping + b"".join(bodies)
+
+
+def _attrs_read(node, cols, index, row):
+    """``(value, next column)`` — the JSON shape of one row, read in place."""
+    kind = node[0]
+    if kind == _N_LEAF:
+        leaf = node[1]
+        if leaf == _L_NULL:
+            return None, index
+        if leaf == _L_EMPTY_DICT:
+            return {}, index
+        if leaf == _L_EMPTY_LIST:
+            return [], index
+        return cols[index][row], index + 1
+    if kind == _N_VECTOR:
+        return cols[index][row], index + 1
+    if kind == _N_DICT:
+        out = {}
+        for key, child in node[1]:
+            out[key], index = _attrs_read(child, cols, index, row)
+        return out, index
+    out = []
+    for child in node[1]:
+        value, index = _attrs_read(child, cols, index, row)
+        out.append(value)
+    return out, index
+
+
+def _attrs_builder(node, cols):
+    """A ``row → attributes`` callable, the fused equivalent of
+    ``_face_attrs_from_json(_attrs_read(...))``: it reads only the keys a
+    face actually keeps, straight into the dict the mesh is given.
+
+    Mirrors :func:`_face_attrs_from_json` exactly, unknown keys included
+    (they are dropped there too). A table of another shape falls back to the
+    two-step read, so the fast path can never disagree with the slow one."""
+    if node[0] != _N_DICT:
+        def generic(row):
+            return _face_attrs_from_json(_attrs_read(node, cols, 0, row)[0])
+        return generic
+    fields = []
+    offset = 0
+    for key, child in node[1]:
+        if key in ("color", "texture", "layer", "ifc", "opacity", "hidden",
+                   "mat", "back"):
+            fields.append((key, offset, child))
+        offset += _attrs_columns(child)
+
+    def build(row):
+        out: dict = {}
+        for key, start, child in fields:
+            value, _ = _attrs_read(child, cols, start, row)
+            if key == "color":
+                if value is not None:
+                    out["color"] = list(value)
+            elif key == "texture":
+                if value is not None:
+                    out["texture"] = dict(value)
+            elif key == "ifc":
+                if value:
+                    out["ifc"] = dict(value)
+            elif key == "back":
+                if isinstance(value, dict):
+                    out["back"] = dict(value)
+                elif value is True:
+                    out["back"] = True
+            elif key == "layer":
+                if value:
+                    out["layer"] = value
+            elif key == "opacity":
+                if value is not None:
+                    out["opacity"] = float(value)
+            elif key == "hidden":
+                if value:
+                    out["hidden"] = True
+            elif key == "mat" and value:
+                out["mat"] = value
+        return out or None
+
+    return build
+
+
+class _FaceAttrs:
+    """A face-attribute table read from a format-4 block, decoded on demand.
+
+    A read-only sequence: ``table[k]`` is the JSON-shaped entry ``k``, which
+    is what the document's other readers index (``core.mesh.face_attrs``,
+    ``core.purge``, the array bake). Building a mesh asks for every entry in
+    face order instead, so :meth:`attrs_for` skips the intermediate dict and
+    hands the mesh its final attributes directly — on a real house that is
+    the difference between 3.4 s and 0.6 s of the open."""
+
+    def __init__(self, raw: bytes):
+        import struct
+
+        import numpy as np
+
+        self._blob = raw
+        view = memoryview(raw)
+        end = len(view)
+        if end < 9:
+            raise ValueError("face attributes: truncated")
+        version, n_entries, n_strings = struct.unpack_from("<BII", view, 0)
+        if version != 1:
+            raise ValueError("face attributes: version")
+        pos = 9
+        strings = []
+        for _ in range(n_strings):
+            if pos + 4 > end:
+                raise ValueError("face attributes: string pool")
+            (size,) = struct.unpack_from("<I", view, pos)
+            pos += 4
+            if pos + size > end:
+                raise ValueError("face attributes: string")
+            try:
+                strings.append(bytes(view[pos:pos + size]).decode("utf-8"))
+            except UnicodeDecodeError:
+                raise ValueError("face attributes: string") from None
+            pos += size
+        if pos + 4 > end:
+            raise ValueError("face attributes: groups")
+        (n_groups,) = struct.unpack_from("<I", view, pos)
+        pos += 4
+        if n_groups > n_entries or n_groups > end:
+            raise ValueError("face attributes: groups")
+        self._strings = strings
+        self._n_entries = n_entries
+        self._group_of = None
+        self._row_of = None
+        if n_groups > 1:
+            width = 2 if n_groups <= 0xFFFF else 4
+            dtype = "<u2" if width == 2 else "<u4"
+            if pos + width * n_entries + 4 * n_entries > end:
+                raise ValueError("face attributes: index")
+            self._group_of = np.frombuffer(raw, dtype=dtype, count=n_entries,
+                                           offset=pos)
+            pos += width * n_entries
+            self._row_of = np.frombuffer(raw, dtype="<i4", count=n_entries,
+                                         offset=pos)
+            pos += 4 * n_entries
+            if self._group_of.size and int(self._group_of.max()) >= n_groups:
+                raise ValueError("face attributes: index")
+            if self._row_of.size and int(self._row_of.min()) < 0:
+                raise ValueError("face attributes: index")
+        self._groups = []
+        total = 0
+        for _ in range(n_groups):
+            pos, rows, node, columns = self._read_group(view, pos)
+            total += rows
+            self._groups.append((rows, node, columns))
+        if total != n_entries:
+            raise ValueError("face attributes: rows")
+        self._columns: dict = {}
+        self._builders: dict = {}
+
+    def _read_group(self, view, pos):
+        import struct
+
+        import numpy as np
+
+        end = len(view)
+        if pos + 4 > end:
+            raise ValueError("face attributes: group")
+        (n_rows,) = struct.unpack_from("<I", view, pos)
+        pos += 4
+        if n_rows > self._n_entries:
+            raise ValueError("face attributes: group")
+        node, pos = self._read_node(view, pos, 0)
+        columns: list = []
+        for leaf, length in _attrs_specs(node):
+            if leaf == _L_FLOAT:
+                width, dtype = 4, "<f4"
+            elif leaf == _L_INT:
+                width, dtype = 8, "<i8"
+            elif leaf == _L_BOOL:
+                width, dtype = 1, "|u1"
+            elif leaf == _L_STR:
+                width, dtype = 4, "<i4"
+            else:
+                columns.append(None)
+                continue
+            size = width * n_rows * (length or 1)
+            if pos + size > end:
+                raise ValueError("face attributes: column")
+            arr = np.frombuffer(self._blob, dtype=dtype,
+                                count=size // np.dtype(dtype).itemsize,
+                                offset=pos)
+            pos += size
+            if length:
+                # Written planar; the reader wants one row per entry.
+                arr = np.ascontiguousarray(arr.reshape(length, n_rows).T)
+            columns.append(arr)
+        return pos, n_rows, node, columns
+
+    def _read_node(self, view, pos, depth):
+        import struct
+
+        if depth > _ATTRS_MAX_DEPTH:
+            raise ValueError("face attributes: nesting")
+        end = len(view)
+        if pos + 1 > end:
+            raise ValueError("face attributes: node")
+        kind = view[pos]
+        pos += 1
+        if kind == _N_LEAF:
+            if pos + 1 > end or view[pos] > _L_EMPTY_LIST:
+                raise ValueError("face attributes: leaf")
+            return (_N_LEAF, int(view[pos])), pos + 1
+        if kind == _N_VECTOR:
+            if pos + 3 > end:
+                raise ValueError("face attributes: vector")
+            leaf, length = struct.unpack_from("<BH", view, pos)
+            if leaf not in (_L_FLOAT, _L_INT) or not length:
+                raise ValueError("face attributes: vector")
+            return (_N_VECTOR, leaf, length), pos + 3
+        if kind not in (_N_DICT, _N_LIST) or pos + 2 > end:
+            raise ValueError("face attributes: node")
+        (count,) = struct.unpack_from("<H", view, pos)
+        pos += 2
+        if kind == _N_DICT:
+            items = []
+            for _ in range(count):
+                if pos + 2 > end:
+                    raise ValueError("face attributes: node")
+                (k,) = struct.unpack_from("<H", view, pos)
+                pos += 2
+                if k >= len(self._strings):
+                    raise ValueError("face attributes: key")
+                child, pos = self._read_node(view, pos, depth + 1)
+                items.append((self._strings[k], child))
+            return (_N_DICT, tuple(items)), pos
+        kids = []
+        for _ in range(count):
+            child, pos = self._read_node(view, pos, depth + 1)
+            kids.append(child)
+        return (_N_LIST, tuple(kids)), pos
+
+    # -- sequence ----------------------------------------------------------
+    def __len__(self) -> int:
+        return self._n_entries
+
+    def __getitem__(self, k):
+        return self.entry(k)
+
+    def __eq__(self, other):
+        if not isinstance(other, (list, tuple)):
+            return NotImplemented
+        return len(other) == len(self) and all(
+            self.entry(i) == other[i] for i in range(len(self)))
+
+    def __repr__(self) -> str:
+        return f"<face attributes: {self._n_entries} entries>"
+
+    def _where(self, k):
+        import operator
+        k = operator.index(k)
+        if k < 0:
+            k += self._n_entries
+        if not 0 <= k < self._n_entries:
+            raise IndexError(k)
+        if self._group_of is None:
+            return 0, k
+        return int(self._group_of[k]), int(self._row_of[k])
+
+    def _lists(self, g):
+        """A group's columns as Python lists, built once (the bulk conversion
+        is NumPy's C loop; per-row indexing stays in Python either way)."""
+        got = self._columns.get(g)
+        if got is not None:
+            return got
+        _rows, node, columns = self._groups[g]
+        out: list = []
+        for (leaf, _length), col in zip(_attrs_specs(node), columns):
+            if col is None:
+                out.append(None)
+            elif leaf == _L_STR:
+                strings = self._strings
+                out.append([strings[i] for i in col.tolist()])
+            elif leaf == _L_BOOL:
+                out.append([bool(i) for i in col.tolist()])
+            else:
+                out.append(col.tolist())
+        self._columns[g] = out
+        return out
+
+    def _builder(self, g):
+        got = self._builders.get(g)
+        if got is None:
+            got = _attrs_builder(self._groups[g][1], self._lists(g))
+            self._builders[g] = got
+        return got
+
+    def entry(self, k):
+        """Entry ``k`` in the shape the JSON table had."""
+        g, row = self._where(k)
+        return _attrs_read(self._groups[g][1], self._lists(g), 0, row)[0]
+
+    def attrs(self, k):
+        """Entry ``k`` already as ``face.attrs``: what a mesh wants."""
+        g, row = self._where(k)
+        return self._builder(g)(row)
+
+    def attrs_for(self, indices) -> list:
+        """``face.attrs`` for every face, from the block's ``face_attr``
+        array (-1 = no attributes). One group — the common case — skips the
+        index lookup entirely."""
+        if self._group_of is None:
+            build = self._builder(0)
+            return [build(k) if k >= 0 else None for k in indices.tolist()]
+        return [self.attrs(k) if k >= 0 else None for k in indices.tolist()]
+
+
+def _unpack_face_attrs(raw: bytes) -> _FaceAttrs:
+    """The table :func:`_pack_face_attrs` wrote. Every length and index is
+    checked against the bytes that are actually there, so a damaged or
+    crafted blob fails with a ValueError instead of building garbage."""
+    return _FaceAttrs(raw)
 
 
 def _pack_plan(mesh, plan, sink: dict) -> dict:
@@ -613,7 +1190,8 @@ def _pack_plan(mesh, plan, sink: dict) -> dict:
 
 
 def save_scene(scene, path: Path,
-               thumbnail_bytes: bytes | None = None) -> dict:
+               thumbnail_bytes: bytes | None = None,
+               *, binary: bool | None = None) -> dict:
     """Write ``scene`` to ``path``. Returns ``{"embedded", "missing"}``: how
     many texture images were packed into the document, and how many could not
     be read (those keep pointing at their original path). The thumbnail is
@@ -623,13 +1201,21 @@ def save_scene(scene, path: Path,
     the document is written as a ZIP even when it has no textures. That is the
     member Windows Explorer's thumbnail handler reads. Without a preview the
     common case stays plain JSON at format 1.
+
+    ``binary`` overrides the size-based choice of format 3: ``True`` writes
+    the big meshes as binary blocks even for a small document (a component
+    cache is one model, so its element count never reaches the document
+    threshold), ``False`` keeps JSON. ``None`` — the default — keeps the
+    historical rule, so nothing changes for a normal save.
     """
     # Accept a Scene or a bare Mesh (the M1 read-compat path feeds a Mesh).
     mesh = scene.mesh if hasattr(scene, "mesh") else scene
     # Decided BEFORE anything is serialized: a large document writes its
     # big meshes as binary blocks (format 3) and never builds their JSON.
     large = _live_element_count(scene) > _LARGE_DOCUMENT
-    geom: dict | None = {} if large else None
+    if binary is not None:
+        large = bool(binary)
+    geom: dict | None = _GeomSink() if large else None
     payload = _mesh_json(mesh, geom)
     groups = getattr(scene, "groups", None)
     kept = getattr(scene, "kept_components", None)
@@ -642,22 +1228,36 @@ def save_scene(scene, path: Path,
         protos: list = []
 
         def _entry(g):
-            xf = getattr(g, "xform", None)
-            if xf is not None:
-                idx = proto_index.get(id(g.mesh))
-                if idx is None:
-                    idx = proto_index[id(g.mesh)] = len(protos)
-                    protos.append(None)          # reserve: recursion is depth
-                    protos[idx] = _mesh_json(g.mesh, geom)
-                entry = {"proto": idx,
-                         "xform": [float(x) for x in xf.data()]}
-                # Group or component (issue #90): a group of groups and a
-                # copied group carry a matrix too. Written for EVERY
-                # instance — a file without the key is an older one, which
-                # the reader tells apart its own way. Older readers ignore it.
-                entry["component"] = bool(getattr(g, "component", True))
+            ext = getattr(g, "ext", None)
+            link = ext.get("igz_link") if isinstance(ext, dict) else None
+            if isinstance(link, dict):
+                # An external reference (a model a library owns): the
+                # document keeps WHERE it lives and HOW it is placed, never
+                # its geometry. The empty mesh is deliberate — a reader that
+                # predates this key opens the file and simply shows nothing
+                # there, instead of failing on a group it cannot build.
+                entry = _mesh_json(Mesh(), geom)
+                entry["link"] = json.loads(json.dumps(link, default=str))
+                xf = getattr(g, "xform", None)
+                if xf is not None:
+                    entry["xform"] = [float(x) for x in xf.data()]
             else:
-                entry = _mesh_json(g.mesh, geom)
+                xf = getattr(g, "xform", None)
+                if xf is not None:
+                    idx = proto_index.get(id(g.mesh))
+                    if idx is None:
+                        idx = proto_index[id(g.mesh)] = len(protos)
+                        protos.append(None)          # reserve: recursion is depth
+                        protos[idx] = _mesh_json(g.mesh, geom)
+                    entry = {"proto": idx,
+                             "xform": [float(x) for x in xf.data()]}
+                    # Group or component (issue #90): a group of groups and a
+                    # copied group carry a matrix too. Written for EVERY
+                    # instance — a file without the key is an older one, which
+                    # the reader tells apart its own way. Older readers ignore it.
+                    entry["component"] = bool(getattr(g, "component", True))
+                else:
+                    entry = _mesh_json(g.mesh, geom)
             # The name — never written until 2026-09-11, so every reopened
             # document renumbered its groups and a "Pérgola" came back as
             # "Group 7". Older readers ignore the key.
@@ -704,7 +1304,9 @@ def save_scene(scene, path: Path,
             if getattr(g, "explode_offset", None):
                 entry["explode_offset"] = list(g.explode_offset)
             kids = getattr(g, "children", None)
-            if kids:
+            if kids and not isinstance(link, dict):
+                # A link's children belong to the library definition: they
+                # come back with it, not from the document.
                 entry["children"] = [_entry(c) for c in kids]
             return entry
 
@@ -868,7 +1470,8 @@ def save_scene(scene, path: Path,
         payload["photo_mesh"] = meta
         blobs.update(survey_blobs)
     data = {
-        "igz_format": (GEOMETRY_FORMAT if geom else
+        "igz_format": (ATTRS_FORMAT if geom and geom.binary_attrs else
+                       GEOMETRY_FORMAT if geom else
                        CONTAINER_FORMAT if blobs else PLAIN_FORMAT),
         "app_version": __version__,
         "scene": payload,
@@ -1321,7 +1924,17 @@ def _load_into_inner(scene, path: Path, progress=None) -> None:
         name = raw.get("name") or None
         if name:
             names.append(name)
-        if raw.get("xform") is not None and "proto" in raw:
+        linked = isinstance(raw.get("link"), dict)
+        if linked:
+            # An external reference: placed by its matrix, its geometry
+            # arrives later — the extension that owns ``link`` rebuilds it.
+            from PySide6.QtGui import QMatrix4x4
+            group = Group(name=name)
+            if raw.get("xform") is not None:
+                vals = [float(x) for x in raw["xform"]]
+                rm = [vals[col * 4 + row] for row in range(4) for col in range(4)]
+                group.xform = QMatrix4x4(*rm)
+        elif raw.get("xform") is not None and "proto" in raw:
             from PySide6.QtGui import QMatrix4x4
             group = Group(proto_meshes[int(raw["proto"])], name=name)
             vals = [float(x) for x in raw["xform"]]
@@ -1359,7 +1972,7 @@ def _load_into_inner(scene, path: Path, progress=None) -> None:
         off = raw.get("explode_offset")
         if isinstance(off, list) and len(off) == 3:
             group.explode_offset = tuple(float(v) for v in off)
-        if depth < 32:              # a corrupt document must not spin
+        if depth < 32 and not linked:   # a corrupt document must not spin
             group.adopt(_group_from(c, depth + 1)
                         for c in raw.get("children", []) or [])
         if "component" in raw:
@@ -1887,7 +2500,26 @@ def _geometry_arrays(meta, blob: bytes) -> dict:
         raise bad("rings")
     if int(sizes.sum()) != len(out["rings"]) or int(counts.sum()) != len(sizes):
         raise bad("rings")
-    n_attrs = len(meta.get("face_attrs") or ())
+    # Format 4: the attribute table arrives as bytes in the same block (the
+    # key "attrs" in the layout). Decoded here, so the rest of the reader
+    # keeps seeing the list of dicts it always saw — and every index below is
+    # checked against what was actually decoded.
+    raw_attrs = out.pop("attrs", None)
+    table = meta.get("face_attrs")
+    if table is None:
+        if raw_attrs is None:
+            table = []
+        else:
+            try:
+                table = _unpack_face_attrs(raw_attrs.tobytes())
+            except ValueError:
+                raise bad("face_attrs") from None
+    if not isinstance(table, (list, tuple, _FaceAttrs)):
+        raise bad("face_attrs")
+    # Kept as the object it is: a format-4 table decodes per entry, so
+    # building the mesh never materializes the JSON shape of all of it.
+    out["face_attrs"] = table
+    n_attrs = len(table)
     fa = out["face_attr"]
     if len(fa) != len(counts) or (fa.size and (fa.min() < -1
                                                or fa.max() >= n_attrs)):
@@ -1918,6 +2550,13 @@ def _load_geometry(mesh, meta, geom: dict) -> None:
     import core.mesh as _mesh_mod
 
     a = _document_geometry_arrays(meta, geom)
+    # The table may have come from the block's bytes (format 4). Put it back
+    # in the block's JSON side, where everything downstream looks for it —
+    # _build_geometry now, and the lazy mesh's plan later (_pack_plan).
+    table = a.pop("face_attrs")
+    if table is not meta.get("face_attrs"):
+        meta = dict(meta)
+        meta["face_attrs"] = table
     pos = a["pos"]
     edges, rings = a["edges"], a["rings"]
     sizes, counts = a["ring_sizes"], a["ring_counts"]
@@ -1990,7 +2629,13 @@ def _build_geometry(mesh, meta, pos, edges, flags, curves, layers, rings,
                                      inverse[edges[:, 1]], eflags)
     if len(counts):
         table = meta.get("face_attrs") or []
-        attrs = [_face_attrs_from_json(table[k]) if k >= 0 else None
-                 for k in face_attr.tolist()]
+        fast = getattr(table, "attrs_for", None)
+        if fast is not None:
+            # Format 4: the attributes come straight from the columns, in
+            # face order — no intermediate JSON-shaped dict per face.
+            attrs = fast(face_attr)
+        else:
+            attrs = [_face_attrs_from_json(table[k]) if k >= 0 else None
+                     for k in face_attr.tolist()]
         mesh.add_faces_welded(vobjs, inverse[rings], sizes, counts, attrs,
                               edge_map=emap)

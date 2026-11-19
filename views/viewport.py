@@ -5474,7 +5474,7 @@ class Viewport(QOpenGLWidget):
         front = Viewport._smallest_at_front(self, hits, origin, direction)
         if not len(front):
             return None
-        owner = hits.ent(int(front[0]))[1]
+        owner = hits.owner(int(front[0]))
         for g in (owner, getattr(owner, "owner", None)):
             if (g is not None and getattr(g, "locked", False)
                     and hasattr(g, "children")):
@@ -12771,7 +12771,10 @@ class Viewport(QOpenGLWidget):
         except Exception:                    # noqa: BLE001 — a cache can only miss
             return None
 
-    def _chunk_cache_store(self, mesh, entry) -> None:
+    def _chunk_cache_store(self, mesh, entry, *, sync: bool = False) -> None:
+        """Store a baked chunk on disk. ``sync`` is for callers that need the
+        file before they return (the decoration baker warming a cache it will
+        read on the next insertion); the paint path keeps the background write."""
         if entry["nf"] < self._CHUNK_CACHE_MIN_FACES:
             return
         import pickle
@@ -12797,7 +12800,10 @@ class Viewport(QOpenGLWidget):
             except Exception:                # noqa: BLE001
                 pass
 
-        threading.Thread(target=write, daemon=True).start()
+        if sync:
+            write()
+        else:
+            threading.Thread(target=write, daemon=True).start()
 
     def _np_mvp(self):
         """Current MVP as a (4, 4) float64 NumPy matrix (row-major indexing).
@@ -14287,7 +14293,8 @@ class Viewport(QOpenGLWidget):
         at its nearest t, of the index entities that pass ``which``
         ("sel": selectable, "vis": visible) — in the index's order, which
         the ties of every pick go by: ``SimpleNamespace(t, area, loose,
-        ent(k) → (face, owner), place(k) → placement)``, or None when the
+        ent(k) → (face, owner), owner(k) → owner,
+        place(k) → placement)``, or None when the
         index has no triangles. With the experimental engine the lazy
         placements' faces come from it, none of them baked (#158), after
         the index's own, in the order their bakes would follow them."""
@@ -14313,6 +14320,17 @@ class Viewport(QOpenGLWidget):
                 return idx.entities[int(rows[k])]
             return lazy[3](k - n)
 
+        def owner(k):
+            """Only the group a hit selects — never its face. A lazy chunk's
+            (face, owner) pairs build the whole deferred mesh on access;
+            clicks that pick an object need just the owner (#decor-bake)."""
+            if k < n:
+                ents = idx.entities
+                if hasattr(ents, "owner"):
+                    return ents.owner(int(rows[k]))
+                return ents[int(rows[k])][1]
+            return lazy[5](k - n)
+
         def place(k):
             if k < n:
                 i = int(rows[k])
@@ -14328,7 +14346,7 @@ class Viewport(QOpenGLWidget):
             area = np.concatenate([area, lazy[1]])
             loose = np.concatenate([loose, np.zeros(len(lazy[0]), bool)])
         return SimpleNamespace(t=t, area=area, loose=loose, ent=ent,
-                               place=place)
+                               owner=owner, place=place)
 
     def _lazy_sel_rows(self, nat):
         """The rows of the lazy table whose faces a pick may land on (see
@@ -14349,8 +14367,8 @@ class Viewport(QOpenGLWidget):
     def _lazy_face_hits(self, nat, origin, direction, which,
                         reach: float | None = None):
         """The lazy placements' faces the ray meets, from the engine (see
-        _face_hits): ``(t, area, order, ent(k), place(k))`` as their bakes
-        would give them, or None. The engine hands the triangles the ray
+        _face_hits): ``(t, area, order, ent(k), place(k), own(k))`` as their
+        bakes would give them, or None. The engine hands the triangles the ray
         may meet; which it meets, and where, is decided here by the pick
         index's own test."""
         import numpy as np
@@ -14399,7 +14417,11 @@ class Viewport(QOpenGLWidget):
 
         def place(m):
             return groups[keys[m][0]]
-        return tt, area, keys, ent, place
+
+        def own(m):
+            return self._owner_of(groups[keys[m][0]])
+
+        return tt, area, keys, ent, place, own
 
     def _hover_hits(self, idx, origin, direction):
         """:meth:`_face_hits` of the selectable faces, memoised for the
@@ -16705,7 +16727,7 @@ class Viewport(QOpenGLWidget):
                                                         direction)
                     best = (float(hits.t[front].min()),
                             None if hits.loose[front].any()
-                            else hits.ent(int(front[0]))[1])
+                            else hits.owner(int(front[0])))
             faces_answer = best
             for g in self._context_placements():
                 # The figure test first: it is an attribute, the layer test

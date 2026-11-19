@@ -643,3 +643,21 @@ class PickEntities:
     def __iter__(self):
         for part in self._parts:
             yield from part
+
+    def owner(self, i):
+        """The owner of entity ``i``, without asking for its face.
+
+        A :class:`LazyPairs` part keeps the owner beside its faces, so a
+        click that only needs the group to select can resolve it without
+        building a deferred mesh (a decorated SKP took ~4 s there)."""
+        import bisect
+        i = int(i)
+        if i < 0:
+            i += self._len
+        if not 0 <= i < self._len:
+            raise IndexError(i)
+        k = bisect.bisect_right(self._starts, i) - 1
+        part = self._parts[k]
+        j = i - self._starts[k]
+        owner = getattr(part, "owner", None)
+        return part[j][1] if owner is None else owner
