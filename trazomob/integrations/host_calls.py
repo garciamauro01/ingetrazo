@@ -220,12 +220,15 @@ def resolve_move_groups(groups, scene):
 
 
 def before_move_commit(move_tool: Any) -> None:
-    """Não deixa o modo cópia ficar armado sem a tecla Control."""
-    from PySide6.QtCore import Qt
-    from PySide6.QtWidgets import QApplication
+    """The Move tool owns its copy mode; this hook must not second-guess it.
 
-    if not bool(QApplication.keyboardModifiers() & Qt.ControlModifier):
-        move_tool._copy = False
+    ``MoveTool.on_key`` arms the copy on a Ctrl press and ``on_key_release``
+    disarms it again when the Ctrl belonged to a shortcut (``ctrl_tapped()``).
+    ``_reset`` clears ``_copy`` after every commit.  Querying the global Qt
+    modifier here instead used to cancel a legitimate "tap Ctrl, then click"
+    copy -- and every Ctrl-copy test in the host suite with it.  Kept as a
+    no-op so existing callers stay valid.
+    """
 
 
 def after_move_commit(viewport: Any) -> None:

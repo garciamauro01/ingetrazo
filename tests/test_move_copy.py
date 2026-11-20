@@ -229,3 +229,38 @@ def test_the_value_box_reads_count_times_spacing():
     assert parse("5x10") == ("array", 5, "x", 10.0)
     assert parse("3*250cm") == ("array", 3, "x", 2.5)
     assert parse("5x-2") is None                      # a spacing is a distance
+
+
+def test_ctrl_tap_then_click_still_copies():
+    """A Ctrl tap arms one copy even though Ctrl is released before the click.
+
+    Regression for the TrazoMob ``before_move_commit`` hook, which used to
+    clear ``MoveTool._copy`` because the Qt modifier was no longer held.
+    """
+    scene = Scene()
+    scene.selection = [_square(scene)]
+    vp = _Vp(scene)
+    vp.ctrl_tapped = lambda: True          # a real tap, not a shortcut
+    tool = MoveTool()
+    tool.on_click(_ctx(vp, 0, 0))
+    tool.on_key(vp, Qt.Key_Control, Qt.NoModifier)
+    tool.on_key_release(vp, Qt.Key_Control)
+    assert tool._copy                      # the tap keeps the copy armed
+    tool.on_click(_ctx(vp, 2, 0))
+    assert _xs(scene) == [0.0, 2.0]
+    assert not tool._copy                  # one operation only
+
+
+def test_ctrl_shortcut_does_not_leave_copy_armed():
+    """A Ctrl used for a shortcut still disarms the copy (original intent)."""
+    scene = Scene()
+    scene.selection = [_square(scene)]
+    vp = _Vp(scene)
+    vp.ctrl_tapped = lambda: False         # Ctrl+Z, Ctrl+C, ...
+    tool = MoveTool()
+    tool.on_click(_ctx(vp, 0, 0))
+    tool.on_key(vp, Qt.Key_Control, Qt.NoModifier)
+    tool.on_key_release(vp, Qt.Key_Control)
+    assert not tool._copy
+    tool.on_click(_ctx(vp, 2, 0))
+    assert _xs(scene) == [2.0]
