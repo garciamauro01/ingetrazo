@@ -15,7 +15,6 @@ from PySide6.QtCore import QTimer
 from core.group import Group
 
 from .domain.i18n import tr
-from .domain.engine_state import is_engine_enabled
 from .interaction.interact import CabinetInteract
 
 logger = logging.getLogger("trazomob.context_menu")
@@ -23,8 +22,6 @@ logger = logging.getLogger("trazomob.context_menu")
 
 def build_context_menu(menu, selection, app, sidebar_panel, tool_cls) -> None:
     """Adiciona ao ``menu`` as ações do TrazoMob para a ``selection`` atual."""
-    if not is_engine_enabled():
-        return
     wall = None
     for item in selection:
         if hasattr(item, "ext") and isinstance(item.ext, dict) and "trazomob_wall" in item.ext:
@@ -241,4 +238,39 @@ def build_context_menu(menu, selection, app, sidebar_panel, tool_cls) -> None:
 
         act_c_all = align_menu.addAction(tr("🎯 Centralizar em Todos os Eixos (XYZ)"))
         act_c_all.triggered.connect(lambda: center_objects(alvo, base, axes="xyz", viewport=getattr(app, "viewport", None)))
+
+    # Materiais PBR (Render) para qualquer grupo/componente selecionado na cena
+    selected_groups = [g for g in (selection or ()) if hasattr(g, "mesh") or hasattr(g, "children")]
+    if len(selected_groups) == 1:
+        target_group = selected_groups[0]
+        menu.addSeparator()
+        act_render_mats = menu.addAction(tr("🎨 Materiais PBR (Render)…"))
+
+        def _open_render_materials(_checked=False, grp=target_group):
+            from .ui.material_editor_dialog import MaterialEditorDialog
+            parent_win = getattr(app, "window", None)
+            vp = getattr(app, "viewport", None)
+            scene = getattr(vp, "scene", None) if vp is not None else None
+            current = {}
+            if scene is not None and isinstance(getattr(scene, "plugin_data", None), dict):
+                tm = scene.plugin_data.get("trazomob")
+                if isinstance(tm, dict) and isinstance(tm.get("material_overrides"), dict):
+                    current.update(tm["material_overrides"])
+            grp_ext = getattr(grp, "ext", None)
+            if isinstance(grp_ext, dict) and isinstance(grp_ext.get("trazomob_render_materials"), dict):
+                for k, v in grp_ext["trazomob_render_materials"].items():
+                    if isinstance(v, dict):
+                        current[k] = v
+            dlg = MaterialEditorDialog(
+                scene=scene,
+                current_overrides=current,
+                viewport=vp,
+                parent=parent_win,
+                group=grp,
+            )
+            if dlg.exec() and vp is not None and hasattr(vp, "update"):
+                vp.update()
+
+        act_render_mats.triggered.connect(_open_render_materials)
+
 

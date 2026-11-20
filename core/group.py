@@ -728,6 +728,8 @@ def copy_group(group, delta=None, _in_definition=False):
     # parent, and a child's transform is relative to it.
     g.children = [copy_group(c, _in_definition=share)
                   for c in (group.children or ())]
+    from trazomob.integrations import host_calls
+    host_calls.prepare_copied_group(g)
     return g
 
 

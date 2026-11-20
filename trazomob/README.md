@@ -4,7 +4,7 @@
 
 # TrazoMob — Modulação, Marcenaria e Arquitetura 3D para IngeTrazo
 
-O **TrazoMob** é uma extensão profissional para o [IngeTrazo CAD 3D](https://github.com/ingelibre/ingetrazo) focada em marcenaria sob medida, projeto de interiores, modelagem paramétrica de ambientes, esquadrias e plano de corte integrado.
+O **TrazoMob** é o módulo first-party de design de interiores e marcenaria do fork open-source do [IngeTrazo CAD 3D](https://github.com/ingelibre/ingetrazo): marcenaria sob medida, projeto de interiores, modelagem paramétrica de ambientes, esquadrias e plano de corte integrado. Ele vem junto com o fork — não é um plugin separado.
 
 ---
 
@@ -98,7 +98,7 @@ O **TrazoMob** é uma extensão profissional para o [IngeTrazo CAD 3D](https://g
 </p>
 
 ### 🏷️ 8. Etiquetas de Produção com Code 128 e QR
-* **Código de Barras e QR Nativos:** Cada etiqueta imprime um **Code 128** real (checksum módulo 103) e um **QR Code**, desenhados pelo próprio plugin — sem dependências externas.
+* **Código de Barras e QR Nativos:** Cada etiqueta imprime um **Code 128** real (checksum módulo 103) e um **QR Code**, desenhados pelo próprio TrazoMob — sem dependências externas.
 * **Carga Estável e Escaneável:** O código é derivado de um CRC32 determinístico, então a mesma peça gera sempre o mesmo código, em qualquer máquina ou execução.
 * **Ficha Completa da Peça:** Nome, módulo de origem, medidas finais e de corte, material, quantidade, diagrama de fitas (C1/C2/L1/L2) e resumo de usinagens.
 * **Pronta para Imprimir:** Visualização em lote e exportação de todas as etiquetas em PNG com resolução ampliada para impressão térmica ou A4.
@@ -124,7 +124,7 @@ O **TrazoMob** é uma extensão profissional para o [IngeTrazo CAD 3D](https://g
 ### ⭐ 10. Meus Módulos
 * **Salve o Módulo Atual:** Guarde qualquer configuração de módulo (dimensões, portas, gavetas, materiais e puxadores) como um modelo pessoal com um clique.
 * **Categoria Dedicada:** Os módulos salvos aparecem em **⭐ Meus Módulos**, tanto na galeria quanto na aba do ribbon, prontos para reinserir na cena.
-* **Persistência Local:** Os modelos ficam nas preferências do usuário (`user_modules`) e continuam disponíveis entre sessões e atualizações do plugin.
+* **Persistência Local:** Os modelos ficam nas preferências do usuário (`user_modules`) e continuam disponíveis entre sessões e atualizações do IngeTrazo.
 
 <p align="center">
   <img src="docs/images/meus_modulos_ribbon.png" alt="Aba Meus Módulos no Ribbon do TrazoMob" width="95%">
@@ -136,17 +136,13 @@ O **TrazoMob** é uma extensão profissional para o [IngeTrazo CAD 3D](https://g
 
 ## 📦 Instalação
 
-### Opção 1: Pelo Gerenciador de Extensões do IngeTrazo (Recomendado)
-1. No IngeTrazo, abra o menu **Extensões ▸ Gerenciar extensões…**.
-2. Procure por **TrazoMob** e clique em **Baixar / Instalar**.
-3. Reinicie o aplicativo para ativar a barra lateral e as ferramentas.
+O TrazoMob já vem integrado no fork do IngeTrazo — **não instale nada separadamente**.
 
-### Opção 2: Instalação Manual
-1. Baixe o código do repositório ou o arquivo `.zip` da [última release](https://github.com/garciamauro01/trazomob/releases).
-2. Extraia a pasta `trazomob` dentro do diretório de extensões do usuário:
-   - **Windows:** `%APPDATA%\ingetrazo\plugins\trazomob\`
-   - **Linux:** `~/.local/share/ingetrazo/trazomob/`
-3. Inicie o IngeTrazo. A aba lateral **TrazoMob** aparecerá no dock da direita.
+1. Instale o fork do IngeTrazo (código-fonte ou pacote de instalação).
+2. Inicie o aplicativo. A barra de ferramentas e a aba lateral **TrazoMob** já ficam ativas automaticamente.
+
+> O gerenciador de extensões continua disponível para extensões de terceiros.
+> O TrazoMob, por ser first-party, não aparece nele.
 
 ---
 

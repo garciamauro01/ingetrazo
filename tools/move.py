@@ -67,11 +67,13 @@ def gather_targets(ctx: ToolContext):
     from the selection or the entity under the cursor. Shared by Move,
     Rotate and Scale."""
     viewport = ctx.viewport
+    from trazomob.integrations import host_calls
     entities = list(viewport.scene.selection)
     if not entities:
         group = viewport.pick_group(ctx.screen.x(), ctx.screen.y())
         if group is not None:
-            return [group], []
+            return host_calls.resolve_move_groups(
+                [group], viewport.scene), []
         edge = viewport.pick_edge(ctx.screen.x(), ctx.screen.y())
         if edge is not None:
             entities = [edge]
@@ -86,7 +88,7 @@ def gather_targets(ctx: ToolContext):
             positions.extend([ent.a, ent.b])
         elif isinstance(ent, Face):
             positions.extend(ent.vertices)
-    return groups, _dedup(positions)
+    return host_calls.resolve_move_groups(groups, viewport.scene), _dedup(positions)
 
 
 def gather_dimensions(ctx: ToolContext, groups, verts) -> dict:
@@ -1092,6 +1094,8 @@ class MoveTool(Tool):
             end()
 
     def _commit(self, viewport, delta: QVector3D) -> None:
+        from trazomob.integrations import host_calls
+        host_calls.before_move_commit(self)
         self._end_freeze(viewport)
         # Revert the live preview, then apply the move as one undoable command so
         # the history holds a single clean entry (and the geometry doesn't shift
@@ -1108,6 +1112,7 @@ class MoveTool(Tool):
                               "delta": QVector3D(delta)}
             self._reset()
             viewport.update()
+            host_calls.after_move_commit(viewport)
             return
         if delta.length() > 1e-9:
             commands = []
@@ -1136,6 +1141,7 @@ class MoveTool(Tool):
             self._tell_join(viewport, commands)
         self._reset()
         viewport.update()
+        host_calls.after_move_commit(viewport)
 
     @staticmethod
     def _tell_join(viewport, commands) -> None:

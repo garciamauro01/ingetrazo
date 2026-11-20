@@ -102,7 +102,6 @@ def test_link_saves_reference_instead_of_geometry(library_root, tmp_path):
 
 
 def test_load_rebuilds_the_linked_geometry(library_root, tmp_path):
-    library_links.install()                 # instala o gancho de load_into
     entry = _registered_entry(tmp_path)
     placed = _place(entry)
     library_links.set_link(placed, library_links.link_from_entry(entry))
@@ -125,7 +124,6 @@ def test_load_rebuilds_the_linked_geometry(library_root, tmp_path):
 
 
 def test_missing_source_leaves_an_empty_stub(library_root, tmp_path):
-    library_links.install()
     entry = _registered_entry(tmp_path)
     placed = _place(entry)
     library_links.set_link(placed, library_links.link_from_entry(entry))
@@ -147,7 +145,6 @@ def test_missing_source_leaves_an_empty_stub(library_root, tmp_path):
 
 
 def test_materialize_embeds_the_geometry_again(library_root, tmp_path):
-    library_links.install()
     entry = _registered_entry(tmp_path)
     placed = _place(entry)
     library_links.set_link(placed, library_links.link_from_entry(entry))

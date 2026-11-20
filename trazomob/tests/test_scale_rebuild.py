@@ -6,13 +6,7 @@ from PySide6.QtGui import QVector3D
 from core.scene import Scene
 from core.history import History, ScaleGroupCommand
 from tools.scale import ScaleTool
-from trazomob.integrations.hooks import apply_runtime_hooks
 from trazomob.builders.cabinet import CabinetBuilder
-
-
-@pytest.fixture(autouse=True)
-def setup_hooks():
-    apply_runtime_hooks()
 
 
 def test_scale_rebuild_preserves_board_thickness():

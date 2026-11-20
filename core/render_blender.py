@@ -301,7 +301,7 @@ AMBIENCES = ("day", "night", "overcast")
 #: lit by lamps does not.
 EXPOSURE = {"day": -0.6, "night": 0.0, "overcast": -0.3}
 
-LIGHT_KINDS = ("point", "spot")
+LIGHT_KINDS = ("point", "spot", "led_strip")
 #: A light's colour is its temperature, from a candle to a blue sky.
 MIN_KELVIN, MAX_KELVIN = 1800, 10000
 #: The three names the first version stored (and still reads): warm ≈ a
@@ -309,7 +309,7 @@ MIN_KELVIN, MAX_KELVIN = 1800, 10000
 NAMED_KELVIN = {"warm": 2700, "neutral": 4000, "cool": 6500}
 DEFAULT_KELVIN = 2700
 #: Watts in Blender's terms, a sensible start for each kind.
-DEFAULT_POWER = {"point": 400.0, "spot": 1500.0}
+DEFAULT_POWER = {"point": 400.0, "spot": 1500.0, "led_strip": 350.0}
 
 
 def kelvin_to_rgb(kelvin: float) -> tuple:
@@ -398,7 +398,8 @@ def clean_lights(raw) -> list:
             "on": bool(lt.get("on", True)),
             "name": str(lt.get("name", "")),
         })
-    return out
+    from trazomob.integrations import host_calls
+    return host_calls.preserve_led_extra(raw, out)
 
 
 def write_job(scene, camera, work: Path, *, engine: str = "eevee",
@@ -412,6 +413,7 @@ def write_job(scene, camera, work: Path, *, engine: str = "eevee",
     measured for a clear day). ``serve`` = Blender builds the scene and
     waits for cameras (:func:`sync_request`) instead of rendering once."""
     from formats.gltf import save_glb
+    from trazomob.integrations import host_calls
     if engine not in ENGINES:
         raise ValueError(f"unknown engine {engine!r}")
     if ambience not in AMBIENCES:
@@ -439,7 +441,8 @@ def write_job(scene, camera, work: Path, *, engine: str = "eevee",
         "exposure": EXPOSURE[ambience],
         "sun": sun_toward(scene) if ambience == "day" else None,
         "sun_strength": 3.0 * max(0.0, min(float(sun_scale), 4.0)),
-        "lights": [lt for lt in clean_lights(list(lights)) if lt["on"]],
+        "lights": host_calls.expand_led_strips(
+            [lt for lt in clean_lights(list(lights)) if lt["on"]]),
         "ground": ground_dict(scene) if ground else None,
     }
     if serve:

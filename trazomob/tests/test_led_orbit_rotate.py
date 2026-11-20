@@ -21,13 +21,8 @@ from trazomob.domain.i18n import tr
 
 @pytest.fixture
 def engine_on():
-    """O menu de contexto só existe com o motor ligado (padrão: desligado)."""
-    from trazomob.domain.engine_state import reset_engine_cache, set_engine_enabled
-
-    set_engine_enabled(True)
+    """Mantido por compatibilidade de assinatura nos testes de menu de contexto."""
     yield
-    set_engine_enabled(False)
-    reset_engine_cache()
 from trazomob.interaction.align_tools import (
     get_entity_world_bounds,
     resolve_rotatable_groups,

@@ -54,9 +54,6 @@ class MaterialPickerTool(Tool):
         self._overlay_installed = False
 
     def on_activate(self, viewport) -> None:
-        from ..domain.engine_state import is_engine_enabled
-        if not is_engine_enabled():
-            return
         self._hovered_face = None
         self._hovered_group = None
 

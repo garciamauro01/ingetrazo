@@ -4,7 +4,7 @@
 
 # TrazoMob — Parametric Cabinetry, Woodworking & 3D Architecture for IngeTrazo
 
-**TrazoMob** is a professional extension for [IngeTrazo CAD 3D](https://github.com/ingelibre/ingetrazo) focused on custom millwork/cabinetry, interior design, parametric room modeling, architectural openings (doors and windows), and integrated cutlist optimization.
+**TrazoMob** is the first-party interior-design and millwork module of the open-source [IngeTrazo CAD 3D](https://github.com/ingelibre/ingetrazo) fork: custom cabinetry, interior design, parametric room modeling, architectural openings (doors and windows), and integrated cutlist optimization. It ships with the fork — it is not a separate plugin.
 
 ---
 
@@ -98,7 +98,7 @@
 </p>
 
 ### 🏷️ 8. Production Labels with Code 128 & QR
-* **Native Barcode and QR:** Every label prints a real **Code 128** (modulo 103 check digit) and a **QR Code**, both drawn by the plugin itself — no external dependencies.
+* **Native Barcode and QR:** Every label prints a real **Code 128** (modulo 103 check digit) and a **QR Code**, both drawn by TrazoMob itself — no external dependencies.
 * **Stable, Scannable Payload:** The code comes from a deterministic CRC32, so the same part always produces the same code on any machine or run.
 * **Complete Part Card:** Name, parent module, final and cut dimensions, material, quantity, edge-banding diagram (C1/C2/L1/L2) and machining summary.
 * **Print Ready:** Batch preview and PNG export of every label at higher resolution for thermal or A4 printing.
@@ -124,7 +124,7 @@
 ### ⭐ 10. My Modules
 * **Save the Current Module:** Store any module configuration (dimensions, doors, drawers, materials and handles) as a personal template in one click.
 * **Dedicated Category:** Saved modules appear under **⭐ My Modules**, both in the gallery and as a ribbon tab, ready to insert into the scene again.
-* **Local Persistence:** Templates live in the user preferences (`user_modules`) and remain available across sessions and plugin updates.
+* **Local Persistence:** Templates live in the user preferences (`user_modules`) and remain available across sessions and IngeTrazo updates.
 
 <p align="center">
   <img src="docs/images/meus_modulos_ribbon.png" alt="My Modules Tab in the TrazoMob Ribbon" width="95%">
@@ -136,17 +136,13 @@
 
 ## 📦 Installation
 
-### Option 1: Via IngeTrazo Extension Manager (Recommended)
-1. In IngeTrazo, go to **Extensions ▸ Manage Extensions…**.
-2. Search for **TrazoMob** and click **Download / Install**.
-3. Restart the application to enable the tools and sidebar dock.
+TrazoMob ships inside the IngeTrazo fork — **nothing separate to install**.
 
-### Option 2: Manual Installation
-1. Download the repository source or `.zip` from the [latest release](https://github.com/garciamauro01/trazomob/releases).
-2. Extract the `trazomob` folder into the user extensions directory:
-   - **Windows:** `%APPDATA%\ingetrazo\plugins\trazomob\`
-   - **Linux:** `~/.local/share/ingetrazo/trazomob/`
-3. Launch IngeTrazo. The **TrazoMob** panel will appear docked on the right side.
+1. Install the IngeTrazo fork (source or installer package).
+2. Launch the application. The **TrazoMob** toolbar and right-dock panel are active automatically.
+
+> The extension manager remains available for third-party extensions.
+> TrazoMob, being first-party, does not appear there.
 
 ---
 

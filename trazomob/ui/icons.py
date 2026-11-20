@@ -913,32 +913,3 @@ def make_free_zoom_icon() -> QIcon:
 
 
 
-
-
-def make_engine_icon() -> QIcon:
-    """Ícone de energia (liga/desliga) para o interruptor geral do TrazoMob."""
-    from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QPen, QBrush
-    from PySide6.QtCore import Qt, QRectF, QPointF
-
-    pm = QPixmap(48, 48)
-    pm.fill(Qt.transparent)
-    p = QPainter(pm)
-    p.setRenderHint(QPainter.Antialiasing, True)
-
-    # Fundo grafite arredondado
-    p.setBrush(QBrush(QColor("#111827")))
-    p.setPen(Qt.NoPen)
-    p.drawRoundedRect(QRectF(2, 2, 44, 44), 10, 10)
-
-    # Anel de energia
-    pen = QPen(QColor("#22C55E"), 3.4)
-    pen.setCapStyle(Qt.RoundCap)
-    p.setPen(pen)
-    p.setBrush(Qt.NoBrush)
-    p.drawArc(QRectF(11, 11, 26, 26), 55 * 16, 250 * 16)
-
-    # Haste central
-    p.drawLine(QPointF(24, 8), QPointF(24, 23))
-
-    p.end()
-    return QIcon(pm)

@@ -116,6 +116,8 @@ class ScaleTool(Tool):
 
     # ---- Lifecycle ----------------------------------------------------------
     def on_activate(self, viewport) -> None:
+        from trazomob.integrations import host_calls
+        host_calls.promote_selection_modules(viewport)
         self._reset()
         self.about_center = False
         self.uniform = False
@@ -131,6 +133,10 @@ class ScaleTool(Tool):
     def _selection_bounds(self, viewport):
         """World AABB of the selection: loose vertices, whole groups (their
         nested placements included) and reference images."""
+        from trazomob.integrations import host_calls
+        custom = host_calls.prateleiras_bounds(self, viewport)
+        if custom is not None:
+            return custom
         from core.group import iter_placements
         from core.image_plane import ImagePlane
         from core.mesh import Edge, Face
@@ -381,7 +387,10 @@ class ScaleTool(Tool):
             got = self._factors_from_point(p)
             if got is not None:
                 return got
-        return self._factors_from_cursor(viewport, sx, sy)
+        factors = self._factors_from_cursor(viewport, sx, sy)
+        from trazomob.integrations import host_calls
+        return host_calls.scale_factor_override(
+            self, ctx, viewport, sx, sy, factors)
 
     def _factors_from_cursor(self, viewport, sx: float, sy: float):
         grip, anchor = self._grip, self._anchor
@@ -680,6 +689,9 @@ class ScaleTool(Tool):
         starting positions, missed them, scaled the rest and tore the
         faces (a user's video, 25-09: a rounded box shredded on release).
         Measured: 300 moves of that kind, 194 of 1600 vertices lost."""
+        from trazomob.integrations import host_calls
+        if host_calls.capture_module_originals(self, viewport):
+            return
         from PySide6.QtGui import QMatrix4x4
         orig_v: list = []
         orig_x: list = []

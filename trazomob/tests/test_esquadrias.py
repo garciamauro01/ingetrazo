@@ -140,7 +140,7 @@ def test_esquadrias_reais_igz_catalog():
     from trazomob.builders.cabinet import CabinetBuilder
 
     items = MODULE_CATALOG.get("Portas & Janelas", [])
-    assert len(items) == 11  # Inclui porta_correr_vidro_4f_287 extraída do SKP com cinemática de correr
+    assert len(items) == 34  # 14 modelos anteriores + 20 portas dos SKP repostos
 
     for it in items:
         params = dict(it)

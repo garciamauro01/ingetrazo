@@ -55,8 +55,10 @@ def extract_group_material_slots(group: Any) -> List[Dict[str, Any]]:
         return []
 
     slots: Dict[str, Dict[str, Any]] = {}
+    root_name = str(getattr(group, "name", "") or "").strip()
 
-    def _walk(g: Any) -> None:
+    def _walk(g: Any, is_root: bool = False) -> None:
+        g_name = str(getattr(g, "name", "") or "").strip()
         mesh = getattr(g, "mesh", None)
         if mesh is not None and getattr(mesh, "faces", None):
             for f in mesh.faces:
@@ -68,12 +70,19 @@ def extract_group_material_slots(group: Any) -> List[Dict[str, Any]]:
                         "color": color,
                         "texture_path": tpath,
                         "face_count": 0,
+                        "part_names": [],
+                        "faces": [],
                     }
-                slots[key]["face_count"] += 1
+                slot = slots[key]
+                slot["face_count"] += 1
+                slot["faces"].append(f)
+                if g_name and (not is_root or g_name != root_name):
+                    if g_name not in slot["part_names"]:
+                        slot["part_names"].append(g_name)
         for ch in getattr(g, "children", []) or []:
-            _walk(ch)
+            _walk(ch, is_root=False)
 
-    _walk(group)
+    _walk(group, is_root=True)
     return sorted(slots.values(), key=lambda s: -s["face_count"])
 
 

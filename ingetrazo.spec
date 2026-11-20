@@ -65,6 +65,10 @@ datas = [
     # The MCP server (stdlib-only): `ingetrazo --mcp` runs it by path, and
     # the console build below makes it a program of its own on Windows.
     ('scripts/ingetrazo_mcp.py',   'scripts'),
+    # First-party TrazoMob assets (components, i18n, profiles, textures, thumbs)
+    # and Blender scripts executed externally by file path.
+    ('trazomob/assets',            'trazomob/assets'),
+    ('trazomob/blender_scripts/*.py', 'trazomob/blender_scripts'),
 ]
 
 # Optional trees (present today, tolerated if pruned later).
@@ -222,6 +226,17 @@ hiddenimports += _app_imports(
     [*Path('plugins').glob('*.py'),
      *Path('examples/extensions').rglob('*.py'),
      Path('scripts/ingetrazo_mcp.py')])
+# First-party TrazoMob package: collect all runtime submodules (excluding tests,
+# standalone scripts, and external Blender scripts).
+hiddenimports += collect_submodules(
+    'trazomob',
+    filter=lambda name: not (
+        name == 'trazomob.tests' or name.startswith('trazomob.tests.')
+        or name == 'trazomob.scripts' or name.startswith('trazomob.scripts.')
+        or name == 'trazomob.blender_scripts'
+        or name.startswith('trazomob.blender_scripts.')
+    ),
+)
 # The rest of openskp (export/*, _face_groups, instanced_scene, codegen…)
 # plus its PACKAGE DATA: create.py loads ``_scaffold/blank_v17.skp`` via
 # importlib.resources and PyInstaller never bundles non-Python files on its

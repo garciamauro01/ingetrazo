@@ -15,7 +15,7 @@ from PySide6.QtGui import QVector3D
 from core import user_library
 from core.group import Group
 from core.mesh import Mesh
-from trazomob.integrations import decor_bake, library_links, platform
+from trazomob.integrations import decor_bake, library_links
 from views import component_loader
 
 
@@ -24,14 +24,6 @@ def library_root(tmp_path, monkeypatch):
     root = tmp_path / "components"
     monkeypatch.setenv("INGETRAZO_COMPONENTS", str(root))
     return root
-
-
-@pytest.fixture(autouse=True)
-def _clean_hooks():
-    yield
-    platform.restore_hook(decor_bake.HOOK_NAME)
-    platform.restore_hook(decor_bake.HOOK_COMPONENT_NAME)
-    platform.restore_hook(decor_bake.HOOK_LOAD_NAME)
 
 
 def _grid_mesh(n: int = 12) -> Mesh:
@@ -196,39 +188,29 @@ def test_fit_config_is_part_of_the_cache_key(library_root, tmp_path):
     assert decor_bake.cache_key(src, sized) != decor_bake.cache_key(src, other_anchor)
 
 
-def test_load_group_wrapper_uses_the_baked_cache(library_root, tmp_path, fake_import):
+def test_load_group_fast_uses_the_baked_cache(library_root, tmp_path, fake_import):
     """O cache já traz a matrix aplicada: qualquer matrix vira leitura direta."""
     src = _source(tmp_path, ".skp")
-    seen = []
-
-    def original(path, *args, **kwargs):
-        seen.append(Path(path))
-        return "carregado"
-
-    wrapper = decor_bake._make_load_group_wrapper(original)
 
     for matrix in (None, (1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0),
                    (2.0, 0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0, 5.0)):
-        group = wrapper(src, matrix=matrix, name="Almofada")
+        group = decor_bake.load_group_fast(src, matrix=matrix, name="Almofada")
         assert isinstance(group, Group)
         assert group.name == "Almofada"
         assert len(group.mesh.faces) == 144
-    assert seen == []                       # o host não foi chamado
     assert len(fake_import) == 3            # uma chave por configuração de matrix
 
     # Sem ``name``, o rótulo vem da origem — não do hash do .igz.
-    assert wrapper(src, matrix=None).name == src.stem
+    assert decor_bake.load_group_fast(src, matrix=None).name == src.stem
 
-    # Um .igz já nativo nunca é re-assado nem desviado.
+    # Um .igz já nativo nunca é re-assado: o host lê direto.
     cached = next(p for p in (library_root / "_cache" / "baked").rglob("*.igz"))
-    assert wrapper(cached, matrix=None) == "carregado"
-    assert seen == [cached]
+    assert decor_bake.load_group_fast(cached, matrix=None) is None
     assert len(fake_import) == 3
 
 
-def test_register_hook_bakes_when_adding_to_library(library_root, tmp_path, fake_import):
+def test_register_bakes_when_adding_to_library(library_root, tmp_path, fake_import):
     src = _source(tmp_path, ".skp")
-    decor_bake.install()
 
     entry = user_library.register(src, managed=False, nombre="Almofada")
     source = decor_bake.source_of(entry)
@@ -252,7 +234,6 @@ def test_load_component_returns_the_prefitted_group(library_root, tmp_path):
     entry = user_library.register(obj, managed=False, nombre="Tapete")
 
     expected = original(entry, strict=True)
-    decor_bake.install()
     actual = component_loader.load_component(entry, strict=True)
 
     assert len(actual.group.mesh.faces) == len(expected.group.mesh.faces)
@@ -269,7 +250,6 @@ def test_baked_geometry_preserves_the_host_matrix(library_root, tmp_path):
     matrix = (2.0, 0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0, 5.0)
 
     cold = original(obj, matrix=matrix, name="Tapete")
-    decor_bake.install()
     warm = component_loader.load_group(obj, matrix=matrix, name="Tapete")
 
     assert component_loader.bounds(cold) == pytest.approx(

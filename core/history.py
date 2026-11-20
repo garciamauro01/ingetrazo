@@ -2912,6 +2912,9 @@ class RotateGroupCommand(Command):
         self._after: Optional[dict] = None
 
     def do(self, scene) -> None:
+        from trazomob.integrations import host_calls
+        if host_calls.rotate_module_command(self, scene, sign=1.0):
+            return
         if getattr(self.group, "xform", None) is not None:
             m = rotation_matrix(self.center, self.axis, self.degrees)
             self.group.xform = m * self.group.xform
@@ -2936,6 +2939,9 @@ class RotateGroupCommand(Command):
         scene.version += 1
 
     def undo(self, scene) -> None:
+        from trazomob.integrations import host_calls
+        if host_calls.rotate_module_command(self, scene, sign=-1.0):
+            return
         if getattr(self.group, "xform", None) is not None:
             m = rotation_matrix(self.center, self.axis, -self.degrees)
             self.group.xform = m * self.group.xform
@@ -3037,6 +3043,9 @@ class ScaleGroupCommand(Command):
         self._after: Optional[dict] = None
 
     def do(self, scene) -> None:
+        from trazomob.integrations import host_calls
+        if host_calls.scale_module_command(self, scene, forward=True):
+            return
         if getattr(self.group, "xform", None) is not None:
             self.group.xform = scale_matrix(
                 self.center, self.factor, self.axes) * self.group.xform
@@ -3061,6 +3070,9 @@ class ScaleGroupCommand(Command):
         scene.version += 1
 
     def undo(self, scene) -> None:
+        from trazomob.integrations import host_calls
+        if host_calls.scale_module_command(self, scene, forward=False):
+            return
         if getattr(self.group, "xform", None) is not None:
             self.group.xform = scale_matrix(
                 self.center, invert_scale_factor(self.factor),
@@ -4702,6 +4714,9 @@ class MoveGroupCommand(Command):
         self.delta = QVector3D(delta)
 
     def _shift(self, scene, delta) -> None:
+        from trazomob.integrations import host_calls
+        if host_calls.translate_module_command(self, scene, delta):
+            return
         if getattr(self.group, "xform", None) is not None:
             # Component instance: compose into the transform — O(1), and the
             # shared prototype mesh (siblings!) is never touched.

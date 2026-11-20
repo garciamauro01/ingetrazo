@@ -5138,9 +5138,14 @@ class MainWindow(QMainWindow):
             # selected groups in one undoable step.
             menu.addAction(tr("Lock"),
                            lambda gs=groups: self._lock_groups(gs))
-            # The Solid Tools are offered on a selection of solids.
-            from core.solids import is_solid
-            solid = [e for e in sel if isinstance(e, Group) and is_solid(e)]
+            # The Solid Tools are offered on a selection of 2+ solids.
+            # Guard with len(groups) >= 2 so right-clicking a single high-poly
+            # or deferred decoration component never runs is_solid().
+            if len(groups) >= 2:
+                from core.solids import is_solid
+                solid = [e for e in groups if is_solid(e)]
+            else:
+                solid = []
             if len(solid) >= 2 and len(solid) == len(groups):
                 menu.addAction(tool_icon("outer_shell"), tr("Outer Shell"),
                                lambda: self._activate_tool("outer_shell"))
@@ -7998,6 +8003,13 @@ class MainWindow(QMainWindow):
         from core.scene import Scene as _Scene
         from formats import obj as _obj
         from formats.fuse import soften_smooth_edges
+        from trazomob.integrations import library_links
+
+        def _linked(group):
+            if group is not None:
+                library_links.mark_built_component(
+                    group, entry, library="online")
+            return group
 
         obj = library.model_file(entry)
         if obj is None:
@@ -8018,7 +8030,7 @@ class MainWindow(QMainWindow):
             # A model written as parts keeps them: one component to place,
             # its pieces inside (see formats.obj._pieces_group).
             parts.name = entry.get("nombre", "") or parts.name
-            return parts
+            return _linked(parts)
         mesh = temp.mesh
         if not mesh.faces and temp.groups:
             mesh = temp.groups[0].mesh       # a big OBJ lands as a group
@@ -8028,7 +8040,7 @@ class MainWindow(QMainWindow):
                 tr("“{name}” has no geometry.", name=entry.get("nombre", "")))
             return None
         soften_smooth_edges(mesh, cos_threshold=0.55)
-        return Group(mesh, name=entry.get("nombre", ""))
+        return _linked(Group(mesh, name=entry.get("nombre", "")))
 
     def _on_open_library(self) -> None:
         from views.library_dialog import LibraryDialog
@@ -8056,6 +8068,7 @@ class MainWindow(QMainWindow):
         """The user's model file, as a group ready to place — ``None`` (the
         user told why) when it is missing or cannot be read."""
         from views import component_loader
+        from trazomob.integrations import library_links
         try:
             loaded = component_loader.load_component(entry, strict=True)
         except component_loader.ComponentLoadError as exc:
@@ -8064,7 +8077,10 @@ class MainWindow(QMainWindow):
                 tr("Could not read “{name}”: {e}",
                    name=entry.get("nombre", ""), e=exc))
             return None
-        return None if loaded is None else loaded.group
+        group = None if loaded is None else loaded.group
+        if group is not None:
+            library_links.mark_built_component(group, entry, library="user")
+        return group
 
     def import_user_component(self, path: str | None = None) -> dict | None:
         """Import (or index) one model and place it. Returns the entry."""

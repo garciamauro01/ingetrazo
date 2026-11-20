@@ -70,9 +70,6 @@ class AlignSnapTool(Tool):
         self._overlay_installed: bool = False
 
     def on_activate(self, viewport) -> None:
-        from ..domain.engine_state import is_engine_enabled
-        if not is_engine_enabled():
-            return
         self.source_group = None
         self.source_point = None
         self.hovered_point = None

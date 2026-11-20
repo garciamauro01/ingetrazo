@@ -102,37 +102,11 @@ def test_extension_api_version_is_supported():
     )
 
 
-class _FakeOwner:
-    def __init__(self):
-        self.value = "original"
-
-
-def test_install_hook_is_idempotent_and_reversible():
-    owner = _FakeOwner()
-
-    def uninstall():
-        for feature in list(host.installed_hooks()):
-            host.restore_hook(feature)
-
-    uninstall()
-    try:
-        assert host.install_hook("test.value", owner, "value",
-                                 lambda original: "wrapper") is True
-        assert owner.value == "wrapper"
-        assert host.install_hook("test.value", owner, "value",
-                                 lambda original: "outro") is False
-        assert owner.value == "wrapper"
-        assert host.restore_hook("test.value") is True
-        assert owner.value == "original"
-    finally:
-        uninstall()
-
-
-def test_install_hook_degrades_when_attribute_is_gone():
-    owner = _FakeOwner()
-    assert host.install_hook("test.missing", owner, "nao_existe",
-                             lambda original: original) is False
-    assert not host.hook_installed("test.missing")
+def test_no_monkeypatch_infrastructure_is_exposed():
+    """O fork é first-party: o host chama o TrazoMob, não o contrário."""
+    for name in ("install_hook", "hook_installed", "installed_hooks",
+                 "restore_hook", "restore_all_hooks"):
+        assert not hasattr(host, name)
 
 
 class _FakeStyle:
@@ -176,108 +150,63 @@ def test_capabilities_are_empty_without_a_window():
     assert host.supports("display_style") is False
 
 
-# Ganchos que o plugin precisa instalar. Se um deles não instala, alguma
-# funcionalidade do TrazoMob morre em silêncio (foi assim que o undo/redo
-# paramétrico ficou anos sem funcionar: o import de TranslateGroupCommand
-# falhava dentro de um try/except).
-EXPECTED_HOOKS = {
-    "group.copy",
-    "history.move",
-    "history.rotate.do",
-    "history.rotate.undo",
-    "history.scale.do",
-    "history.scale.undo",
-    "move.commit",
-    "move.lock",
-    "render.led_lights",
-    "scale.capture",
-    "scale.ruler_snap",
-}
-
-HOOK_TARGETS = {
+# Pontos do host que chamam o TrazoMob. Se um deles desaparecer, a chamada
+# direta some junto e a funcionalidade morre em silêncio.
+HOST_CALL_TARGETS = {
     "core.group": ["copy_group"],
-    "core.history": ["RotateGroupCommand", "ScaleGroupCommand", "MoveGroupCommand"],
-    "core.render_blender": ["clean_lights"],
+    "core.history": [
+        "RotateGroupCommand", "ScaleGroupCommand", "MoveGroupCommand"],
+    "core.render_blender": ["clean_lights", "write_job"],
     "tools.move": ["MoveTool", "gather_targets"],
     "tools.scale": ["ScaleTool"],
+    "views.viewport": ["Viewport"],
+    "plugins.render_blender": ["draw_lights"],
+    "formats.igz": ["load_into"],
+    "views.main_window": ["MainWindow"],
 }
 
 
 @pytest.mark.parametrize(
     "module_name,symbol",
-    [(m, s) for m, names in HOOK_TARGETS.items() for s in names],
+    [(m, s) for m, names in HOST_CALL_TARGETS.items() for s in names],
 )
-def test_hook_target_exists(module_name, symbol):
+def test_host_call_target_exists(module_name, symbol):
     module = importlib.import_module(module_name)
     assert hasattr(module, symbol), (
-        f"{module_name}.{symbol} desapareceu: o gancho correspondente em "
-        "trazomob/integrations/hooks.py deixaria de instalar."
+        f"{module_name}.{symbol} desapareceu: um ponto de chamada direta do "
+        "TrazoMob foi perdido."
     )
 
 
-def test_every_expected_hook_installs():
-    from trazomob.integrations import hooks
-
-    host.restore_all_hooks()
-    try:
-        hooks.apply_runtime_hooks()
-        installed = set(host.installed_hooks())
-        assert EXPECTED_HOOKS <= installed, (
-            "ganchos que não instalaram: "
-            + ", ".join(sorted(EXPECTED_HOOKS - installed))
-        )
-    finally:
-        host.restore_all_hooks()
-
-
-class _FakeExtensionApp:
-    def __init__(self):
-        self.calls = []
-
-    def register_light_kind(self, *args):
-        self.calls.append("light_kind")
-
-    def add_group_copy_hook(self, fn):
-        from core import extension_hooks
-        self.calls.append("copy")
-        extension_hooks.add_copy_hook(fn)
-
-    def add_move_filter(self, fn):
-        from core import extension_hooks
-        self.calls.append("move_filter")
-        extension_hooks.add_move_filter(fn)
-
-    def add_group_transform_hook(self, fn):
-        from core import extension_hooks
-        self.calls.append("transform")
-        extension_hooks.add_transform_hook(fn)
+def test_host_files_call_trazomob_directly():
+    root = Path(__file__).resolve().parents[2]
+    expectations = {
+        "core/group.py": "host_calls",
+        "core/history.py": "host_calls",
+        "core/render_blender.py": "host_calls",
+        "tools/move.py": "host_calls",
+        "tools/scale.py": "host_calls",
+        "views/viewport.py": "host_calls",
+        "plugins/render_blender.py": "host_calls",
+        "formats/igz.py": "library_links",
+        "views/main_window.py": "library_links",
+    }
+    for relative, module in expectations.items():
+        text = (root / relative).read_text(encoding="utf-8")
+        assert "from trazomob.integrations import %s" % module in text, relative
 
 
-def test_official_extension_api_is_preferred_over_monkeypatching():
-    """Num host que oferece a API oficial, copy/luz/movimento/transformação
-    vão por ela; só os pontos ainda não expostos caem no patch.
-
-    O IngeTrazo puro não tem esses métodos — aí o teste é pulado e o
-    caminho de monkeypatch (test_every_expected_hook_installs) vale.
-    """
-    extension_hooks = pytest.importorskip(
-        "core.extension_hooks",
-        reason="host sem a API oficial de ganchos; o TrazoMob usa patch")
-    from trazomob.integrations import hooks
-
-    host.restore_all_hooks()
-    extension_hooks.clear()
-    try:
-        app = _FakeExtensionApp()
-        hooks.apply_runtime_hooks(app)
-        assert set(app.calls) == {"light_kind", "copy", "move_filter", "transform"}
-        assert extension_hooks.registered() == {
-            "transform": 1, "copy": 1, "move_filter": 1}
-        assert set(host.installed_hooks()) == {
-            "move.commit", "scale.ruler_snap", "scale.capture"}
-    finally:
-        extension_hooks.clear()
-        host.restore_all_hooks()
+def test_trazomob_has_no_runtime_hooks():
+    """Nenhum módulo do TrazoMob pode instalar monkeypatch no host."""
+    root = Path(__file__).resolve().parents[1]
+    offenders = []
+    for path in root.rglob("*.py"):
+        if path.name == "test_platform_contract.py":
+            continue
+        text = path.read_text(encoding="utf-8")
+        if "install_hook(" in text or "apply_runtime_hooks(" in text:
+            offenders.append(path.relative_to(root).as_posix())
+    assert not offenders, "hooks residuais: " + ", ".join(offenders)
 
 
 
@@ -310,7 +239,7 @@ PRIVATE_IMPORT_BASELINE = {
 _ATTR_RE = re.compile(r"\b(main_window|window|app|viewport)\s*\._[A-Za-z]")
 _IMPORT_RE = re.compile(
     r"from\s+(?:core|tools|views|formats)\.[A-Za-z_.]+\s+import\s+[^\n]*\b_[A-Za-z]")
-_EXEMPT = {"platform.py", "hooks.py"}
+_EXEMPT = {"platform.py", "host_calls.py"}
 
 
 def _counts(pattern):

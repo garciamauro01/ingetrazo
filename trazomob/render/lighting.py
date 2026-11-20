@@ -2247,15 +2247,6 @@ class TrazoMobLightVisualizer:
         if not lights and not has_strip_preview:
             return
 
-        try:
-            import sys
-            mod = sys.modules.get("plugins.render_blender")
-            if mod is not None and not getattr(mod, "_trazomob_overlay_silenced", False):
-                from ..integrations.hooks import silence_native_light_overlay
-                silence_native_light_overlay()
-        except Exception:
-            pass
-
         painter.setRenderHint(QPainter.Antialiasing)
         occ_ctx = _build_light_occluder_context(viewport, require_camera=True)
 

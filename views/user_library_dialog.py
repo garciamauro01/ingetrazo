@@ -209,6 +209,7 @@ class ComponentDialog(QDialog):
         self._fuente.setText(entry.get("fuente", ""))
         self._licencia.setText(entry.get("licencia", ""))
         self._render_materials = dict(entry.get("render_materials") or {})
+        self._update_render_mats_button()
         self._autor.setText(entry.get("autor", ""))
         self._notas.setText(entry.get("notas", ""))
         unit = entry.get("unidad") or "m"
@@ -317,25 +318,43 @@ class ComponentDialog(QDialog):
         self._preview.setPixmap(
             component_loader.thumbnail_pixmap(loaded.group, 180))
 
+    def _update_render_mats_button(self) -> None:
+        configured = sum(
+            1 for v in self._render_materials.values()
+            if (isinstance(v, dict) and bool(v)) or (isinstance(v, str) and v and v != "original")
+        )
+        if configured == 1:
+            self._btn_render_mats.setText(tr("🎨 Materiais PBR (1 configurado)…"))
+        elif configured > 1:
+            self._btn_render_mats.setText(
+                tr("🎨 Materiais PBR ({n} configurados)…", n=configured))
+        else:
+            self._btn_render_mats.setText(tr("🎨 Materiais PBR (Render)…"))
+
     def _edit_render_materials(self) -> None:
         if self._group is None and self._source is not None and self._source.is_file():
             self._measure()
         if self._group is None:
             QMessageBox.information(
-                self, tr("Acabamentos de Render"),
+                self, tr("Materiais PBR (Render)"),
                 tr("Escolha primeiro um arquivo de modelo válido."))
             return
-        from trazomob.domain.render_materials import (
-            get_group_render_materials,
-            set_group_render_materials,
-        )
-        from trazomob.ui.render_materials_dialog import RenderMaterialsDialog
+        from trazomob.ui.material_editor_dialog import MaterialEditorDialog
 
-        if self._render_materials:
-            set_group_render_materials(self._group, self._render_materials)
-        dlg = RenderMaterialsDialog(self._group, parent=self)
+        current = {
+            k: v for k, v in (self._render_materials or {}).items()
+            if isinstance(v, dict)
+        }
+        dlg = MaterialEditorDialog(
+            scene=None,
+            current_overrides=current,
+            viewport=None,
+            parent=self,
+            group=self._group,
+        )
         if dlg.exec():
-            self._render_materials = get_group_render_materials(self._group)
+            self._render_materials = dlg.get_overrides()
+            self._update_render_mats_button()
 
     def _dimensions_cm(self) -> list | None:
         values = [spin.value() * 100.0

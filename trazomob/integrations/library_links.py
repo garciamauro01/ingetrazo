@@ -16,21 +16,23 @@ O que NÃO entra: as ``edges``/``faces`` do modelo. Uma malha vazia vai junto
 só para que um IngeTrazo anterior a este recurso abra o arquivo (sem o
 objeto) em vez de falhar.
 
-Três pontos de integração, todos por gancho registrado em
-:mod:`integrations.platform`:
+Três pontos de integração, todos por chamada direta do host first-party:
 
-1. ao inserir um item da biblioteca, marcar o grupo (``_build_user_component``
-   / ``_build_library_component``);
-2. ao abrir, reconstruir os grupos marcados (``formats.igz.load_into``);
+1. ao inserir um item da biblioteca, marcar o grupo
+   (``mark_built_component``, chamado por ``_build_user_component`` e
+   ``_build_library_component``);
+2. ao abrir, reconstruir os grupos marcados (``rebuild_scene_links``, chamado
+   por ``formats.igz.load_into``);
 3. ``materialize()`` desfaz o vínculo e devolve a geometria ao documento.
+
+A leitura de vínculos é sempre ativa. Só a criação de vínculos novos depende
+do motor TrazoMob, e esse estado é verificado aqui mesmo, no TrazoMob.
 """
 from __future__ import annotations
 
 import hashlib
 import logging
 from pathlib import Path
-
-from . import platform as host
 
 logger = logging.getLogger("trazomob.library_links")
 
@@ -529,7 +531,7 @@ def _cache_from_entry(entry: dict, link: dict) -> Path:
 
 
 def _read_igz_group(path: Path):
-    """O grupo que o cache guarda — sem passar pelo gancho de load."""
+    """O grupo que o cache guarda — ``_REBUILDING`` evita reconstruir de novo."""
     from core.group import Group
     from core.scene import Scene
     from formats import igz
@@ -609,112 +611,33 @@ def _scene_group(scene, entry: dict, flatten):
 
 
 # ---------------------------------------------------------------------------
-# Ganchos
+# Pontos de chamada do host (first-party, sem ganchos)
 # ---------------------------------------------------------------------------
 
-def install(app=None, window=None, *, marking: bool = True) -> bool:
-    """Instala os ganchos de leitura e, com ``marking``, os de marcação.
+def set_host_window(window) -> None:
+    """Guarda a janela do host para os avisos na barra de status."""
+    _HOST[0] = window
 
-    Ler um documento com vínculos NÃO depende do motor: o gancho de
-    ``load_into`` entra sempre, senão um documento salvo com vínculos abre
-    vazio — e sem erro. ``marking=False`` deixa o interruptor decidir apenas
-    o que VIRA vínculo ao salvar (biblioteca e importação direta).
 
-    Idempotente: ``platform.install_hook`` ignora um gancho já instalado.
+def mark_built_component(group, entry: dict, *, library: str = "user"):
+    """Marca o grupo devolvido por um construtor da biblioteca do host."""
+    if group is None:
+        return None
+    payload = link_from_entry(entry, library=library)
+    set_link(group, payload)
+    return payload
+
+
+def mark_imported_groups(groups, source=None) -> None:
+    """Marca os grupos de topo que uma importação direta acrescentou.
+
+    ``groups`` é ``SnapshotImport.added_groups`` — exatamente o que a
+    importação pôs na cena. O cache nunca derruba uma importação.
     """
-    win = window if window is not None else getattr(app, "window", None)
-    _HOST[0] = win
-    _install_load_hook()
-    # O pré-assado de decoração é first-party: user_library.register e
-    # component_loader chamam decor_bake diretamente. Nenhum hook é instalado
-    # aqui — marcenaria continua paramétrica e não passa por esse caminho.
-    if marking and win is not None:
-        _install_builder_hooks(type(win))
-        _install_import_hooks(type(win))
-    return True
-
-
-def _install_load_hook() -> None:
-    igz = host.import_module("formats.igz")
-    if igz is None:
-        return
-
-    def make_wrapper(original):
-        def load_into(scene, path, progress=None):
-            result = original(scene, path, progress=progress)
-            if not _REBUILDING[0]:
-                rebuild_scene_links(scene)
-            return result
-        return load_into
-
-    host.install_hook("igz.load_into.links", igz, "load_into", make_wrapper)
-
-
-def _install_builder_hooks(cls) -> None:
-    """Marca o grupo devolvido pelos construtores da biblioteca do host."""
-    for attribute, kind in (("_build_user_component", "user"),
-                            ("_build_library_component", "online")):
-        if not hasattr(cls, attribute):
-            continue
-
-        def make_wrapper(original, _kind=kind):
-            def build(self, entry):
-                group = original(self, entry)
-                if group is not None:
-                    set_link(group, link_from_entry(entry, library=_kind))
-                return group
-            return build
-
-        host.install_hook("main_window.%s.links" % attribute,
-                          cls, attribute, make_wrapper)
-
-
-#: Métodos do host que trazem geometria de um arquivo para a cena.
-_IMPORT_METHODS = ("_import_dae_path", "_import_glb_path",
-                   "import_skp_path", "_import_obj_path")
-
-
-def _install_import_hooks(cls) -> None:
-    """Marca como vínculo o que cada importação direta acrescentou.
-
-    É o caminho que faltava: decoração que entra arrastando um ``.skp`` ou
-    ``.dae`` não passa pela biblioteca, então não era marcada — e era ela que
-    ocupava o documento.
-    """
-    for attribute in _IMPORT_METHODS:
-        if not hasattr(cls, attribute):
-            continue
-
-        def make_wrapper(original):
-            def wrapped(self, path, *args, **kwargs):
-                scene = _scene_of(self)
-                before = {id(g) for g in getattr(scene, "groups", ()) or ()} \
-                    if scene is not None else set()
-                result = original(self, path, *args, **kwargs)
-                if result and scene is not None:
-                    _link_new_groups(scene, path, before)
-                return result
-            return wrapped
-
-        host.install_hook("%s.%s.links" % (cls.__module__, attribute),
-                          cls, attribute, make_wrapper)
-
-
-def _scene_of(window):
-    viewport = getattr(window, "viewport", None)
-    return getattr(viewport, "scene", None)
-
-
-def _link_new_groups(scene, source, before) -> None:
-    """Marca cada grupo de topo que a importação acabou de acrescentar."""
     try:
-        src = Path(source) if source else None
-        new = [g for g in getattr(scene, "groups", ()) or ()
-               if id(g) not in before]
-        if not new:
-            return
+        src = Path(source).expanduser() if source else None
         digest = _file_digest(src)
-        for i, group in enumerate(new):
+        for i, group in enumerate(groups or ()):
             link_imported_group(group, src, digest=digest, index=i)
     except Exception:  # noqa: BLE001 - o cache nunca derruba uma importação
         logger.exception("não foi possível vincular a importação")
@@ -723,5 +646,6 @@ def _link_new_groups(scene, source, before) -> None:
 __all__ = [
     "LINK_KEY", "IMPORT_LIBRARY", "link_of", "is_linked", "set_link",
     "clear_link", "materialize", "link_from_entry", "link_imported_group",
-    "cache_root", "rebuild_group", "rebuild_scene_links", "install",
+    "cache_root", "rebuild_group", "rebuild_scene_links", "set_host_window",
+    "mark_built_component", "mark_imported_groups",
 ]

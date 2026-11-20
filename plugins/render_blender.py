@@ -1237,6 +1237,9 @@ class RenderPanel(QWidget):
 def draw_lights(app, panel, viewport, painter) -> None:
     """A small bulb at each light (tinted by its colour, grey when off), a
     stroke along a spot's aim, the selected one ringed and named."""
+    from trazomob.integrations import host_calls
+    if host_calls.suppress_native_light_overlay():
+        return                      # o visualizador do TrazoMob já desenha
     lights = _state(app)["lights"]
     if not lights:
         return

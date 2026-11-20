@@ -8,8 +8,10 @@ import json
 import math
 from pathlib import Path
 
-sys.path.insert(0, r"d:\projetos\ingetrazo")
-sys.path.insert(0, r"d:\projetos\ingetrazo\plugins\trazomob")
+# TrazoMob é first-party: a raiz do fork é dois níveis acima deste script.
+_ROOT = Path(__file__).resolve().parents[2]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
 
 from core.scene import Scene
 from core.group import Group

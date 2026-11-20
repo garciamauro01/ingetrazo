@@ -69,12 +69,6 @@ class TrazoMobTool(Tool):
     uses_snap = False
 
     def on_activate(self, viewport) -> None:
-        from .domain.engine_state import is_engine_enabled
-        if not is_engine_enabled():
-            flash = getattr(viewport, "flash_status", None)
-            if callable(flash):
-                flash("Motor TrazoMob desligado — use o botão ⏻ na barra de ferramentas.")
-            return
         vp = host.active_viewport(viewport=viewport)
         win = host.window_of(viewport=vp)
         dlg = getattr(win, "_trazomob_dialog", None)

@@ -9,7 +9,7 @@ Permite listar todos os materiais da cena atual e configurar:
 from __future__ import annotations
 
 from typing import Dict, Any, List
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QEvent, QObject, Qt, Signal
 from PySide6.QtGui import QColor, QPixmap, QImage, QPainter, QIcon
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QSplitter, QListWidget, QListWidgetItem,
@@ -185,18 +185,109 @@ def extract_scene_materials(scene) -> List[dict]:
     return sorted(list(materials_dict.values()), key=lambda m: m["display_name"].lower())
 
 
+def extract_group_materials(group) -> List[Dict[str, Any]]:
+    """Extrai todos os materiais e texturas usados em um único Group (e seus filhos)."""
+    from pathlib import Path
+    from core.group import effective_material
+    from core.materials import effective_attrs
+
+    if group is None:
+        return []
+    materials_dict: Dict[str, Dict[str, Any]] = {}
+
+    def _register(attrs: dict):
+        if not attrs:
+            return
+        mat_name = attrs.get("mat")
+        tex = attrs.get("texture")
+        col = attrs.get("color")
+        tex_path = tex.get("path") if (isinstance(tex, dict) and tex.get("path")) else None
+
+        if mat_name:
+            name = str(mat_name)
+        elif tex_path:
+            name = Path(tex_path).stem
+        elif col:
+            r, g, b = [int(max(0.0, min(1.0, c)) * 255) for c in col[:3]]
+            name = f"Cor #{r:02X}{g:02X}{b:02X}"
+        else:
+            name = "Padrão (Sem Acabamento)"
+
+        if name not in materials_dict:
+            materials_dict[name] = {
+                "name": name,
+                "display_name": name,
+                "color": tuple(col[:3]) if col else None,
+                "texture_path": tex_path,
+                "finish": attrs.get("finish"),
+            }
+
+    def _walk(g, parent_paint=None):
+        paint = effective_material(g) or parent_paint
+        if paint:
+            _register(paint)
+        mesh = getattr(g, "mesh", None)
+        if mesh is not None and hasattr(mesh, "faces"):
+            for f in mesh.faces:
+                f_attrs = getattr(f, "attrs", None) or {}
+                eff = effective_attrs(f_attrs, paint) if paint else f_attrs
+                _register(eff)
+        for ch in getattr(g, "children", []) or []:
+            _walk(ch, paint)
+
+    _walk(group)
+    return sorted(list(materials_dict.values()), key=lambda m: m["display_name"].lower())
+
+
+class _ViewportEyedropperFilter(QObject):
+    """Captura um clique no viewport 3D para selecionar o material sob o cursor."""
+
+    def __init__(self, dialog: "MaterialEditorDialog", viewport: Any) -> None:
+        super().__init__(dialog)
+        self._dialog = dialog
+        self._viewport = viewport
+
+    def eventFilter(self, obj: QObject, event: QEvent) -> bool:
+        etype = event.type()
+        if etype == QEvent.MouseButtonPress:
+            btn = event.button()
+            if btn == Qt.LeftButton:
+                pos = event.position().toPoint()
+                self._dialog._finish_eyedropper(pos.x(), pos.y())
+                return True
+            if btn == Qt.RightButton:
+                self._dialog._cancel_eyedropper()
+                return True
+        elif etype == QEvent.KeyPress and event.key() == Qt.Key_Escape:
+            self._dialog._cancel_eyedropper()
+            return True
+        return False
+
 
 class MaterialEditorDialog(QDialog):
-    """Diálogo visual para editar e atribuir shaders PBR aos materiais da cena."""
+    """Diálogo visual para editar e atribuir shaders PBR aos materiais da cena ou de um componente."""
 
     materials_updated = Signal(dict)
 
-    def __init__(self, scene, current_overrides: dict | None = None, viewport=None, parent=None):
+    def __init__(
+        self,
+        scene=None,
+        current_overrides: dict | None = None,
+        viewport=None,
+        parent=None,
+        group=None,
+    ):
         super().__init__(parent)
         self.scene = scene
         self.viewport = viewport
+        self._group = group
+        self._eyedropper_filter: _ViewportEyedropperFilter | None = None
         self._overrides = dict(current_overrides or {})
-        self.setWindowTitle("🎨 TrazoMob — Configuração de Materiais & Shaders PBR (Blender)")
+        if group is not None:
+            gname = getattr(group, "name", "") or "Objeto"
+            self.setWindowTitle(f"🎨 TrazoMob — Materiais & Shaders PBR ({gname})")
+        else:
+            self.setWindowTitle("🎨 TrazoMob — Configuração de Materiais & Shaders PBR (Blender)")
         self.setMinimumSize(780, 520)
 
         from PySide6.QtCore import QSettings
@@ -208,7 +299,12 @@ class MaterialEditorDialog(QDialog):
         except Exception:
             self._global_defaults = {}
 
-        self._scene_materials = extract_scene_materials(scene)
+        if group is not None:
+            self._scene_materials = extract_group_materials(group)
+        elif scene is not None:
+            self._scene_materials = extract_scene_materials(scene)
+        else:
+            self._scene_materials = []
         self._current_mat: str | None = None
         self._highlight_active = True
 
@@ -231,11 +327,75 @@ class MaterialEditorDialog(QDialog):
                 self.viewport._ext_overlays.remove(self._draw_material_highlight)
             self.viewport.update()
 
+    def _cleanup_eyedropper(self):
+        if self._eyedropper_filter is not None and self.viewport is not None:
+            try:
+                self.viewport.removeEventFilter(self._eyedropper_filter)
+            except Exception:
+                pass
+            if hasattr(self.viewport, "unsetCursor"):
+                self.viewport.unsetCursor()
+        self._eyedropper_filter = None
+
+    def _start_eyedropper(self):
+        if self.viewport is None or not hasattr(self.viewport, "pick_face_any"):
+            return
+        self._cleanup_eyedropper()
+        self._eyedropper_filter = _ViewportEyedropperFilter(self, self.viewport)
+        self.viewport.installEventFilter(self._eyedropper_filter)
+        if hasattr(self.viewport, "setCursor"):
+            self.viewport.setCursor(Qt.CrossCursor)
+        self.hide()
+
+    def _cancel_eyedropper(self):
+        self._cleanup_eyedropper()
+        self.show()
+        self.raise_()
+        self.activateWindow()
+
+    def _finish_eyedropper(self, px: int, py: int):
+        from pathlib import Path
+        from core.group import effective_material
+        from core.materials import effective_attrs
+
+        self._cleanup_eyedropper()
+        hit_face, hit_grp = None, None
+        try:
+            hit_face, hit_grp = self.viewport.pick_face_any(px, py)
+        except Exception:
+            pass
+
+        self.show()
+        self.raise_()
+        self.activateWindow()
+
+        if hit_face is None:
+            return
+        paint = effective_material(hit_grp) if hit_grp is not None else None
+        f_attrs = getattr(hit_face, "attrs", None) or {}
+        eff = effective_attrs(f_attrs, paint) if paint else f_attrs
+        mat_name = eff.get("mat")
+        tex = eff.get("texture")
+        col = eff.get("color")
+        tex_path = tex.get("path") if (isinstance(tex, dict) and tex.get("path")) else None
+        if mat_name:
+            resolved = str(mat_name)
+        elif tex_path:
+            resolved = Path(tex_path).stem
+        elif col:
+            r, g, b = [int(max(0.0, min(1.0, c)) * 255) for c in col[:3]]
+            resolved = f"Cor #{r:02X}{g:02X}{b:02X}"
+        else:
+            resolved = "Padrão (Sem Acabamento)"
+        self.select_material_by_name(resolved)
+
     def closeEvent(self, event):
+        self._cleanup_eyedropper()
         self._cleanup_viewport_overlay()
         super().closeEvent(event)
 
     def reject(self):
+        self._cleanup_eyedropper()
         self._cleanup_viewport_overlay()
         super().reject()
 
@@ -342,7 +502,9 @@ class MaterialEditorDialog(QDialog):
         l_left.setContentsMargins(0, 0, 0, 0)
         l_left.setSpacing(6)
 
-        lbl_mats = QLabel("<b>Materiais no Projeto:</b>")
+        lbl_mats = QLabel(
+            "<b>Materiais do Objeto:</b>" if self._group is not None else "<b>Materiais no Projeto:</b>"
+        )
         l_left.addWidget(lbl_mats)
 
         # Botão Conta-gotas 3D direto na lista
@@ -730,13 +892,27 @@ class MaterialEditorDialog(QDialog):
             QMessageBox.warning(self, "Erro", f"Não foi possível salvar padrão global: {exc}")
 
     def _save_and_close(self):
+        self._cleanup_eyedropper()
+        if self._group is not None:
+            if getattr(self._group, "ext", None) is None or not isinstance(self._group.ext, dict):
+                self._group.ext = {}
+            if self._overrides:
+                self._group.ext["trazomob_render_materials"] = dict(self._overrides)
+            else:
+                self._group.ext.pop("trazomob_render_materials", None)
+
         # Salva também no plugin_data da cena atual para persistir dentro do .igz
         if self.scene is not None:
             if not hasattr(self.scene, "plugin_data") or not isinstance(self.scene.plugin_data, dict):
                 self.scene.plugin_data = {}
             if "trazomob" not in self.scene.plugin_data or not isinstance(self.scene.plugin_data["trazomob"], dict):
                 self.scene.plugin_data["trazomob"] = {}
-            self.scene.plugin_data["trazomob"]["material_overrides"] = dict(self._overrides)
+            if self._group is not None:
+                merged = dict(self.scene.plugin_data["trazomob"].get("material_overrides") or {})
+                merged.update(self._overrides)
+                self.scene.plugin_data["trazomob"]["material_overrides"] = merged
+            else:
+                self.scene.plugin_data["trazomob"]["material_overrides"] = dict(self._overrides)
             if hasattr(self.scene, "version"):
                 self.scene.version += 1
 

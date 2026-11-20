@@ -253,7 +253,6 @@ def test_scene_light_collection_and_native_write_job_expansion(tmp_path, monkeyp
     import json
     from core import render_blender as rb
     from core.camera import OrbitCamera
-    from trazomob.integrations.hooks import _patch_render_blender_lights
 
     scene = Scene()
     led = {
@@ -272,7 +271,6 @@ def test_scene_light_collection_and_native_write_job_expansion(tmp_path, monkeyp
     assert len(lights) == 1
     assert lights[0]["kind"] == "led_strip"
 
-    _patch_render_blender_lights()
     monkeypatch.setattr("formats.gltf.save_glb", lambda *a, **kw: tmp_path / "model.glb")
     job_path = rb.write_job(scene, OrbitCamera(), tmp_path, lights=[dict(led)])
     job = json.loads(Path(job_path).read_text(encoding="utf-8"))

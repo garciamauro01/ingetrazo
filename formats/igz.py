@@ -1689,6 +1689,11 @@ def load_into(scene, path: Path, progress=None) -> None:
     gc.disable()
     try:
         _load_into_inner(scene, path, progress)
+        # First-party: os vínculos do TrazoMob são reconstruídos aqui, sem
+        # gancho. A leitura não depende do motor — um documento salvo com
+        # vínculos precisa abrir mesmo com o TrazoMob desligado.
+        from trazomob.integrations import library_links
+        library_links.rebuild_scene_links(scene)
     finally:
         if _gc_was_enabled:
             gc.enable()

@@ -1,22 +1,18 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""Camada anticorrupção entre o TrazoMob e o IngeTrazo.
+"""Camada de acesso do TrazoMob às APIs do IngeTrazo.
 
-O TrazoMob é um plugin e o IngeTrazo é a plataforma: o motor de geometria,
-o histórico, o viewport, o formato ``.igz`` e o catálogo de componentes são
-do host. Este módulo é o **único** lugar onde o plugin toca aquilo que o
-host ainda não expõe como API pública.
+O TrazoMob é first-party: o host chama as funções de
+:mod:`integrations.host_calls` diretamente nos pontos de edição. Aqui ficam
+apenas as consultas e ações que o TrazoMob ainda precisa fazer *sobre* o host
+(janela ativa, estilos, diálogos, docks).
 
 Regras (verificadas por ``tests/test_platform_contract.py``):
 
 1. Nenhum outro módulo do TrazoMob acessa atributos privados do host
-   (``main_window._*``, ``viewport._*``) nem instala monkeypatches por conta
-   própria. Se precisa, chama este módulo.
+   (``main_window._*``, ``viewport._*``) por conta própria: chama este módulo.
 2. Toda capacidade é detectada antes de usada e degrada com elegância: um
-   host mais novo (ou mais antigo) não derruba o plugin.
-3. Um monkeypatch é instalado **uma vez**, registrado e reversível. Quando
-   o host passar a oferecer o gancho oficial, basta apagar a entrada
-   correspondente daqui.
+   host que mudou não derruba o TrazoMob.
 
 Se o IngeTrazo mudar, este arquivo é o único que precisa mudar.
 """
@@ -24,12 +20,9 @@ from __future__ import annotations
 
 import importlib
 import logging
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger("trazomob.platform")
-
-#: Ganchos instalados: feature -> (owner, attribute, original).
-_HOOKS: dict[str, tuple[Any, str, Any]] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -323,61 +316,6 @@ def register_extension_dock(window: Any, dock: Any) -> bool:
     return False
 
 
-# ---------------------------------------------------------------------------
-# Monkeypatches (ganchos que o host ainda não expõe)
-# ---------------------------------------------------------------------------
-
-def install_hook(feature: str, owner: Any, attribute: str,
-                 make_wrapper: Callable[[Any], Any]) -> bool:
-    """Substitui ``owner.attribute`` por ``make_wrapper(original)``, uma vez.
-
-    ``feature`` é o nome do buraco que este gancho cobre (ex.:
-    ``"scale.parametric"``). Devolve ``False`` — sem levantar — quando o
-    host não tem o atributo ou o gancho já foi instalado. É essa garantia
-    que permite ao plugin continuar carregando num IngeTrazo mais novo.
-    """
-    if feature in _HOOKS:
-        return False
-    try:
-        original = getattr(owner, attribute)
-    except AttributeError:
-        logger.info("gancho %s ignorado: %r.%r não existe neste host",
-                    feature, owner, attribute)
-        return False
-    try:
-        setattr(owner, attribute, make_wrapper(original))
-    except Exception:
-        logger.exception("falha ao instalar o gancho %s em %r.%r",
-                         feature, owner, attribute)
-        return False
-    _HOOKS[feature] = (owner, attribute, original)
-    logger.debug("gancho instalado: %s (%r.%r)", feature, owner, attribute)
-    return True
-
-
-def hook_installed(feature: str) -> bool:
-    return feature in _HOOKS
-
-
-def installed_hooks() -> tuple[str, ...]:
-    return tuple(sorted(_HOOKS))
-
-
-def restore_hook(feature: str) -> bool:
-    """Devolve o atributo original (usado em testes)."""
-    entry = _HOOKS.pop(feature, None)
-    if entry is None:
-        return False
-    owner, attribute, original = entry
-    setattr(owner, attribute, original)
-    return True
-
-
-def restore_all_hooks() -> None:
-    for feature in list(_HOOKS):
-        restore_hook(feature)
-
-
 def import_module(name: str):
     """``importlib.import_module`` com log — para o host nunca derrubar o
     plugin por causa de um módulo que mudou de lugar."""
@@ -395,6 +333,5 @@ __all__ = [
     "legacy_style_toolbar", "activate_plugin_tool", "insert_component",
     "insert_person_2d", "open_component_library", "insert_user_component",
     "import_user_component", "open_user_library", "register_extension_dock",
-    "install_hook", "hook_installed", "installed_hooks", "restore_hook",
-    "restore_all_hooks", "import_module",
+    "import_module",
 ]

@@ -15398,6 +15398,10 @@ class Viewport(QOpenGLWidget):
         is cached per scene version instead: it is recomputed on any
         change, and ``placement_points`` makes that one matrix multiply
         per placement."""
+        from trazomob.integrations import host_calls
+        custom = host_calls.prateleiras_obb(group)
+        if custom is not None:
+            return custom
         kids = getattr(group, "children", None)
         if kids:
             cache = getattr(self, "_container_obb", None)

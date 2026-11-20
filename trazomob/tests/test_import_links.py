@@ -7,8 +7,8 @@ pela biblioteca, então não era marcada — e era justamente ela que enchia o
 ``.igz``. Aqui o grupo importado é processado uma vez para um ``.igz`` no
 cache (binário) e o documento guarda só ``{path, cache, rev}`` + ``xform``.
 """
+import ast
 import json
-import types
 from pathlib import Path
 
 import pytest
@@ -69,7 +69,6 @@ def _imported_group(n: int = 20, name: str = "Sofa importado") -> Group:
 
 
 def test_imported_group_saves_as_link_and_roundtrips(library_root, tmp_path):
-    library_links.install()
     group = _imported_group()
     source = tmp_path / "sofa.dae"
     source.write_bytes(b"<collada/>")
@@ -102,33 +101,19 @@ def test_imported_group_saves_as_link_and_roundtrips(library_root, tmp_path):
     assert rebuilt.xform.column(3).y() == pytest.approx(2.0)
 
 
-def test_import_hook_tags_what_the_import_added(library_root, tmp_path):
-    scene = Scene()
-
-    class FakeWindow:
-        def __init__(self, viewport_scene):
-            self.viewport = types.SimpleNamespace(scene=viewport_scene)
-
-        def _import_dae_path(self, path):
-            self.viewport.scene.groups.append(
-                Group(_grid_mesh(10), name="Cortina"))
-            return True
-
-    window = FakeWindow(scene)
-    library_links._install_import_hooks(FakeWindow)
-
+def test_mark_imported_groups_tags_what_the_import_added(library_root, tmp_path):
+    added = [Group(_grid_mesh(10), name="Cortina")]
     source = tmp_path / "cortina.dae"
     source.write_bytes(b"<collada/>")
-    assert window._import_dae_path(source)
 
-    assert len(scene.groups) == 1
-    assert library_links.is_linked(scene.groups[0])
+    library_links.mark_imported_groups(added, source)
+
+    assert library_links.is_linked(added[0])
     assert Path(library_links.link_of(
-        scene.groups[0])["entry"]["cache"]).is_file()
+        added[0])["entry"]["cache"]).is_file()
 
 
 def test_missing_cache_is_rebuilt_from_the_source(library_root, tmp_path):
-    library_links.install()
     source = tmp_path / "tapete.igz"
     src_scene = Scene()
     src_scene.groups.append(Group(_grid_mesh(12), name="Tapete"))
@@ -152,7 +137,6 @@ def test_missing_cache_is_rebuilt_from_the_source(library_root, tmp_path):
 
 
 def test_missing_cache_and_source_leaves_a_stub(library_root, tmp_path):
-    library_links.install()
     source = tmp_path / "sumiu.dae"
     source.write_bytes(b"<collada/>")
 
@@ -206,29 +190,45 @@ def test_empty_import_does_not_become_a_link(library_root, tmp_path):
     assert not list(library_links.cache_root().rglob("*.igz"))
 
 
-def test_install_without_marking_still_reads_links(library_root):
-    """Motor desligado: ler vínculos continua, marcar novos não."""
-    from trazomob.integrations import platform as host
+def _called_names(node: ast.AST) -> set[str]:
+    names: set[str] = set()
+    for child in ast.walk(node):
+        if not isinstance(child, ast.Call):
+            continue
+        func = child.func
+        if isinstance(func, ast.Attribute):
+            names.add(func.attr)
+        elif isinstance(func, ast.Name):
+            names.add(func.id)
+    return names
 
-    class FakeWindow:
-        def _build_user_component(self, entry):
-            return None
 
-        def _build_library_component(self, entry):
-            return None
+def test_direct_file_importers_keep_groups_self_contained():
+    """Importação direta (SKP/DAE/GLB/OBJ) deve permanecer autocontida;
+    somente componentes inseridos pela biblioteca geram vínculo automático."""
+    main_win_path = (
+        Path(__file__).resolve().parents[2] / "views" / "main_window.py"
+    )
+    tree = ast.parse(main_win_path.read_text(encoding="utf-8"))
+    main_win = next(
+        n for n in tree.body
+        if isinstance(n, ast.ClassDef) and n.name == "MainWindow"
+    )
+    methods = {
+        n.name: n for n in main_win.body
+        if isinstance(n, ast.FunctionDef)
+    }
 
-    for feature in ("igz.load_into.links",
-                    "main_window._build_user_component.links",
-                    "main_window._build_library_component.links"):
-        host.restore_hook(feature)
-    previous = library_links._HOST[0]
-    try:
-        library_links.install(window=FakeWindow(), marking=False)
-        assert host.hook_installed("igz.load_into.links")
-        assert not host.hook_installed(
-            "main_window._build_user_component.links")
-        assert not host.hook_installed(
-            "main_window._build_library_component.links")
-    finally:
-        library_links._HOST[0] = previous
-        host.restore_hook("igz.load_into.links")
+    for name in (
+        "_import_glb_path",
+        "_import_dae_path",
+        "import_skp_path",
+        "_on_import_obj",
+    ):
+        calls = _called_names(methods[name])
+        assert "mark_imported_groups" not in calls, name
+        assert "link_imported_group" not in calls, name
+
+    for name in ("_build_user_component", "_build_library_component"):
+        calls = _called_names(methods[name])
+        assert "mark_built_component" in calls, name

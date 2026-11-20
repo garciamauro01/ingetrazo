@@ -124,6 +124,9 @@ class CabinetInteract:
 
                 return "door_canto_l_y"
 
+        if "fixa" in n:
+            return None
+
         if "porta" in n or "folha" in n:
 
             if "correr" in n or "slide" in n:
@@ -1156,9 +1159,6 @@ class CabinetInteractTool(Tool):
 
 
     def on_activate(self, viewport) -> None:
-        from ..domain.engine_state import is_engine_enabled
-        if not is_engine_enabled():
-            return
         if hasattr(viewport, "setCursor"):
 
             viewport.setCursor(Qt.PointingHandCursor)

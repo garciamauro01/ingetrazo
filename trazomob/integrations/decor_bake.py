@@ -30,18 +30,12 @@ from pathlib import Path
 from PySide6.QtGui import QMatrix4x4
 
 from . import library_links
-from . import platform as host
 
 logger = logging.getLogger("trazomob.decor_bake")
 
 #: Formatos que realmente precisam de conversão. ``.igz`` já é nativo e não
 #: entra aqui: o carregador do host já lê esse formato direto.
 BAKE_SUFFIXES = frozenset({".skp", ".dae", ".obj", ".glb", ".gltf"})
-
-#: Nomes dos ganchos registrados em ``platform`` (para testes restaurarem).
-HOOK_NAME = "decor.bake.user_library.register"
-HOOK_LOAD_NAME = "decor.bake.component_loader.load_group"
-HOOK_COMPONENT_NAME = "decor.bake.component_loader.load_component"
 
 #: Matriz 3×3 identidade, no mesmo formato que o host passa a ``load_group``.
 _IDENTITY = (1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)
@@ -364,18 +358,6 @@ def bake_stats() -> dict:
     }
 
 
-def _make_register_wrapper(original):
-    def register(*args, **kwargs):
-        entry = original(*args, **kwargs)
-        if isinstance(entry, dict):
-            try:
-                ensure_for_entry(entry)
-            except Exception:  # noqa: BLE001 - registrar nunca pode falhar
-                logger.exception("pré-assado falhou ao registrar decoração")
-        return entry
-    return register
-
-
 def _prebaked_group(entry: dict, *, anchor: str = "base"):
     """Lê o protótipo pronto; ``None`` quando não há cache utilizável."""
     src = source_of(entry)
@@ -441,49 +423,9 @@ def load_group_fast(path, *, matrix=None, name: str | None = None):
     return group
 
 
-def _make_load_component_wrapper(original):
-    """Compatibilidade: delega na chamada first-party."""
-    def load_component(entry, *args, **kwargs):
-        loaded = load_component_fast(
-            entry, anchor=kwargs.get("anchor", "base") or "base",
-            thumbnail_size=kwargs.get("thumbnail_size"))
-        return loaded if loaded is not None else original(entry, *args, **kwargs)
-    return load_component
-
-
-def _make_load_group_wrapper(original):
-    """Compatibilidade: delega na chamada first-party."""
-    def load_group(path, *args, **kwargs):
-        group = load_group_fast(
-            path, matrix=kwargs.get("matrix"), name=kwargs.get("name"))
-        return group if group is not None else original(path, *args, **kwargs)
-    return load_group
-
-
-def install() -> bool:
-    """Instala o assado no cadastro e a leitura rápida na inserção.
-
-    ``register`` paga o custo ao cadastrar; ``load_component`` aproveita o
-    cache em cada inserção; ``load_group`` cobre chamadores diretos. Num host
-    sem esses símbolos, nada é instalado e o fluxo original continua intacto.
-    """
-    try:
-        from core import user_library
-        from views import component_loader
-    except Exception:  # noqa: BLE001 - fora do host
-        return False
-    host.install_hook(HOOK_NAME, user_library, "register",
-                      _make_register_wrapper)
-    host.install_hook(HOOK_COMPONENT_NAME, component_loader, "load_component",
-                      _make_load_component_wrapper)
-    host.install_hook(HOOK_LOAD_NAME, component_loader, "load_group",
-                      _make_load_group_wrapper)
-    return True
-
-
 __all__ = [
-    "BAKE_SUFFIXES", "HOOK_COMPONENT_NAME", "HOOK_LOAD_NAME", "HOOK_NAME",
-    "bake_root", "bake_source", "bake_stats", "cache_key", "config_for_entry",
-    "ensure_for_entry", "face_count", "install", "is_bakeable", "load_baked",
-    "load_for_entry", "matrix_for_entry", "source_of", "vertex_count",
+    "BAKE_SUFFIXES", "bake_root", "bake_source", "bake_stats", "cache_key",
+    "config_for_entry", "ensure_for_entry", "face_count", "is_bakeable",
+    "load_baked", "load_component_fast", "load_for_entry", "load_group_fast",
+    "matrix_for_entry", "source_of", "vertex_count",
 ]
