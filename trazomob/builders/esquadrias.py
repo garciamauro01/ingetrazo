@@ -26,6 +26,11 @@ from typing import Tuple, List
 from PySide6.QtGui import QVector3D, QMatrix4x4
 from core.group import Group
 from core.mesh import Mesh
+from ..assets.catalog import (
+    get_esquadria_files,
+    get_novas_portas_cinematica,
+    get_novas_portas_folhas,
+)
 from ..builders.mesh_utils import create_board_group
 
 # Nota de arquitetura: esquadrias (portas/janelas, batentes, alisares, perfis de
@@ -825,150 +830,16 @@ class EsquadriaBuilder:
     # Id de esquadria -> (arquivo .igz, subpasta em assets/components).
     # Portas e janelas ficam em pastas separadas. Os nomes dos arquivos são
     # mantidos porque os carregadores identificam o modelo por igz_path.name.
-    _ESQUADRIA_FILES: dict[str, tuple[str, str]] = {
-        "porta_giro_90": ("porta_giro.igz", "portas"),
-        "porta_giro_80": ("porta_giro.igz", "portas"),
-        "porta_giro_70": ("porta_giro.igz", "portas"),
-        "porta_giro": ("porta_giro.igz", "portas"),
-        "porta_aluminio_90": ("porta_aluminio.igz", "portas"),
-        "porta_aluminio": ("porta_aluminio.igz", "portas"),
-        "porta_correr_vidro_4f_287": ("porta_correr_vidro_4f_287.igz", "portas"),
-        "porta_correr_vidro_4f": ("porta_correr_vidro_4f_287.igz", "portas"),
-        "porta_correr_vidro_170": ("porta_correr_vidro_170.igz", "portas"),
-        "porta_correr_vidro": ("porta_correr_vidro_170.igz", "portas"),
-        "porta_pivotante_vidro_80": ("porta_pivotante_vidro.igz", "portas"),
-        "porta_pivotante_vidro": ("porta_pivotante_vidro.igz", "portas"),
-        "porta_madeira_ff": ("porta_madeira_ff.igz", "portas"),
-        "porta_madeira_pj": ("porta_madeira_pj.igz", "portas"),
-        "janela_correr_pj": ("janela_correr_pj.igz", "janelas"),
-        "janela_correr_2f_130": ("janela_correr_2f_130.igz", "janelas"),
-        "janela_correr_4f_190": ("janela_correr_4f_190.igz", "janelas"),
-        "janela_vertical_50": ("janela_vertical_50.igz", "janelas"),
-        "janela_maximar_70": ("janela_maximar_70.igz", "janelas"),
-        "janela_basculante_sup_170": ("janela_vertical_50.igz", "janelas"),
-        "janela_basculante_inf_170": ("janela_vertical_50.igz", "janelas"),
-        # ── 20 PORTAS DOS SKP REPOSTOS (construtor, nao biblioteca) ──
-        "porta_vidro_externa_ce": ("porta_vidro_externa_ce.igz", "portas"),
-        "porta_externa_ce": ("porta_externa_ce.igz", "portas"),
-        "porta_comp1_ce": ("porta_comp1_ce.igz", "portas"),
-        "porta_comp2_ce": ("porta_comp2_ce.igz", "portas"),
-        "porta_dupla_francesa": ("porta_dupla_francesa.igz", "portas"),
-        "porta_exterior_conj": ("porta_exterior_conj.igz", "portas"),
-        "porta_frent": ("porta_frent.igz", "portas"),
-        "porta_d1": ("porta_d1.igz", "portas"),
-        "porta_d2": ("porta_d2.igz", "portas"),
-        "porta_aluminio_simples": ("porta_aluminio_simples.igz", "portas"),
-        "porta_amadeirada_ext2": ("porta_amadeirada_ext2.igz", "portas"),
-        "porta_ferro": ("porta_ferro.igz", "portas"),
-        "porta_pivotante_ok1": ("porta_pivotante_ok1.igz", "portas"),
-        "porta_pivotante_ok2": ("porta_pivotante_ok2.igz", "portas"),
-        "porta_porshoy1": ("porta_porshoy1.igz", "portas"),
-        "porta_porshoy2": ("porta_porshoy2.igz", "portas"),
-        "porta_simples": ("porta_simples.igz", "portas"),
-        "porta_22": ("porta_22.igz", "portas"),
-        "porta_3": ("porta_3.igz", "portas"),
-        "porta_ferro_dupla": ("porta_ferro_dupla.igz", "portas"),
-    }
+    # Fonte única: trazomob/assets/catalog/esquadrias.json
+    _ESQUADRIA_FILES: dict[str, tuple[str, str]] = get_esquadria_files()
 
-    # Indices das pecas que fazem o papel de folha em cada porta nova.
-    # A classificacao completa (papel cinematico de cada peca) vive em
-    # _NOVAS_PORTAS_CINEMATICA; este mapa e mantido por compatibilidade com
-    # consumidores externos e com a verificacao de selecao de folha.
-    _NOVAS_PORTAS_FOLHAS: dict[str, tuple[int, ...]] = {
-        "porta_vidro_externa_ce.igz": (0,),
-        "porta_externa_ce.igz": (0,),
-        "porta_comp1_ce.igz": (0,),
-        "porta_comp2_ce.igz": (0,),
-        "porta_dupla_francesa.igz": (0,),
-        "porta_exterior_conj.igz": (1,),
-        "porta_frent.igz": (0,),
-        "porta_d1.igz": (3,),
-        "porta_d2.igz": (2,),
-        "porta_aluminio_simples.igz": (0,),
-        "porta_amadeirada_ext2.igz": (11,),
-        "porta_ferro.igz": (0,),
-        "porta_pivotante_ok1.igz": (0,),
-        "porta_pivotante_ok2.igz": (0,),
-        "porta_porshoy1.igz": (1,),
-        "porta_porshoy2.igz": (1,),
-        "porta_simples.igz": (0,),
-        "porta_22.igz": (5,),
-        "porta_3.igz": (4,),
-        "porta_ferro_dupla.igz": (5, 7),
-    }
+    # Índices das peças-folha (mesmo manifesto do catálogo).
+    _NOVAS_PORTAS_FOLHAS: dict[str, tuple[int, ...]] = get_novas_portas_folhas()
 
-    # Papel cinematico explicito de cada peca das portas novas:
-    #   "folha" -> gira (uma entrada por folha, na ordem de _NOVAS_PORTAS_FOLHAS);
-    #   "movel" -> gira junto com a folha indicada em ``dono`` (ferragem/puxador);
-    #   "fixo"  -> permanece estatico (marco, batente, guarnicao).
-    # O dicionario de cada modelo mapeia o indice da peca no prototipo achatado
-    # para (papel, indice_da_folha).  Indices nao listados sao tratados como
-    # "fixo" para evitar girar marco por omissao.
-    _NOVAS_PORTAS_CINEMATICA: dict[str, dict[int, tuple[str, int]]] = {
-        # Malha unica: folha e ferragens estao embutidas no mesmo grupo.
-        "porta_dupla_francesa.igz": {},
-        "porta_aluminio_simples.igz": {},
-        "porta_frent.igz": {},
-        "porta_simples.igz": {},
-        # Folha agregada (contem marco + ferragens na mesma malha): nada a vincular.
-        "porta_vidro_externa_ce.igz": {},
-        "porta_externa_ce.igz": {},
-        "porta_comp1_ce.igz": {},
-        "porta_comp2_ce.igz": {},
-        "porta_exterior_conj.igz": {},
-        # Ferragens separadas: so estas acompanham a folha; marco fica fixo.
-        "porta_amadeirada_ext2.igz": {
-            0: ("movel", 0), 1: ("movel", 0),          # maçanetas/barras verticais
-            2: ("movel", 0), 3: ("movel", 0),          # travessas superiores
-            4: ("movel", 0), 5: ("movel", 0),          # guarnições laterais
-            7: ("movel", 0), 8: ("movel", 0),          # detalhes horizontais
-            9: ("movel", 0), 10: ("movel", 0),         # fechaduras
-            6: ("fixo", 0),                            # painel central/decorativo
-        },
-        "porta_ferro.igz": {
-            1: ("movel", 0), 2: ("movel", 0),
-            3: ("movel", 0), 4: ("movel", 0),
-        },
-        "porta_pivotante_ok1.igz": {
-            **{i: ("movel", 0) for i in (1, 2, 3, 4, 5, 6, 7, 8,
-                                         9, 10, 11, 12, 13, 14, 15, 16,
-                                         17, 18)},
-            19: ("fixo", 0), 20: ("fixo", 0), 21: ("fixo", 0),
-        },
-        "porta_pivotante_ok2.igz": {
-            **{i: ("movel", 0) for i in (1, 2, 3, 4, 5, 6, 7, 8,
-                                         9, 10, 11, 12, 13, 14, 15, 16,
-                                         17, 18)},
-            19: ("fixo", 0), 20: ("fixo", 0), 21: ("fixo", 0),
-        },
-        "porta_porshoy1.igz": {
-            2: ("movel", 0),
-            0: ("fixo", 0),
-        },
-        "porta_porshoy2.igz": {
-            2: ("movel", 0),
-            0: ("fixo", 0),
-        },
-        "porta_d1.igz": {
-            0: ("fixo", 0), 1: ("movel", 0), 2: ("movel", 0),
-        },
-        "porta_d2.igz": {
-            0: ("fixo", 0), 1: ("movel", 0),
-        },
-        "porta_22.igz": {
-            0: ("fixo", 0), 1: ("movel", 0), 2: ("fixo", 0),
-            3: ("fixo", 0), 4: ("fixo", 0), 6: ("fixo", 0),
-        },
-        "porta_3.igz": {
-            **{i: ("movel", 0) for i in (0, 1, 2, 3)},
-        },
-        # Dupla: particiona as ferragens entre as duas folhas e isola o marco.
-        "porta_ferro_dupla.igz": {
-            0: ("movel", 0), 1: ("movel", 0), 2: ("movel", 1), 3: ("movel", 1),
-            4: ("fixo", 0),
-            6: ("movel", 0), 8: ("movel", 1),
-        },
-    }
+    # Papel cinematográfico de cada peça (mesmo manifesto do catálogo).
+    _NOVAS_PORTAS_CINEMATICA: dict[str, dict[int, tuple[str, int]]] = (
+        get_novas_portas_cinematica()
+    )
 
     @classmethod
     def _esquadria_igz_path(cls, base_dir, item_id: str):
