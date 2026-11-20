@@ -18,6 +18,15 @@ from PySide6.QtWidgets import (
 from core.group import Group
 
 
+def peitoril_do_catalogo(item: dict) -> float:
+    """Peitoril em mm de um item do catálogo de esquadrias.
+
+    O catálogo grava ``peitoril_mm``; ``peitoril`` é aceito apenas para
+    módulos antigos de usuário que ainda usam a chave legada.
+    """
+    return float(item.get("peitoril_mm", item.get("peitoril", 0)))
+
+
 class SidebarEsquadriaMixin:
     """Encapsula o menu de catálogo, inserção em parede e ajustes finos de portas/janelas."""
 
@@ -45,7 +54,7 @@ class SidebarEsquadriaMixin:
             nome = item.get("nome", item_id)
             larg = float(item.get("largura", 800))
             alt = float(item.get("altura", 2100))
-            peit = float(item.get("peitoril", 0))
+            peit = peitoril_do_catalogo(item)
 
             if item_id.startswith("porta_"):
                 act = menu_portas.addAction(f"🚪 {nome}")

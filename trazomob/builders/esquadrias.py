@@ -870,8 +870,10 @@ class EsquadriaBuilder:
         "porta_ferro_dupla": ("porta_ferro_dupla.igz", "portas"),
     }
 
-    # Indices das pecas que fazem o papel de folha em cada porta nova. As
-    # demais acompanham o giro via linked_pieces (ferragens, vidros, marcos).
+    # Indices das pecas que fazem o papel de folha em cada porta nova.
+    # A classificacao completa (papel cinematico de cada peca) vive em
+    # _NOVAS_PORTAS_CINEMATICA; este mapa e mantido por compatibilidade com
+    # consumidores externos e com a verificacao de selecao de folha.
     _NOVAS_PORTAS_FOLHAS: dict[str, tuple[int, ...]] = {
         "porta_vidro_externa_ce.igz": (0,),
         "porta_externa_ce.igz": (0,),
@@ -893,6 +895,79 @@ class EsquadriaBuilder:
         "porta_22.igz": (5,),
         "porta_3.igz": (4,),
         "porta_ferro_dupla.igz": (5, 7),
+    }
+
+    # Papel cinematico explicito de cada peca das portas novas:
+    #   "folha" -> gira (uma entrada por folha, na ordem de _NOVAS_PORTAS_FOLHAS);
+    #   "movel" -> gira junto com a folha indicada em ``dono`` (ferragem/puxador);
+    #   "fixo"  -> permanece estatico (marco, batente, guarnicao).
+    # O dicionario de cada modelo mapeia o indice da peca no prototipo achatado
+    # para (papel, indice_da_folha).  Indices nao listados sao tratados como
+    # "fixo" para evitar girar marco por omissao.
+    _NOVAS_PORTAS_CINEMATICA: dict[str, dict[int, tuple[str, int]]] = {
+        # Malha unica: folha e ferragens estao embutidas no mesmo grupo.
+        "porta_dupla_francesa.igz": {},
+        "porta_aluminio_simples.igz": {},
+        "porta_frent.igz": {},
+        "porta_simples.igz": {},
+        # Folha agregada (contem marco + ferragens na mesma malha): nada a vincular.
+        "porta_vidro_externa_ce.igz": {},
+        "porta_externa_ce.igz": {},
+        "porta_comp1_ce.igz": {},
+        "porta_comp2_ce.igz": {},
+        "porta_exterior_conj.igz": {},
+        # Ferragens separadas: so estas acompanham a folha; marco fica fixo.
+        "porta_amadeirada_ext2.igz": {
+            0: ("movel", 0), 1: ("movel", 0),          # maçanetas/barras verticais
+            2: ("movel", 0), 3: ("movel", 0),          # travessas superiores
+            4: ("movel", 0), 5: ("movel", 0),          # guarnições laterais
+            7: ("movel", 0), 8: ("movel", 0),          # detalhes horizontais
+            9: ("movel", 0), 10: ("movel", 0),         # fechaduras
+            6: ("fixo", 0),                            # painel central/decorativo
+        },
+        "porta_ferro.igz": {
+            1: ("movel", 0), 2: ("movel", 0),
+            3: ("movel", 0), 4: ("movel", 0),
+        },
+        "porta_pivotante_ok1.igz": {
+            **{i: ("movel", 0) for i in (1, 2, 3, 4, 5, 6, 7, 8,
+                                         9, 10, 11, 12, 13, 14, 15, 16,
+                                         17, 18)},
+            19: ("fixo", 0), 20: ("fixo", 0), 21: ("fixo", 0),
+        },
+        "porta_pivotante_ok2.igz": {
+            **{i: ("movel", 0) for i in (1, 2, 3, 4, 5, 6, 7, 8,
+                                         9, 10, 11, 12, 13, 14, 15, 16,
+                                         17, 18)},
+            19: ("fixo", 0), 20: ("fixo", 0), 21: ("fixo", 0),
+        },
+        "porta_porshoy1.igz": {
+            2: ("movel", 0),
+            0: ("fixo", 0),
+        },
+        "porta_porshoy2.igz": {
+            2: ("movel", 0),
+            0: ("fixo", 0),
+        },
+        "porta_d1.igz": {
+            0: ("fixo", 0), 1: ("movel", 0), 2: ("movel", 0),
+        },
+        "porta_d2.igz": {
+            0: ("fixo", 0), 1: ("movel", 0),
+        },
+        "porta_22.igz": {
+            0: ("fixo", 0), 1: ("movel", 0), 2: ("fixo", 0),
+            3: ("fixo", 0), 4: ("fixo", 0), 6: ("fixo", 0),
+        },
+        "porta_3.igz": {
+            **{i: ("movel", 0) for i in (0, 1, 2, 3)},
+        },
+        # Dupla: particiona as ferragens entre as duas folhas e isola o marco.
+        "porta_ferro_dupla.igz": {
+            0: ("movel", 0), 1: ("movel", 0), 2: ("movel", 1), 3: ("movel", 1),
+            4: ("fixo", 0),
+            6: ("movel", 0), 8: ("movel", 1),
+        },
     }
 
     @classmethod
@@ -1573,7 +1648,10 @@ class EsquadriaBuilder:
                 cloned_mesh = transformed_mesh(cloned_mesh, m_transform)
             if odd_reflection and cloned_mesh.faces:
                 for face in cloned_mesh.faces:
-                    face.vertices.reverse()
+                    # ``Face.vertices`` is a read-only property returning a fresh
+                    # list; reversing it is a no-op.  Reverse the live loop (and
+                    # the live hole loops) so normals survive a mirrored axis.
+                    face.loop.reverse()
                     if getattr(face, "hole_loops", None):
                         for hloop in face.hole_loops:
                             hloop.reverse()
@@ -1655,27 +1733,49 @@ class EsquadriaBuilder:
             # Portas dos SKP repostos: a malha original e preservada; apenas
             # os papeis cinematicos (folha, ferragens, marco) sao atribuidos.
             indices_folha = cls._NOVAS_PORTAS_FOLHAS[igz_path.name]
+            cinematica = cls._NOVAS_PORTAS_CINEMATICA.get(igz_path.name, {})
             pivotante = "pivotante_ok" in igz_path.name
-            folhas = [sub_pieces[i] for i in indices_folha if i < len(sub_pieces)]
+            for i in indices_folha:
+                if not (0 <= i < len(sub_pieces)):
+                    raise ValueError(
+                        f"{igz_path.name}: indice de folha {i} invalido; "
+                        f"prototipo tem {len(sub_pieces)} pecas"
+                    )
+            folhas = [sub_pieces[i] for i in indices_folha]
             folhas_set = set(id(f) for f in folhas)
             for n, folha in enumerate(folhas):
                 folha.name = ("Folha da Porta" if len(folhas) == 1 else
                               f"Folha {'Esquerda' if n == 0 else 'Direita'}")
-            for sp in sub_pieces:
-                if id(sp) not in folhas_set:
-                    sp.name = f"Peca {sp.name}"
-            linked = [sp.name for sp in sub_pieces if id(sp) not in folhas_set]
+
+            # Renomeia as pecas nao-folha com nomes estaveis e unicos (o
+            # casamento de linked_pieces em interact.py e por substring).
+            contadores: dict[str, int] = {}
+            linked_por_folha: list[list[str]] = [[] for _ in folhas]
+            for i, sp in enumerate(sub_pieces):
+                if id(sp) in folhas_set:
+                    continue
+                papel, dono = cinematica.get(i, ("fixo", 0))
+                prefixo = "Ferragem" if papel == "movel" else "Marco"
+                contadores[prefixo] = contadores.get(prefixo, 0) + 1
+                sp.name = f"{prefixo} {contadores[prefixo]} {sp.name}"
+                if papel == "movel" and 0 <= dono < len(linked_por_folha):
+                    linked_por_folha[dono].append(sp.name)
+
             for n, folha in enumerate(folhas):
                 if getattr(folha, "ext", None) is None:
                     folha.ext = {}
-                folha.ext["linked_pieces"] = list(linked)
+                folha.ext["linked_pieces"] = list(linked_por_folha[n])
                 min_u_f, max_u_f, min_n_f, max_n_f = _local_extents(folha.mesh)
                 if pivotante:
                     hinge_u = (max_u_f - 0.075) if flip_x else (min_u_f + 0.075)
                     angle = -90.0 * sx * sy
                 elif len(folhas) == 2:
-                    hinge_u = min_u_f if n == 0 else max_u_f
-                    angle = 90.0 * sx * sy * (-1 if n == 0 else 1)
+                    # Espelhamento em X inverte a orientacao visual das folhas;
+                    # troca o lado da dobradica para manter a folha rotulada
+                    # "Esquerda" fisicamente a esquerda.
+                    primeira = 1 if flip_x else 0
+                    hinge_u = min_u_f if n == primeira else max_u_f
+                    angle = 90.0 * sx * sy * (-1 if n == primeira else 1)
                 else:
                     hinge_u = min_u_f if flip_x else max_u_f
                     angle = 95.0 * sx * sy

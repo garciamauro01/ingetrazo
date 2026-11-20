@@ -272,7 +272,14 @@ def build_default_module_params(mod_data: dict[str, Any]) -> dict[str, Any]:
 
     prefs = TrazoMobPreferencesManager.get_instance()
 
-    tipo = str(mod_data.get("id") or mod_data.get("tipo") or "balcao")
+    # Para modulos de usuario derivados de esquadria, o id gerado ("user_porta_*")
+    # nao tem o prefixo exigido pelo builder.  O id de origem e preservado em
+    # ``base_id``/``origem_id`` por build_user_module e deve ser o tipo efetivo.
+    _origem = str(mod_data.get("base_id") or mod_data.get("origem_id") or "")
+    tipo = (_origem
+            if (_origem.startswith(("porta_", "janela_"))
+                or mod_data.get("kind") == "esquadria")
+            else str(mod_data.get("id") or mod_data.get("tipo") or "balcao"))
     cat = get_module_category(tipo, default_z=float(mod_data.get("default_z", 0.0)))
 
     # Esquadrias e peças avulsas preservam sempre suas medidas originais do catálogo

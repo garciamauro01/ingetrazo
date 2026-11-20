@@ -213,44 +213,61 @@ def test_trazomob_has_no_runtime_hooks():
 # ---------------------------------------------------------------------------
 # Catraca da dívida: a API privada do host não pode crescer.
 # ---------------------------------------------------------------------------
-# Contagem congelada em 2026-11-02 (repartida em 2026-11-11 quando o setup saiu
-# de __init__.py). Cada número é dívida conhecida: o alvo é chegar a zero e mover
-# o acesso para platform.py. Se este teste falhar, o código novo tocou um
-# ``_privado`` do host fora da camada anticorrupção.
+# Contagem congelada em 2026-11-20, quando a catraca passou a percorrer as
+# subpastas (antes usava ``root.glob("*.py")`` e via só 3 de 157 arquivos).
+# Cada número é dívida conhecida: o alvo é chegar a zero e mover o acesso para
+# platform.py. Se este teste falhar, o código novo tocou um ``_privado`` do host
+# fora da camada anticorrupção.
 PRIVATE_ATTR_BASELINE = {
     "bootstrap.py": 1,
-    "builder.py": 4,
+    "builders/cabinet_transform.py": 4,
     "context_menu.py": 1,
-    "interact.py": 16,
-    "magnetic_drag.py": 11,
-    "material_editor_dialog.py": 5,
-    "module_operations.py": 1,
-    "sidebar.py": 1,
-    "wall_selection.py": 6,
+    "interaction/align_tool_interactive.py": 4,
+    "interaction/drag_drop_handler.py": 1,
+    "interaction/free_zoom.py": 3,
+    "interaction/interact.py": 16,
+    "interaction/magnetic_drag.py": 4,
+    "interaction/magnetic_drag_input.py": 6,
+    "interaction/material_picker_tool.py": 4,
+    "ui/material_editor_dialog.py": 5,
+    "wall/selection.py": 6,
 }
 
 PRIVATE_IMPORT_BASELINE = {
-    "builder.py": 3,
-    "interact.py": 1,
-    "magnetic_drag.py": 2,
-    "wall_selection.py": 3,
+    "builders/cabinet_transform.py": 3,
+    "interaction/align_tools.py": 1,
+    "interaction/interact.py": 1,
+    "interaction/magnetic_drag_input.py": 2,
+    "render/lighting.py": 1,
+    "ui/sidebar_apply_controller.py": 1,
+    "wall/mesh_builder.py": 1,
+    "wall/selection.py": 3,
 }
 
 _ATTR_RE = re.compile(r"\b(main_window|window|app|viewport)\s*\._[A-Za-z]")
 _IMPORT_RE = re.compile(
     r"from\s+(?:core|tools|views|formats)\.[A-Za-z_.]+\s+import\s+[^\n]*\b_[A-Za-z]")
 _EXEMPT = {"platform.py", "host_calls.py"}
+# Pastas que nao fazem parte do codigo de producao do Trazomob.
+_SKIP_DIRS = {"tests", "scripts", "blender_scripts"}
+
+
+def _source_files():
+    root = Path(__file__).resolve().parents[1]
+    for path in sorted(root.rglob("*.py")):
+        if _SKIP_DIRS.intersection(path.relative_to(root).parts):
+            continue
+        if path.name in _EXEMPT:
+            continue
+        yield root, path
 
 
 def _counts(pattern):
-    root = Path(__file__).resolve().parents[1]
     result = {}
-    for path in root.glob("*.py"):
-        if path.name in _EXEMPT:
-            continue
+    for root, path in _source_files():
         count = len(pattern.findall(path.read_text(encoding="utf-8")))
         if count:
-            result[path.name] = count
+            result[path.relative_to(root).as_posix()] = count
     return result
 
 
@@ -269,6 +286,20 @@ def test_private_host_api_debt_does_not_grow(pattern, baseline, label):
         f"{label} aumentou: "
         + ", ".join(f"{n} {old}->{new}" for n, (old, new) in grew.items())
         + ". Passe o acesso por trazomob/integrations/platform.py."
+    )
+
+
+@pytest.mark.parametrize("baseline,label", [
+    (PRIVATE_ATTR_BASELINE, "acesso a atributo privado do host"),
+    (PRIVATE_IMPORT_BASELINE, "import de símbolo privado do host"),
+])
+def test_private_host_api_baseline_has_no_stale_paths(baseline, label):
+    """Garante que a catraca continue enxergando todo arquivo referenciado."""
+    sources = {path.relative_to(root).as_posix() for root, path in _source_files()}
+    orphans = sorted(set(baseline) - sources)
+    assert not orphans, (
+        f"{label}: chaves de baseline sem arquivo correspondente: {orphans}. "
+        "O baseline deve usar caminhos relativos a trazomob/."
     )
 
 

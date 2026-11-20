@@ -1025,6 +1025,15 @@ def build_user_module(
     novo = dict(base)
     nome_base = str(novo.get("nome") or novo.get("id") or "módulo")
 
+    # Esquadrias salvas como "Meus Módulos" precisam continuar apontando para o
+    # modelo .igz de origem: o id gerado (``user_porta_*``) nao tem o prefixo
+    # exigido pelo CabinetBuilder e nao existe no _ESQUADRIA_FILES.
+    id_origem = str(base.get("id") or "")
+    if id_origem.startswith(("porta_", "janela_")):
+        novo["base_id"] = id_origem
+        novo["origem_id"] = id_origem
+        novo["kind"] = "esquadria"
+
     for chave in ("largura", "altura", "profundidade", "rodape"):
         if chave in params:
             try:
