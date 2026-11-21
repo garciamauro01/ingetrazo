@@ -93,7 +93,8 @@ IngeTrazo quando o diretório do plugin está no caminho de importação do Pyth
 | Módulo | Responsabilidade |
 | --- | --- |
 | `catalog.py` | `MODULE_CATALOG` (catálogo estático) e catálogo pessoal do usuário. |
-| `module_geometry.py` | Geometria dos módulos, alinhamento espacial e parâmetros padrão. |
+| `module_geometry.py` | Geometria dos módulos, alinhamento espacial e parâmetros padrão; reexporta os utilitários compartilhados. |
+| `module_utils.py` | Contratos usados por builders, interação, UI e host: `is_esquadria`, `resolve_igz_path` e `shift_module_geometry`. |
 | `param_mapper.py` | Coleta parâmetros da UI (`extract_ui_module_params`) e repopula o formulário (`populate_ui_from_module`). |
 | `schema.py` | Fonte única de verdade dos metadados em `group.ext["trazomob"]`. |
 | `entity.py` | Leitura/escrita padronizada desses metadados. |
@@ -138,9 +139,63 @@ Complementos:
 - `chapa_builder.py` / `chapa_spec.py`: chapa canônica e herança de material e
   fitamento;
 - `hardware_geometry.py`: representação 3D esquemática das ferragens;
-- `mesh_utils.py`, `mirror.py`, `parts.py`, `tamponamento_linha.py` e
-  `esquadrias.py`: utilidades de malha, espelhamento, peças, tamponamento e
-  portas/janelas.
+- `mesh_utils.py`, `mirror.py`, `parts.py` e `tamponamento_linha.py`:
+  utilidades de malha, espelhamento, peças e tamponamento;
+- `esquadrias.py`: fachada pública `EsquadriaBuilder`, com a implementação
+  dividida em `esquadrias_parametric.py` (portas/janelas geradas por
+  parâmetros), `esquadrias_native.py` (modelos `.igz` reais e cinemática) e
+  `esquadrias_common.py` (paleta, cache e reexports). Nenhum chamador precisa
+  mudar: os nomes públicos e as assinaturas permanecem idênticos.
+
+## Esquadrias: manifesto único e modelos reais
+
+Portas e janelas **não** são módulos de marcenaria: seus modelos vêm de `.igz`
+reais, com malha e texturas preservadas. As regras abaixo são contrato:
+
+- `assets/catalog/esquadrias.json` é a fonte única de verdade. O loader
+  `assets/catalog/__init__.py` valida o manifesto na importação (schema, ids
+  duplicados, subpastas, papéis de cinemática e índices de folha) e fornece
+  catálogo, resolução de arquivo, folhas e cinemática. Nenhuma tabela é
+  repetida em código.
+- Os arquivos ficam em `assets/components/portas/` e
+  `assets/components/janelas/`. A subpasta é decidida pelo prefixo do id e é
+  definitiva: **não existe** busca em outras pastas, geometria procedural de
+  fallback nem leitura manual alternativa.
+- `domain/module_utils.resolve_igz_path` devolve sempre o caminho canônico.
+  Se o arquivo não existir, `load_esquadria_igz` levanta `FileNotFoundError`
+  com `Modelo .igz de esquadria não encontrado para '<id>': <caminho>`.
+- `is_esquadria` (grupo **ou** id) e `shift_module_geometry` também vivem em
+  `domain/module_utils`. `domain/module_geometry.py` e
+  `interaction/magnetic_drag_snap.py` reexportam os mesmos objetos; o hook
+  `integrations/host_calls.scale_factor_override` usa a função compartilhada.
+- `integrations/host_calls.before_move_commit` é deliberadamente um no-op
+  documentado: o `MoveTool` do host é o único dono do modo cópia (`on_key`,
+  `on_key_release`/`ctrl_tapped` e `_reset`).
+
+### Miniaturas
+
+A galeria usa `assets/thumbs/esquadrias/<id>.png`; quando não há arquivo, cai
+para a miniatura vetorial genérica em `ui/thumbnails.py`. A auditoria é
+somente leitura:
+
+```bash
+python -m trazomob.scripts.audit_esquadria_thumbs
+```
+
+Os PNGs dos modelos que antes não tinham imagem própria foram gerados a partir
+da geometria real de cada `.igz`, com o mesmo projetor vetorial da bandeja de
+componentes, pelo comando abaixo. Ele **nunca sobrescreve** um PNG existente
+(só regera com `--force`):
+
+```bash
+python -m trazomob.scripts.generate_esquadria_thumbs
+```
+
+Estado atual: 34 modelos no catálogo, **34 com miniatura própria**, nenhum com
+ícone genérico e 5 PNGs legados com sufixo de largura (`porta_giro_80.png`,
+`porta_aluminio_90.png`, ...) que não correspondem a nenhum id e portanto não
+são usados. Nenhum PNG existente é alterado ou removido sem aprovação
+explícita.
 
 ## UI e a sidebar
 
