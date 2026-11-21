@@ -37,7 +37,7 @@ def test_insert_user_component_arms_the_placement_tool(tmp_path, monkeypatch):
 
     entry = user_library.register(
         model, nombre="Geladeira", tipo="Geladeira", marca="Brastemp",
-        managed=True, cm=[70, 65, 180],
+        cm=[70, 65, 180],
         matrix=component_loader.matrix_for("m"))
 
     from views.main_window import MainWindow

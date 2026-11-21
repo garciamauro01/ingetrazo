@@ -172,7 +172,7 @@ def get_module_category(tipo: str, default_z: float = 0.0) -> str:
         return "janela"
     if t.startswith("cama_") or t in ("bicama", "beliche"):
         return "cama"
-    if "bancada" in t or "ilha" in t:
+    if ("bancada" in t or "ilha" in t) and not t.startswith("balcao"):
         return "bancada"
     if any(k in t for k in ("aereo", "nicho")):
         return "aereo"
@@ -392,7 +392,7 @@ def build_default_module_params(mod_data: dict[str, Any]) -> dict[str, Any]:
         params["num_portas"] = int(mod_data.get("num_portas", 2))
 
     # Balcão com portas: divisórias estruturais automáticas a partir de 3 portas
-    if tipo == "balcao" and params.get("num_portas", 2) >= 3:
+    if tipo in ("balcao", "balcao_duplo", "balcao_ilha") and params.get("num_portas", 2) >= 3:
         params["num_divisoes"] = auto_divisoes_for_doors(int(params["num_portas"]))
 
     if mod_data.get("has_prateleiras"):
@@ -404,7 +404,7 @@ def build_default_module_params(mod_data: dict[str, Any]) -> dict[str, Any]:
 
     # Travessas de cozinhas inferiores
     ids_coz_inf = {
-        "balcao", "gaveteiro", "balcao_misto", "balcao_pia",
+        "balcao", "balcao_duplo", "balcao_ilha", "gaveteiro", "balcao_misto", "balcao_pia",
         "balcao_canto", "balcao_canto_l", "porta_tempero", "balcao_forno",
     }
     if tipo in ids_coz_inf:

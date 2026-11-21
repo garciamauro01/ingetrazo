@@ -52,7 +52,7 @@ def _source_igz(path: Path) -> Path:
 
 def _registered_entry(tmp_path: Path) -> dict:
     source = _source_igz(tmp_path / "tapete.igz")
-    return user_library.register(source, managed=False, nombre="Tapete 2x2")
+    return user_library.register(source, nombre="Tapete 2x2")
 
 
 def _place(entry: dict, at=(2.0, 1.0, 0.0)) -> Group:
@@ -133,7 +133,9 @@ def test_missing_source_leaves_an_empty_stub(library_root, tmp_path):
     out = tmp_path / "cena.igz"
     igz.save_scene(scene, out)
 
-    Path(entry["origen"]).unlink()          # a biblioteca perdeu o arquivo
+    copy = user_library.resolve(entry)     # a cópia que a biblioteca possui
+    assert copy is not None
+    copy.unlink()                           # a biblioteca perdeu o arquivo
 
     back = Scene()
     igz.load_into(back, out)                # não pode explodir

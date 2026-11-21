@@ -186,7 +186,7 @@ class SidebarModuleLoaderMixin:
                     self.sp_qtd_elem.setRange(0, 8)
                     self.sp_qtd_elem.setValue(n_p)
                     self.sp_qtd_elem.setEnabled(False)
-                elif tipo in ("balcao", "aereo"):
+                elif tipo in ("balcao", "balcao_duplo", "balcao_ilha", "aereo"):
                     # Balcão e Aéreo com portas: 1 a 4 portas de 400 mm e divisória automática a partir da 3ª
                     self.lbl_qtd_elem.setText(tr("Portas:"))
                     self.sp_qtd_elem.setRange(MIN_DOORS, MAX_DOORS)
@@ -226,8 +226,8 @@ class SidebarModuleLoaderMixin:
 
             # Divisórias verticais: só devem existir para balcão ou módulos que suportam divisória explícita
             # Para canto reto, canto L, nichos, camas, peças avulsas, gaveteiros, etc. NÃO há divisória vertical.
-            supports_divisoes = (tipo in ("balcao", "nicho"))
-            self._auto_divisoes = (tipo == "balcao")
+            supports_divisoes = (tipo in ("balcao", "balcao_duplo", "balcao_ilha", "nicho"))
+            self._auto_divisoes = (tipo in ("balcao", "balcao_duplo", "balcao_ilha"))
             self.lbl_divisoes.setVisible(supports_divisoes and not self._auto_divisoes)
             self.sp_divisoes.setVisible(supports_divisoes and not self._auto_divisoes)
             if self._auto_divisoes:
@@ -348,7 +348,7 @@ class SidebarModuleLoaderMixin:
 
             # Travessas Superiores — visíveis só para módulos de cozinha inferiores
             _IDS_COZINHA_INFERIORES = {
-                "balcao", "gaveteiro", "balcao_misto", "balcao_pia",
+                "balcao", "balcao_duplo", "balcao_ilha", "gaveteiro", "balcao_misto", "balcao_pia",
                 "balcao_canto", "balcao_canto_l", "porta_tempero", "balcao_forno"
             }
             has_travessa = tipo in _IDS_COZINHA_INFERIORES

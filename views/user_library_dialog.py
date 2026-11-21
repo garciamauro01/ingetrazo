@@ -3,9 +3,10 @@
 """The user's own component library, browsable and editable.
 
 A file the user downloaded — from 3D Warehouse, a manufacturer, anywhere —
-is indexed here, not published. The dialog is the manager: import one file
-with its ficha (type, brand, model, licence…), index a whole folder, edit
-what was recorded, remove it, and insert a copy into the drawing.
+is copied here and indexed, not published. The dialog is the manager: import
+one file with its ficha (type, brand, model, licence…), copy a whole folder
+into the library, edit what was recorded, remove it, and insert it into the
+drawing.
 
 Previews are generated from the geometry by :mod:`views.component_thumbs`,
 one at a time and only for rows on screen. A folder of five hundred models
@@ -19,7 +20,6 @@ from PySide6.QtCore import QSize, Qt, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
-    QCheckBox,
     QComboBox,
     QDialog,
     QDialogButtonBox,
@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QListWidget,
     QListWidgetItem,
+    QMenu,
     QMessageBox,
     QPushButton,
     QVBoxLayout,
@@ -40,6 +41,7 @@ from core.i18n import tr
 from views import component_loader, library_grid
 from views.filedialogs import file_dialogs
 from views.length_field import LengthSpinBox
+from views.user_library_transfer import export_library, import_library
 
 ICON = 96
 
@@ -156,14 +158,6 @@ class ComponentDialog(QDialog):
         form.addRow(tr("Vertical axis:"), self._vertical)
         self._vertical.currentIndexChanged.connect(self._source_changed)
 
-        self._managed = QCheckBox(
-            tr("Copy the file into the library (managed)"))
-        self._managed.setChecked(True)
-        self._managed.setToolTip(tr(
-            "On: the model and its textures are copied here and survive "
-            "moving the original. Off: only the path is indexed."))
-        form.addRow("", self._managed)
-
         side = QVBoxLayout()
         body.addLayout(side)
         self._preview = QLabel()
@@ -217,9 +211,6 @@ class ComponentDialog(QDialog):
         self._unit.setCurrentIndex(index if index >= 0 else 0)
         self._vertical.setCurrentIndex(
             1 if entry.get("y_up") else 0)
-        managed = entry.get("modo") != "referencia"
-        self._managed.setChecked(managed)
-        self._managed.setEnabled(False)
         # Unit and vertical stay editable: a model imported with the wrong
         # answer must be fixable without removing and re-importing it.
         cm = entry.get("cm") or ()
@@ -395,7 +386,7 @@ class ComponentDialog(QDialog):
         else:
             try:
                 entry = user_library.register(
-                    self._source, managed=self._managed.isChecked(),
+                    self._source,
                     matrix=self._matrix(), cm=cm,
                     unidad=self._unit.currentData() or "m",
                     y_up=bool(self._vertical.currentData()), **common)
@@ -458,7 +449,7 @@ class UserLibraryDialog(QDialog):
         self._status = QLabel("")
         row.addWidget(self._status, 1)
         for label, slot in (
-                (tr("Import…"), self.import_file),
+                (tr("Import file…"), self.import_file),
                 (tr("Add folder…"), self.add_folder),
                 (tr("Edit…"), self.edit_selected),
                 (tr("Remove"), self.remove_selected),
@@ -466,6 +457,16 @@ class UserLibraryDialog(QDialog):
             button = QPushButton(label)
             button.clicked.connect(slot)
             row.addWidget(button)
+
+        transfer = QPushButton(tr("Transfer…"))
+        transfer_menu = QMenu(transfer)
+        transfer_menu.addAction(tr("Export library…"),
+                                lambda: export_library(self, after=self._reload))
+        transfer_menu.addAction(tr("Import library…"),
+                                lambda: import_library(self, after=self._reload))
+        transfer.setMenu(transfer_menu)
+        row.addWidget(transfer)
+
         self._insert_btn = QPushButton(tr("Insert"))
         self._insert_btn.setDefault(True)
         self._insert_btn.clicked.connect(self._insert)
@@ -676,8 +677,7 @@ class UserLibraryDialog(QDialog):
         QApplication.setOverrideCursor(Qt.WaitCursor)
         try:
             added = user_library.add_folder(
-                folder, recursive=answer == QMessageBox.Yes,
-                managed=False)
+                folder, recursive=answer == QMessageBox.Yes)
         finally:
             QApplication.restoreOverrideCursor()
         self._reload()
@@ -702,14 +702,9 @@ class UserLibraryDialog(QDialog):
             return
         message = tr("Remove “{name}” from the library?",
                      name=entry.get("nombre", ""))
-        if entry.get("modo") != "referencia":
-            message += "\n\n" + tr(
-                "The managed copy inside the library will be deleted. "
-                "The original file is not touched.")
-        else:
-            message += "\n\n" + tr(
-                "The original file is not touched; only the index entry "
-                "is removed.")
+        message += "\n\n" + tr(
+            "The managed copy inside the library will be deleted. "
+            "The original file is not touched.")
         if QMessageBox.question(self, tr("Remove component"), message,
                                 QMessageBox.Yes | QMessageBox.No,
                                 QMessageBox.No) != QMessageBox.Yes:

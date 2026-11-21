@@ -23,8 +23,8 @@ def test_manifest_tem_contagens_esperadas():
     assert len(dados["modelos"]) == 34
     assert len(dados["aliases"]) == 7
     assert len(manifest_mod.get_esquadria_files()) == 41
-    assert len(manifest_mod.get_novas_portas_folhas()) == 20
-    assert len(manifest_mod.get_novas_portas_cinematica()) == 20
+    assert len(manifest_mod.get_novas_portas_folhas()) == 19
+    assert len(manifest_mod.get_novas_portas_cinematica()) == 19
 
 
 def test_catalogo_e_builder_usam_o_manifest():
@@ -84,8 +84,7 @@ def test_valores_de_regressao_das_folhas_foram_preservados():
     assert folhas["porta_d2.igz"] == (2,)
     assert folhas["porta_ferro_dupla.igz"] == (5, 7)
     assert folhas["porta_amadeirada_ext2.igz"] == (11,)
-    assert folhas["porta_22.igz"] == (5,)
-    assert folhas["porta_3.igz"] == (4,)
+    assert folhas["porta_22.igz"] == (2,)
 
 
 def test_aliases_continuam_apontando_aos_mesmos_arquivos():

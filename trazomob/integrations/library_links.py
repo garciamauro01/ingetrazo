@@ -108,8 +108,8 @@ def _snapshot(entry: dict) -> dict:
     """Cópia JSON-safe dos campos que a reconstrução precisa.
 
     Guardar a ficha inteira faria o ``.igz`` depender do manifesto atual;
-    estas chaves bastam para reler o arquivo mesmo que ele saia da
-    biblioteca (modo ``referencia``).
+    estas chaves bastam para reler o arquivo que a biblioteca copiou, mesmo
+    que os metadados da ficha mudem depois.
     """
     keys = ("id", "nombre", "modo", "archivo", "origen", "cm", "matrix",
             "escala", "y_up", "unidad", "obj", "categoria", "tipo", "marca",

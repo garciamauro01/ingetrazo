@@ -18,17 +18,23 @@ from __future__ import annotations
 import json
 import logging
 import math
-import os
 from pathlib import Path
 from typing import Any, Optional
 
 from PySide6.QtCore import QPoint, QSize, Qt, QTimer, Signal, QMimeData
-from PySide6.QtGui import QDrag, QIcon, QKeySequence, QMouseEvent, QVector3D
+from PySide6.QtGui import (QDrag, QIcon, QKeySequence, QMouseEvent, QPixmap,
+                           QVector3D)
 from PySide6.QtWidgets import (
+    QApplication,
     QButtonGroup,
     QFrame,
     QHBoxLayout,
     QLabel,
+    QListView,
+    QMenu,
+    QListWidget,
+    QListWidgetItem,
+    QMessageBox,
     QPushButton,
     QScrollArea,
     QSizePolicy,
@@ -41,7 +47,6 @@ from PySide6.QtWidgets import (
 
 from core.group import Group, iter_placements
 from core.history import SnapshotImport
-from core.paths import app_root
 from ..integrations import platform as host
 from ..builders.cabinet import CabinetBuilder
 from ..domain.catalog import MODULE_CATALOG, USER_MODULE_CATEGORY, modulos_usuario
@@ -51,6 +56,9 @@ from ..ui.icons import get_module_thumbnail
 
 logger = logging.getLogger("trazomob.module_ribbon")
 
+#: Tamanho das miniaturas da aba da biblioteca do usuário (uma única linha).
+LIBRARY_ICON = 52
+LIBRARY_CELL = QSize(LIBRARY_ICON + 28, LIBRARY_ICON + 38)
 
 
 # Re-exporta utilitários geométricos canônicos movidos para module_geometry.py
@@ -252,119 +260,6 @@ class ModuleButton(QToolButton):
 
 
 
-class DecorationButton(QToolButton):
-
-    """Botão visual moderno para itens de decoração e componentes da biblioteca do IngeTrazo."""
-
-    def __init__(self, item_data: dict[str, Any], on_clicked, parent=None):
-        super().__init__(parent)
-        self.item_data = item_data
-        self.on_clicked = on_clicked
-
-        self.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
-        self.setIconSize(QSize(52, 52))
-        self.setFixedSize(100, 84)
-
-        nome = item_data.get("name") or item_data.get("nombre", "")
-        if len(nome) > 18:
-            parts = nome.split(" (")[0]
-            display_name = parts if len(parts) <= 18 else (parts[:16] + "…")
-        else:
-            display_name = nome
-
-        self.setText(display_name)
-        tip = item_data.get("tip") or nome
-        self.setToolTip(f"<b>{nome}</b><br>{tip}<br><i>Duplo clique ou arraste para inserir na cena</i>")
-        self.setStatusTip(f"Duplo clique ou arraste para inserir {nome}")
-        self.setCursor(Qt.PointingHandCursor)
-        self.setStyleSheet(
-            "QToolButton {"
-            "  border: 1px solid palette(midlight);"
-            "  border-radius: 6px;"
-            "  background-color: palette(base);"
-            "  color: palette(text);"
-            "  font-size: 11px;"
-            "  font-weight: 500;"
-            "  padding: 4px;"
-            "}"
-            "QToolButton:hover {"
-            "  border: 1.5px solid palette(highlight);"
-            "  background-color: palette(alternate-base);"
-            "}"
-            "QToolButton:focus {"
-            "  border: 2px solid palette(highlight);"
-            "  background-color: palette(alternate-base);"
-            "}"
-            "QToolButton:pressed {"
-            "  background-color: palette(highlight);"
-            "  color: palette(highlighted-text);"
-            "}"
-        )
-
-        icon_path = item_data.get("icon_path")
-        if icon_path and os.path.exists(str(icon_path)):
-            self.setIcon(QIcon(str(icon_path)))
-        elif "library_id" in item_data:
-            from core import library
-            ident = item_data["library_id"]
-            p = library.cached_thumbnail(ident)
-            if p and os.path.exists(str(p)):
-                self.setIcon(QIcon(str(p)))
-            else:
-                # Carregamento sob demanda
-                library.prefetch_thumbnails([ident])
-                QTimer.singleShot(600, self._check_thumb)
-
-    def mousePressEvent(self, event: QMouseEvent) -> None:
-        if event.button() == Qt.LeftButton:
-            self._drag_start_pos = event.position().toPoint()
-        super().mousePressEvent(event)
-
-    def mouseMoveEvent(self, event: QMouseEvent) -> None:
-        if event.buttons() & Qt.LeftButton and hasattr(self, "_drag_start_pos") and self._drag_start_pos is not None:
-            dist = (event.position().toPoint() - self._drag_start_pos).manhattanLength()
-            from PySide6.QtWidgets import QApplication
-            if dist >= QApplication.startDragDistance():
-                self._start_drag()
-                return
-        super().mouseMoveEvent(event)
-
-    def _start_drag(self) -> None:
-        self._drag_start_pos = None
-        from ..interaction.drag_drop_handler import TRAZOMOB_MIME_DECORATION
-        mime = QMimeData()
-        # Copia dados serializáveis
-        clean_data = {}
-        for k, v in self.item_data.items():
-            if isinstance(v, (str, int, float, bool, list, dict)) or v is None:
-                clean_data[k] = v
-        mime.setData(TRAZOMOB_MIME_DECORATION, json.dumps(clean_data).encode("utf-8"))
-
-        drag = QDrag(self)
-        drag.setMimeData(mime)
-        pixmap = self.icon().pixmap(52, 52)
-        if not pixmap.isNull():
-            drag.setPixmap(pixmap)
-            drag.setHotSpot(QPoint(pixmap.width() // 2, pixmap.height() // 2))
-        drag.exec(Qt.CopyAction)
-
-    def mouseDoubleClickEvent(self, event) -> None:
-        if event.button() == Qt.LeftButton:
-            self.on_clicked(self.item_data)
-            event.accept()
-            return
-        super().mouseDoubleClickEvent(event)
-
-    def _check_thumb(self):
-        ident = self.item_data.get("library_id")
-        if not ident:
-            return
-        from core import library
-        p = library.cached_thumbnail(ident)
-        if p and os.path.exists(str(p)):
-            self.setIcon(QIcon(str(p)))
-
-
 class TrazoMobModuleRibbonBar(QToolBar):
 
     """Barra de ferramentas superior em abas que organiza os móveis por categoria/ambiente.
@@ -495,9 +390,9 @@ class TrazoMobModuleRibbonBar(QToolBar):
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
-        # Somebody may have imported a component while this bar was hidden;
-        # the brand buttons are cheap to redraw and the manifest says when.
-        self.refresh_user_components()
+        # Alguém pode ter importado um componente enquanto a barra estava
+        # oculta; a revisão do manifesto diz quando redesenhar a biblioteca.
+        self.refresh_user_library()
 
     def _create_module_scroll_area(self, items: list[dict[str, Any]]) -> QScrollArea:
         """Cria uma área horizontal com scroll de botões de módulos."""
@@ -517,54 +412,6 @@ class TrazoMobModuleRibbonBar(QToolBar):
         for mod_data in items:
             btn = ModuleButton(mod_data, on_clicked=self.insert_module_into_scene, ribbon=self, parent=content)
             h_layout.addWidget(btn)
-
-        scroll.setWidget(content)
-        return scroll
-
-    def _create_decoration_scroll_area(self, items: list[dict[str, Any]]) -> QScrollArea:
-        """Cria uma área horizontal com scroll de botões de decoração/componentes."""
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFixedHeight(94)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll.setFrameShape(QFrame.NoFrame)
-
-        content = QWidget()
-        h_layout = QHBoxLayout(content)
-        h_layout.setContentsMargins(4, 2, 4, 2)
-        h_layout.setSpacing(6)
-        h_layout.setAlignment(Qt.AlignLeft)
-
-        for item_data in items:
-            btn = DecorationButton(item_data, on_clicked=self.insert_decoration_into_scene, parent=content)
-            h_layout.addWidget(btn)
-
-        # Botão para abrir o diálogo completo da biblioteca
-        btn_more = QToolButton(content)
-        btn_more.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
-        btn_more.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_FileDialogContentsView))
-        btn_more.setIconSize(QSize(40, 40))
-        btn_more.setFixedSize(100, 84)
-        btn_more.setText(tr("Biblioteca…"))
-        btn_more.setToolTip(tr("Abrir diálogo completo da Biblioteca de Componentes com busca"))
-        btn_more.setCursor(Qt.PointingHandCursor)
-        btn_more.setStyleSheet(
-            "QToolButton {"
-            "  border: 1px dashed palette(highlight);"
-            "  border-radius: 6px;"
-            "  background-color: palette(base);"
-            "  color: palette(highlight);"
-            "  font-size: 11px;"
-            "  font-weight: bold;"
-            "  padding: 4px;"
-            "}"
-            "QToolButton:hover {"
-            "  background-color: palette(alternate-base);"
-            "}"
-        )
-        btn_more.clicked.connect(lambda: host.open_component_library(self.main_window))
-        h_layout.addWidget(btn_more)
 
         scroll.setWidget(content)
         return scroll
@@ -690,244 +537,385 @@ class TrazoMobModuleRibbonBar(QToolBar):
                 self._decor_populated = True
                 self._populate_decoration_tab()
             else:
-                self.refresh_user_components()
+                self.refresh_user_library()
 
     def _populate_decoration_tab(self) -> None:
-        """Popula a aba de Decoração sob demanda quando o usuário clica nela pela primeira vez."""
-        decor_categories: dict[str, list[dict[str, Any]]] = {
-            "Geral & Starters": [],
-            "Pessoas (Escala)": [],
-            "Sala & Estar": [],
-            "Cozinha & Eletros": [],
-            "Banheiro": [],
-            "Quarto": [],
-            "Iluminação": [],
-            "Plantas & Exterior": [],
-            "Decoração & Vários": [],
-        }
-
-        # 1. Carrega os componentes nativos locais do IngeTrazo
-        res_comp = app_root() / "resources" / "components"
-        manifest_path = res_comp / "components.json"
-        if manifest_path.exists():
-            try:
-                for entry in json.loads(manifest_path.read_text(encoding="utf-8")):
-                    key = entry.get("key", "")
-                    icon_file = res_comp / "thumbs" / f"{key}.png"
-                    decor_categories["Geral & Starters"].append({
-                        "tipo": "native_3d",
-                        "key": key,
-                        "name": tr(entry.get("name", key.capitalize())),
-                        "tip": tr(entry.get("tip", "")),
-                        "icon_path": str(icon_file) if icon_file.exists() else None,
-                    })
-            except Exception as exc:
-                logger.debug("falha ao ler o manifesto de modelos nativos: %s", exc)
-
-        people_path = res_comp / "people.json"
-        if people_path.exists():
-            try:
-                for entry in json.loads(people_path.read_text(encoding="utf-8")):
-                    key = entry.get("key", "")
-                    icon_file = res_comp / f"{key}.png"
-                    decor_categories["Pessoas (Escala)"].append({
-                        "tipo": "native_person",
-                        "key": key,
-                        "height": float(entry.get("height", 1.75)),
-                        "name": tr(entry.get("name", key.capitalize())),
-                        "tip": tr(entry.get("tip", "")),
-                        "icon_path": str(icon_file) if icon_file.exists() else None,
-                    })
-            except Exception as exc:
-                logger.debug("falha ao ler people.json: %s", exc)
-
-        # 2. Carrega destaques de cada categoria do catálogo (máx 24 por aba rápida; o botão Biblioteca abre todos os 1500+)
-        MAX_RIBBON_ITEMS_PER_SUBTAB = 24
-        try:
-            from core import library
-            lib_entries = library.index()
-            cat_target_map = {
-                "Salón": "Sala & Estar",
-                "Cocina": "Cozinha & Eletros",
-                "Cuarto de Baño": "Banheiro",
-                "Dormitorio": "Quarto",
-                "Iluminación": "Iluminação",
-                "Exterior": "Plantas & Exterior",
-                "Personajes": "Pessoas (Escala)",
-                "Varios": "Decoração & Vários",
-                "Oficina": "Decoração & Vários",
-            }
-            for e in lib_entries:
-                c_orig = e.get("categoria", "")
-                sub_target = cat_target_map.get(c_orig)
-                if not sub_target or len(decor_categories[sub_target]) >= MAX_RIBBON_ITEMS_PER_SUBTAB:
-                    continue
-                name = e.get("nombre_en") or e.get("nombre") or e.get("id", "")
-                decor_categories[sub_target].append({
-                    "tipo": "library_model",
-                    "library_id": e.get("id"),
-                    "name": name,
-                    "tip": f"{name} ({c_orig})",
-                    "entry": e,
-                })
-        except Exception as exc:
-            logger.debug("falha ao carregar destaques da biblioteca: %s", exc)
-
-        decor_tabs = QTabWidget()
-        decor_tabs.setTabPosition(QTabWidget.South)
-        decor_tabs.setDocumentMode(True)
-        decor_tabs.setStyleSheet(self._decor_subtab_style)
-
-        # «Meus Componentes» vem primeiro: é a coleção do próprio usuário,
-        # com as marcas que ele cadastrou (Brastemp, Electrolux…), e é onde
-        # uma geladeira baixada por ele aparece sem depender do catálogo
-        # online — que é de outra gente e não é redistribuído por este app.
-        self._decor_tabs = decor_tabs
-        self._user_tab_page = self._user_components_page()
-        self._user_tab_index = decor_tabs.addTab(
-            self._user_tab_page, "⭐ Meus Componentes")
-
-        for sub_label, items in decor_categories.items():
-            if items:
-                decor_tabs.addTab(self._create_decoration_scroll_area(items), sub_label)
-
+        """Substitui o conteúdo da aba Decoração pelo navegador da biblioteca
+        do usuário: categorias em abas, marcas em sub-abas e um grid de
+        miniaturas. Nenhum dado vem da biblioteca nativa do IngeTrazo."""
         lay = QVBoxLayout(self._decor_placeholder)
         lay.setContentsMargins(0, 0, 0, 0)
-        lay.addWidget(decor_tabs)
+        lay.setSpacing(2)
 
+        self._library_host = QWidget()
+        self._library_host_lay = QVBoxLayout(self._library_host)
+        self._library_host_lay.setContentsMargins(0, 0, 0, 0)
+        lay.addWidget(self._library_host, 1)
 
-    def _user_components_page(self) -> QWidget:
-        """The «Meus Componentes» sub-tab: one button per brand, the whole
-        library, and the manager. Rebuilt when the manifest changes, so a
-        file imported from the tray shows up here without reopening the app.
-        """
-        page = QWidget()
-        lay = QVBoxLayout(page)
-        lay.setContentsMargins(0, 0, 0, 0)
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFixedHeight(94)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll.setFrameShape(QFrame.NoFrame)
-        content = QWidget()
-        row = QHBoxLayout(content)
-        row.setContentsMargins(4, 2, 4, 2)
-        row.setSpacing(6)
-        row.setAlignment(Qt.AlignLeft)
-        scroll.setWidget(content)
-        lay.addWidget(scroll)
-        self._user_scroll = scroll
-        self._user_content = content
-        self._user_buttons = row
-        self._user_revision = None
-        self.refresh_user_components(force=True)
-        return page
+        action_row = QHBoxLayout()
+        self._library_status = QLabel("")
+        action_row.addWidget(self._library_status, 1)
+        for label, slot in (
+            (tr("Import model…"), self._import_user_component),
+            (tr("Add folder…"), self._add_user_folder),
+            (tr("Manage…"), self._open_user_library),
+        ):
+            button = QPushButton(label)
+            button.clicked.connect(slot)
+            action_row.addWidget(button)
 
-    def _user_button(self, text: str, tip: str, callback, icon=None):
-        btn = QToolButton(self._user_content)
-        btn.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
-        btn.setIcon(icon if icon is not None
-                    else self.style().standardIcon(
-                        self.style().StandardPixmap.SP_DirIcon))
-        btn.setIconSize(QSize(52, 52))
-        btn.setFixedSize(100, 84)
-        if len(text) > 18:
-            text = text[:16] + "…"
-        btn.setText(text)
-        btn.setToolTip(tip)
-        btn.setStatusTip(tip)
-        btn.setCursor(Qt.PointingHandCursor)
-        btn.setStyleSheet(
-            "QToolButton {"
-            "  border: 1px solid palette(midlight);"
-            "  border-radius: 6px;"
-            "  background-color: palette(base);"
-            "  color: palette(text);"
-            "  font-size: 11px;"
-            "  font-weight: 500;"
-            "  padding: 4px;"
-            "}"
-            "QToolButton:hover {"
-            "  border: 1.5px solid palette(highlight);"
-            "  background-color: palette(alternate-base);"
-            "}"
-        )
-        btn.clicked.connect(lambda _c=False: callback())
-        self._user_buttons.addWidget(btn)
-        return btn
+        from views.user_library_transfer import export_library, import_library
 
-    def refresh_user_components(self, force: bool = False) -> None:
-        """Rebuild the brand buttons if the user's library changed since
-        they were drawn (a new import, an edit, a removal)."""
-        if not hasattr(self, "_user_buttons"):
+        transfer = QPushButton(tr("Transfer…"))
+        transfer_menu = QMenu(transfer)
+        transfer_menu.addAction(
+            tr("Export library…"),
+            lambda: export_library(self, after=self._refresh_after_transfer))
+        transfer_menu.addAction(
+            tr("Import library…"),
+            lambda: import_library(self, after=self._refresh_after_transfer))
+        transfer.setMenu(transfer_menu)
+        action_row.addWidget(transfer)
+
+        insert = QPushButton(tr("Insert"))
+        insert.setDefault(True)
+        insert.clicked.connect(self._insert_selected_user_component)
+        action_row.addWidget(insert)
+        lay.addLayout(action_row)
+
+        self._library_lists: list[QListWidget] = []
+        self._library_pending: list[dict] = []
+        self._library_queued: set[str] = set()
+        self._library_failed: set[str] = set()
+        self._library_thumb_timer = QTimer(self)
+        self._library_thumb_timer.timeout.connect(self._fill_library_thumbs)
+        self._library_thumb_timer.start(150)
+        self._library_selected = {"categoria": "", "marca": ""}
+        self.refresh_user_library(force=True)
+
+    def refresh_user_library(self, force: bool = False) -> None:
+        """Reconstrói as abas quando o manifesto do usuário muda."""
+        if not hasattr(self, "_library_host"):
             return
+        from core import user_library
+
         try:
-            from core import user_library
             revision = user_library.revision()
-        except Exception as exc:  # noqa: BLE001 - the ribbon must not fail
+        except Exception as exc:  # a barra nunca derruba o app por isso
             logger.debug("biblioteca do usuário indisponível: %s", exc)
             return
-        if not force and revision == getattr(self, "_user_revision", None):
+        if not force and revision == getattr(self, "_library_revision", None):
             return
-        self._user_revision = revision
+        self._library_revision = revision
 
-        while self._user_buttons.count():
-            item = self._user_buttons.takeAt(0)
+        self._library_pending.clear()
+        self._library_queued.clear()
+        self._library_failed.clear()
+        self._library_lists = []
+        selected = dict(getattr(self, "_library_selected",
+                                {"categoria": "", "marca": ""}))
+
+        while self._library_host_lay.count():
+            item = self._library_host_lay.takeAt(0)
             widget = item.widget()
             if widget is not None:
                 widget.deleteLater()
 
+        entries = user_library.index()
+        self._library_entries = entries
+        self._library_selected = {"categoria": "", "marca": ""}
+        no_category = tr("Sem categoria")
+        no_brand = tr("Sem marca")
+
+        by_category: dict[str, list[dict]] = {}
+        for entry in entries:
+            category = str(entry.get("categoria") or "").strip() or no_category
+            by_category.setdefault(category, []).append(entry)
+
+        category_choices = [("", tr("Todas"))]
+        category_choices.extend(
+            (value, value) for value in sorted(by_category, key=str.casefold)
+            if value != no_category)
+        if no_category in by_category:
+            category_choices.append((no_category, no_category))
+        self._library_category_choices = category_choices
+
+        tabs = QTabWidget()
+        tabs.setDocumentMode(True)
+        self._decor_tabs = tabs
+        self._library_brand_values: dict[str, list[str]] = {}
+
+        for category, category_label in category_choices:
+            category_entries = (entries if category == ""
+                                else by_category.get(category, []))
+            by_brand: dict[str, list[dict]] = {}
+            for entry in category_entries:
+                brand = str(entry.get("marca") or "").strip() or no_brand
+                by_brand.setdefault(brand, []).append(entry)
+
+            brand_choices = [("", tr("Todas"))]
+            brand_choices.extend(
+                (value, value) for value in sorted(by_brand, key=str.casefold)
+                if value != no_brand)
+            if no_brand in by_brand:
+                brand_choices.append((no_brand, no_brand))
+
+            sub_tabs = QTabWidget()
+            sub_tabs.setTabPosition(QTabWidget.South)
+            sub_tabs.setDocumentMode(True)
+            sub_tabs.setStyleSheet(self._decor_subtab_style)
+            brand_values: list[str] = []
+            for brand, brand_label in brand_choices:
+                brand_values.append(brand)
+                brand_entries = (category_entries if brand == ""
+                                 else by_brand.get(brand, []))
+                sub_tabs.addTab(self._make_library_page(brand_entries),
+                                brand_label)
+            self._library_brand_values[category] = brand_values
+            sub_tabs.currentChanged.connect(
+                lambda _idx, _c=category: self._library_tab_selected(_c))
+            tabs.addTab(sub_tabs, category_label)
+
+        tabs.currentChanged.connect(self._library_category_selected)
+        self._library_host_lay.addWidget(tabs)
+        self._library_host.setMinimumHeight(180)
+
+        cat_values = [value for value, _label in category_choices]
         try:
-            entries = user_library.index()
-            facets = user_library.facets(entries)
-        except Exception as exc:  # noqa: BLE001
-            logger.debug("falha ao ler a biblioteca do usuário: %s", exc)
-            entries, facets = [], {}
+            cat_index = cat_values.index(selected.get("categoria", ""))
+        except ValueError:
+            cat_index = 0
+        tabs.setCurrentIndex(cat_index)
+        sub_tabs = tabs.widget(cat_index)
+        if isinstance(sub_tabs, QTabWidget):
+            brands = self._library_brand_values.get(cat_values[cat_index], [])
+            try:
+                brand_index = brands.index(selected.get("marca", ""))
+            except ValueError:
+                brand_index = 0
+            sub_tabs.setCurrentIndex(brand_index)
 
-        if entries:
-            self._user_button(
-                tr("All ({n})", n=len(entries)),
-                tr("Show every component in your library"),
-                lambda: self._open_user_library())
-            for marca in sorted((facets.get("marcas") or {}),
-                                key=str.casefold):
-                count = facets["marcas"][marca]
-                self._user_button(
-                    f"{marca} ({count})",
-                    tr("{n} components by {brand} — open your library "
-                       "filtered by it", n=count, brand=marca),
-                    lambda _m=marca: self._open_user_library(_m))
+        self._update_library_status()
+        QTimer.singleShot(0, self._fill_library_thumbs)
+
+    def _library_category_selected(self, index: int) -> None:
+        tabs = getattr(self, "_decor_tabs", None)
+        if tabs is None or not (0 <= index < tabs.count()):
+            return
+        values = [value for value, _label in getattr(
+            self, "_library_category_choices", [])]
+        self._library_selected["categoria"] = (
+            values[index] if index < len(values) else "")
+        self._library_selected["marca"] = ""
+        self._update_library_status()
+
+    def _library_tab_selected(self, category: str) -> None:
+        tabs = getattr(self, "_decor_tabs", None)
+        if tabs is None:
+            return
+        values = self._library_brand_values.get(category, [])
+        sub_tabs = tabs.currentWidget()
+        index = sub_tabs.currentIndex() if isinstance(sub_tabs, QTabWidget) else 0
+        self._library_selected["categoria"] = category
+        self._library_selected["marca"] = (
+            values[index] if 0 <= index < len(values) else "")
+        self._update_library_status()
+
+    def _update_library_status(self) -> None:
+        if not hasattr(self, "_library_status"):
+            return
+        total = len(getattr(self, "_library_entries", []))
+        visible = 0
+        grid = self._current_library_grid()
+        if grid is not None:
+            visible = grid.count()
+        self._library_status.setText(
+            tr("{n} of {total} components", n=visible, total=total))
+
+    def _make_library_page(self, entries: list[dict]) -> QWidget:
+        from core import user_library
+        from views import library_grid
+
+        page = QWidget()
+        page_lay = QVBoxLayout(page)
+        page_lay.setContentsMargins(4, 4, 4, 4)
+        grid = QListWidget()
+        library_grid.configure(grid, icon=LIBRARY_ICON, grid=LIBRARY_CELL)
+        grid.setFlow(QListView.LeftToRight)
+        grid.setWrapping(False)
+        grid.setUniformItemSizes(True)
+        grid.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        grid.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        grid.setFixedHeight(LIBRARY_CELL.height() + 4)
+        grid.itemDoubleClicked.connect(
+            lambda _item, _g=grid: self._insert_selected_user_component(_g))
+        for entry in entries:
+            item = QListWidgetItem(
+                entry.get("nombre") or entry.get("id", "?"))
+            item.setData(Qt.UserRole, entry)
+            item.setToolTip(self._library_tooltip(entry))
+            thumb = user_library.thumbnail(entry)
+            if thumb is not None:
+                pixmap = QPixmap(str(thumb))
+                if not pixmap.isNull():
+                    item.setIcon(QIcon(pixmap))
+            grid.addItem(item)
+        self._library_lists.append(grid)
+        page_lay.addWidget(grid)
+        return page
+
+    def _library_tooltip(self, entry: dict) -> str:
+        from core import user_library
+
+        parts = [str(entry.get("nombre") or "")]
+        for key in ("marca", "modelo"):
+            if entry.get(key):
+                parts.append(str(entry[key]))
+        cm = entry.get("cm") or ()
+        if len(cm) == 3:
+            parts.append("%g × %g × %g cm" % tuple(cm))
+        if user_library.missing(entry):
+            parts.append(tr("File missing"))
+        return " · ".join(part for part in parts if part)
+
+    def _current_library_grid(self) -> QListWidget | None:
+        tabs = getattr(self, "_decor_tabs", None)
+        if tabs is None:
+            return None
+        sub_tabs = tabs.currentWidget()
+        page = (sub_tabs.currentWidget() if isinstance(sub_tabs, QTabWidget)
+                else sub_tabs)
+        if page is None:
+            return None
+        for grid in page.findChildren(QListWidget):
+            return grid
+        return None
+
+    def _insert_selected_user_component(self, grid=None) -> None:
+        grid = grid if grid is not None else self._current_library_grid()
+        item = grid.currentItem() if grid is not None else None
+        entry = item.data(Qt.UserRole) if item is not None else None
+        if not isinstance(entry, dict) or not entry:
+            return
+        host.insert_user_component(self.main_window, entry)
+
+    def _fill_library_thumbs(self) -> None:
+        from core import user_library
+
+        for grid in list(getattr(self, "_library_lists", [])):
+            rect = grid.viewport().rect()
+            if rect.isEmpty():
+                continue
+            for index in range(grid.count()):
+                item = grid.item(index)
+                if item is None or not rect.intersects(
+                        grid.visualItemRect(item)) or not item.icon().isNull():
+                    continue
+                entry = item.data(Qt.UserRole) or {}
+                thumb = user_library.thumbnail(entry)
+                if thumb is not None:
+                    pixmap = QPixmap(str(thumb))
+                    if not pixmap.isNull():
+                        item.setIcon(QIcon(pixmap))
+                        continue
+                ident = str(entry.get("id") or "")
+                if (not ident or ident in self._library_failed
+                        or ident in self._library_queued):
+                    continue
+                if user_library.missing(entry):
+                    self._library_failed.add(ident)
+                    continue
+                self._library_queued.add(ident)
+                self._library_pending.append(entry)
+        if self._library_pending:
+            QTimer.singleShot(0, self._make_one_library_thumb)
+
+    def _make_one_library_thumb(self) -> None:
+        if not self._library_pending:
+            return
+        from views import component_loader
+
+        entry = self._library_pending.pop(0)
+        ident = str(entry.get("id") or "")
+        self._library_status.setText(
+            tr("Drawing a preview of {name}…",
+               name=entry.get("nombre", "")))
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            loaded = component_loader.load_component(
+                entry, thumbnail_size=128)
+        except Exception as exc:  # noqa: BLE001 - um modelo ruim não trava a aba
+            logger.debug("falha ao gerar miniatura de %s: %s", ident, exc)
+            loaded = None
+        finally:
+            QApplication.restoreOverrideCursor()
+        if loaded is None:
+            self._library_failed.add(ident)
         else:
-            empty = QLabel(tr(
-                "Your own models live here. Import a file (OBJ, GLB, DAE, "
-                "STL, SKP, IGZ) or index a folder to fill this tab."))
-            empty.setWordWrap(True)
-            empty.setStyleSheet("color: palette(text); padding: 6px;")
-            self._user_buttons.addWidget(empty)
+            self._reload_library_icon(ident)
+        self._library_queued.discard(ident)
+        if self._library_pending:
+            QTimer.singleShot(0, self._make_one_library_thumb)
+        else:
+            self._update_library_status()
 
-        self._user_button(
-            tr("Import…"),
-            tr("Index a model file in your library and place it"),
-            lambda: self._import_user_component())
-        self._user_button(
-            tr("Manage…"),
-            tr("Browse, edit and remove the components in your library"),
-            lambda: self._open_user_library())
-        self._user_buttons.addStretch(1)
+    def _reload_library_icon(self, ident: str) -> None:
+        from core import user_library
+
+        thumb = user_library.thumbnail(ident)
+        if thumb is None:
+            return
+        pixmap = QPixmap(str(thumb))
+        if pixmap.isNull():
+            return
+        for grid in list(getattr(self, "_library_lists", [])):
+            for index in range(grid.count()):
+                item = grid.item(index)
+                if (item is not None
+                        and str((item.data(Qt.UserRole) or {}).get("id"))
+                        == ident):
+                    item.setIcon(QIcon(pixmap))
+
+    def _refresh_after_transfer(self) -> None:
+        self.refresh_user_library(force=True)
 
     def _open_user_library(self, brand: str | None = None) -> None:
-        """Open the manager and redraw the brands when it closes: an import,
-        an edit or a removal made inside it must show up right away."""
         host.open_user_library(self.main_window, brand)
-        self.refresh_user_components(force=True)
+        self.refresh_user_library(force=True)
 
     def _import_user_component(self) -> None:
         host.import_user_component(self.main_window)
-        self.refresh_user_components(force=True)
+        self.refresh_user_library(force=True)
+
+    def _add_user_folder(self) -> None:
+        from views import file_dialogs
+
+        folder = file_dialogs.getExistingDirectory(
+            self, tr("Add component folder"))
+        if not folder:
+            return
+        answer = QMessageBox.question(
+            self, tr("Add component folder"),
+            tr("Include subfolders?"),
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            from core import user_library
+            added = user_library.add_folder(
+                folder, recursive=answer == QMessageBox.Yes)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("falha ao indexar pasta: %s", exc)
+            added = []
+        finally:
+            QApplication.restoreOverrideCursor()
+        QMessageBox.information(
+            self, tr("Add component folder"),
+            tr("{n} components indexed from {folder}",
+               n=len(added), folder=folder))
+        self.refresh_user_library(force=True)
 
     def insert_decoration_into_scene(self, item_data: dict[str, Any]):
-        """Insere o item de decoração selecionado na cena 3D."""
+        """Compatibilidade com objetos nativos e arrastar/soltar antigos."""
         tipo = item_data.get("tipo")
         if tipo == "native_3d":
             key = item_data.get("key", "")
@@ -937,10 +925,6 @@ class TrazoMobModuleRibbonBar(QToolBar):
             height = float(item_data.get("height", 1.75))
             host.insert_person_2d(self.main_window, f"{key}.png", height,
                                   item_data.get("name"))
-        elif tipo == "library_model":
-            entry = item_data.get("entry")
-            if entry and hasattr(self.main_window, "insert_library_component"):
-                self.main_window.insert_library_component(entry)
 
     def insert_module_into_scene(
         self,

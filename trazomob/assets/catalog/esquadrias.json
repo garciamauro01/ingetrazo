@@ -918,9 +918,14 @@
       "igz_file": "porta_simples.igz",
       "subpasta": "portas",
       "folhas": [
-        0
+        1
       ],
-      "cinematica": {}
+      "cinematica": {
+        "0": [
+          "fixo",
+          0
+        ]
+      }
     },
     {
       "id": "porta_22",
@@ -942,30 +947,26 @@
       "igz_file": "porta_22.igz",
       "subpasta": "portas",
       "folhas": [
-        5
+        2
       ],
       "cinematica": {
         "0": [
-          "fixo",
+          "movel",
           0
         ],
         "1": [
           "movel",
           0
         ],
-        "2": [
-          "fixo",
-          0
-        ],
         "3": [
-          "fixo",
+          "movel",
           0
         ],
         "4": [
           "fixo",
           0
         ],
-        "6": [
+        "5": [
           "fixo",
           0
         ]
@@ -974,13 +975,13 @@
     {
       "id": "porta_3",
       "nome": "Porta 3 208x219 cm",
-      "desc": "Porta 3 com quatro ferragens e marco, com abertura por giro.",
+      "desc": "Porta 3 de correr 4 folhas (duas fixas laterais e duas móveis centrais) com quatro puxadores.",
       "largura": 2080,
       "altura": 2190,
       "profundidade": 225,
       "rodape": 0,
       "has_portas": true,
-      "num_portas": 1,
+      "num_portas": 4,
       "has_gavetas": false,
       "num_gavetas": 0,
       "has_prateleiras": false,
@@ -989,28 +990,7 @@
       "has_rodape": false,
       "default_z": 0.0,
       "igz_file": "porta_3.igz",
-      "subpasta": "portas",
-      "folhas": [
-        4
-      ],
-      "cinematica": {
-        "0": [
-          "movel",
-          0
-        ],
-        "1": [
-          "movel",
-          0
-        ],
-        "2": [
-          "movel",
-          0
-        ],
-        "3": [
-          "movel",
-          0
-        ]
-      }
+      "subpasta": "portas"
     },
     {
       "id": "porta_ferro_dupla",

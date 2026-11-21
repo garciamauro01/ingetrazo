@@ -182,6 +182,11 @@ def infer_module_hardware(params: Dict[str, Any]) -> List[HardwareItem]:
     hw: List[HardwareItem] = []
 
     num_portas = int(params.get("num_portas", 0) or 0)
+    tipo = str(params.get("tipo", "") or "").lower()
+    if tipo in ("balcao_duplo", "balcao_ilha"):
+        # Balcão ilha bilateral possui portas frontais e traseiras
+        num_portas_verso = int(params.get("num_portas_verso", num_portas) or num_portas)
+        num_portas = num_portas + num_portas_verso
     num_gavetas = int(params.get("num_gavetas", 0) or 0)
     num_prateleiras = int(params.get("num_prateleiras", 0) or 0)
     altura_mm = float(params.get("altura", 720) or 720)

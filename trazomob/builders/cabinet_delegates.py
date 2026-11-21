@@ -23,6 +23,10 @@ class DelegatesMixin:
         return BalcaoAereoBuilder.build_balcao(*args, **kwargs)
 
     @classmethod
+    def build_balcao_duplo(cls, *args, **kwargs) -> list[Group]:
+        return BalcaoAereoBuilder.build_balcao_duplo(*args, **kwargs)
+
+    @classmethod
     def build_gaveteiro(cls, *args, **kwargs) -> list[Group]:
         return BalcaoAereoBuilder.build_gaveteiro(*args, **kwargs)
 

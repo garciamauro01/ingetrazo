@@ -538,9 +538,14 @@ def build_module_hardware_3d(
 
             mesh_cup = Mesh()
             mesh_plate = Mesh()
-            # Face traseira da porta fica em p_max_y (pois a porta está em oy - E_frente .. oy)
-            y_back_door = p_max_y
+            is_rear = bool(p_tm.get("is_rear_door") or (p_ext and p_ext.get("is_rear_door")) or "verso" in str(getattr(p, "name", "")).lower())
             is_left = (d_side == "left")
+
+            # Em portas normais (frontais), a face interna onde fica o caneco e a lateral é p_max_y.
+            # Em portas do verso (traseiras), a face interna voltada para o armário é p_min_y.
+            y_inner = p_min_y if is_rear else p_max_y
+            dir_y_arm = -1.0 if is_rear else 1.0
+
             # Centro X do caneco (a 22.5 mm da borda da dobradiça)
             x_cup = (p_min_x + 0.0225) if is_left else (p_max_x - 0.0225)
             # Face interna da lateral/divisória adjacente (~12 mm para dentro a partir da borda da porta)
@@ -548,11 +553,15 @@ def build_module_hardware_3d(
 
             for hz in zs_hinge:
                 # Caneco Ø35mm embutido/aparente na face interna da porta + flange oval
-                _add_cylinder_y(mesh_cup, x_cup, hz, y_back_door - 0.002, y_back_door + 0.003, 0.0175, _COLOR_METAL_CLARO, segs=14)
+                y_c0 = (y_inner - 0.003) if is_rear else (y_inner - 0.002)
+                y_c1 = (y_inner + 0.002) if is_rear else (y_inner + 0.003)
+                _add_cylinder_y(mesh_cup, x_cup, hz, y_c0, y_c1, 0.0175, _COLOR_METAL_CLARO, segs=14)
+                
+                y_box_flange = (y_inner - 0.0025) if is_rear else y_inner
                 _add_box(
                     mesh_cup,
                     x_cup - 0.008,
-                    y_back_door,
+                    y_box_flange,
                     hz - 0.026,
                     0.016,
                     0.0025,
@@ -560,18 +569,21 @@ def build_module_hardware_3d(
                     _COLOR_IMEX,
                 )
                 # Pescoço articulado saindo do caneco em direção à lateral
+                y_neck = (y_inner - 0.014) if is_rear else y_inner
                 if is_left:
-                    _add_box(mesh_cup, x_wall_in, y_back_door, hz - 0.007, max(0.006, x_cup - x_wall_in), 0.014, 0.014, _COLOR_METAL_CLARO)
+                    _add_box(mesh_cup, x_wall_in, y_neck, hz - 0.007, max(0.006, x_cup - x_wall_in), 0.014, 0.014, _COLOR_METAL_CLARO)
                 else:
-                    _add_box(mesh_cup, x_cup, y_back_door, hz - 0.007, max(0.006, x_wall_in - x_cup), 0.014, 0.014, _COLOR_METAL_CLARO)
+                    _add_box(mesh_cup, x_cup, y_neck, hz - 0.007, max(0.006, x_wall_in - x_cup), 0.014, 0.014, _COLOR_METAL_CLARO)
 
                 # Calço cruciforme e braço fixo na lateral/divisória (37 mm para dentro do armário)
                 x_plate = x_wall_in if is_left else (x_wall_in - 0.004)
-                # Placa base cruciforme vertical (parafusos a 37mm da borda frontal, espaçados 32mm em Z)
-                _add_box(mesh_plate, x_plate, y_back_door + 0.022, hz - 0.024, 0.004, 0.024, 0.048, _COLOR_METAL_ESCURO)
+                y_plate = (y_inner - 0.022 - 0.024) if is_rear else (y_inner + 0.022)
+                # Placa base cruciforme vertical (parafusos a 37mm da borda, espaçados 32mm em Z)
+                _add_box(mesh_plate, x_plate, y_plate, hz - 0.024, 0.004, 0.024, 0.048, _COLOR_METAL_ESCURO)
                 # Corpo do braço de regulagem clipado no calço
                 x_arm = x_wall_in if is_left else (x_wall_in - 0.009)
-                _add_box(mesh_plate, x_arm, y_back_door + 0.003, hz - 0.008, 0.009, 0.052, 0.016, _COLOR_METAL_CLARO)
+                y_arm = (y_inner - 0.003 - 0.052) if is_rear else (y_inner + 0.003)
+                _add_box(mesh_plate, x_arm, y_arm, hz - 0.008, 0.009, 0.052, 0.016, _COLOR_METAL_CLARO)
 
             pname = str(getattr(p, "name", "Porta"))
             lado_tag = "Esq" if is_left else "Dir"

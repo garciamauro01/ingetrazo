@@ -212,7 +212,7 @@ def test_load_group_fast_uses_the_baked_cache(library_root, tmp_path, fake_impor
 def test_register_bakes_when_adding_to_library(library_root, tmp_path, fake_import):
     src = _source(tmp_path, ".skp")
 
-    entry = user_library.register(src, managed=False, nombre="Almofada")
+    entry = user_library.register(src, nombre="Almofada")
     source = decor_bake.source_of(entry)
     assert source is not None
     config = decor_bake.config_for_entry(entry)
@@ -231,7 +231,7 @@ def test_load_component_returns_the_prefitted_group(library_root, tmp_path):
     """A inserção não materializa nem re-centraliza a malha: o cache já fez isso."""
     obj = _obj(tmp_path)
     original = component_loader.load_component
-    entry = user_library.register(obj, managed=False, nombre="Tapete")
+    entry = user_library.register(obj, nombre="Tapete")
 
     expected = original(entry, strict=True)
     actual = component_loader.load_component(entry, strict=True)

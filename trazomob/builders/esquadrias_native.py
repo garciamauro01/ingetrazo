@@ -449,6 +449,222 @@ def get_porta_prototype(igz_path):
             g_folha = Group(mesh=build_submesh(f_folha), name="Folha Basculante Vertical")
             loaded_groups = [g_marco, g_folha]
 
+    elif "porta_simples" in igz_path.name:
+        # Porta Simples 2150x3255: o modelo original veio com marco e folha fundidos no mesmo grupo.
+        # Além disso, a face posterior 1 era um polígono fechado que bloqueava o vão e impedia a abertura
+        # da parte de trás da folha.
+        # Decompomos a face 1 em 3 faces do marco posterior (em U) + 1 face posterior para a folha móvel.
+        flat_proto: list[Group] = []
+        def _collect(g: Group) -> None:
+            if g.mesh and len(g.mesh.faces) > 0:
+                flat_proto.append(g)
+            for ch in getattr(g, "children", []):
+                _collect(ch)
+        for g in loaded_groups:
+            _collect(g)
+
+        if flat_proto and flat_proto[0].mesh:
+            m_main = flat_proto[0].mesh
+            # As faces do marco/batente (exceto face 1 que é reconstruída como U vazado)
+            # Observação: as faces 180 (topo), 227 (topo Z=3.155) e 228 (borda de dobradiça X=0) pertencem à folha móvel.
+            marco_faces = {
+                174, 175, 176, 177, 178, 179, 229, 230, 231, 232,
+                233, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243, 244,
+                245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255, 256, 257
+            }
+            f_marco = [fi for fi in range(len(m_main.faces)) if fi in marco_faces]
+            # Folha recebe as demais faces (exceto as faces 1 e 2 que são reconstruídas fechando o perímetro)
+            f_folha = [fi for fi in range(len(m_main.faces)) if fi not in marco_faces and fi not in (1, 2)]
+
+            tex_ref = getattr(m_main.faces[0], "attrs", None)
+
+            def build_submesh_ps(indices):
+                nm = Mesh()
+                for fi in indices:
+                    f = m_main.faces[fi]
+                    nf = nm.add_face([v for v in f.vertices])
+                    if f.attrs:
+                        nf.attrs = dict(f.attrs)
+                    for h in f.holes:
+                        nm.add_hole(nf, [v for v in h])
+                return nm
+
+            m_marco = build_submesh_ps(f_marco)
+            m_folha = build_submesh_ps(f_folha)
+
+            # Reconstrução do verso do batente (3 retângulos formando o U vazado na cota Y=0.10)
+            # 1. Ombreira esquerda do marco
+            f_m1 = m_marco.add_face([
+                QVector3D(-0.10, 0.10, 0.00),
+                QVector3D(-0.10, 0.10, 3.255166),
+                QVector3D(0.00, 0.10, 3.255166),
+                QVector3D(0.00, 0.10, 0.00),
+            ])
+            # 2. Verga superior do marco
+            f_m2 = m_marco.add_face([
+                QVector3D(0.00, 0.10, 3.155166),
+                QVector3D(0.00, 0.10, 3.255166),
+                QVector3D(1.95, 0.10, 3.255166),
+                QVector3D(1.95, 0.10, 3.155166),
+            ])
+            # 3. Ombreira direita do marco
+            f_m3 = m_marco.add_face([
+                QVector3D(1.95, 0.10, 0.00),
+                QVector3D(1.95, 0.10, 3.255166),
+                QVector3D(2.05, 0.10, 3.255166),
+                QVector3D(2.05, 0.10, 0.00),
+            ])
+
+            # Fechamento do vão interno do batente/marco (entre o rebaixo do batente Y=-0.045 e a face posterior Y=0.10)
+            # Ombreira esquerda interna do marco
+            f_mi1 = m_marco.add_face([
+                QVector3D(0.00, -0.045, 0.00),
+                QVector3D(0.00, 0.10, 0.00),
+                QVector3D(0.00, 0.10, 3.155166),
+                QVector3D(0.00, -0.045, 3.155166),
+            ])
+            # Verga interna do marco
+            f_mi2 = m_marco.add_face([
+                QVector3D(0.00, -0.045, 3.155166),
+                QVector3D(0.00, 0.10, 3.155166),
+                QVector3D(1.95, 0.10, 3.155166),
+                QVector3D(1.95, -0.045, 3.155166),
+            ])
+            # Ombreira direita interna do marco
+            f_mi3 = m_marco.add_face([
+                QVector3D(1.95, -0.045, 0.00),
+                QVector3D(1.95, -0.045, 3.155166),
+                QVector3D(1.95, 0.10, 3.155166),
+                QVector3D(1.95, 0.10, 0.00),
+            ])
+
+            # Fechamento do perímetro da folha da porta (para fechar a caixa da folha entre frente Y=-0.045 e verso Y=0.10)
+            # 1. Face posterior da folha
+            f_back = m_folha.add_face([
+                QVector3D(0.00, 0.10, 0.00),
+                QVector3D(0.00, 0.10, 3.155166),
+                QVector3D(1.95, 0.10, 3.155166),
+                QVector3D(1.95, 0.10, 0.00),
+            ])
+            # 2. Topo da folha (Z=3.155) entre Y=-0.045 e Y=0.10
+            f_ftop = m_folha.add_face([
+                QVector3D(0.00, -0.045, 3.155166),
+                QVector3D(0.00, 0.10, 3.155166),
+                QVector3D(1.95, 0.10, 3.155166),
+                QVector3D(1.95, -0.045, 3.155166),
+            ])
+            # 3. Base da folha (Z=0.00) entre Y=-0.045 e Y=0.10
+            f_fbot = m_folha.add_face([
+                QVector3D(0.00, -0.045, 0.00),
+                QVector3D(1.95, -0.045, 0.00),
+                QVector3D(1.95, 0.10, 0.00),
+                QVector3D(0.00, 0.10, 0.00),
+            ])
+            # 4. Borda esquerda da folha (X=0.00) entre Y=-0.045 e Y=0.10
+            f_fleft = m_folha.add_face([
+                QVector3D(0.00, -0.045, 0.00),
+                QVector3D(0.00, 0.10, 0.00),
+                QVector3D(0.00, 0.10, 3.155166),
+                QVector3D(0.00, -0.045, 3.155166),
+            ])
+            # 5. Borda direita da folha (X=1.95) entre Y=-0.045 e Y=0.10
+            f_fright = m_folha.add_face([
+                QVector3D(1.95, -0.045, 0.00),
+                QVector3D(1.95, -0.045, 3.155166),
+                QVector3D(1.95, 0.10, 3.155166),
+                QVector3D(1.95, 0.10, 0.00),
+            ])
+
+            if tex_ref:
+                for f_new in (f_m1, f_m2, f_m3, f_mi1, f_mi2, f_mi3):
+                    f_new.attrs = dict(tex_ref)
+                for f_new in (f_back, f_ftop, f_fbot, f_fleft, f_fright):
+                    f_new.attrs = dict(tex_ref)
+
+            g_marco = Group(mesh=m_marco, name="Marco da Porta")
+            g_folha = Group(mesh=m_folha, name="Folha da Porta")
+            loaded_groups = [g_marco, g_folha]
+
+    elif "porta_3" in igz_path.name:
+        # Porta 3: esquadria de correr com 4 folhas (2 fixas laterais + 2 móveis centrais)
+        # As peças 0..3 são os puxadores das duas folhas centrais; a peça 4 agrupa o marco e as 4 folhas.
+        # Classifica diretamente as 269 faces geométricas de Group#2:
+        # - Marco externo: 17 faces (faces 0..16)
+        # - Folha 1 (Fixa Esquerda): 63 faces (X in [0.00, 0.50], Y in [0.00, 0.08])
+        # - Folha 2 (Centro Esquerda): 63 faces (X in [0.50, 1.00], Y in [0.08, 0.16])
+        # - Folha 3 (Centro Direita): 63 faces (X in [1.20, 1.70], Y in [0.08, 0.16])
+        # - Folha 4 (Fixa Direita): 63 faces (X in [1.50, 2.00], Y in [0.00, 0.08])
+        flat_proto: list[Group] = []
+        def _collect(g: Group) -> None:
+            if g.mesh and len(g.mesh.faces) > 0:
+                flat_proto.append(g)
+            for ch in getattr(g, "children", []):
+                _collect(ch)
+        for g in loaded_groups:
+            _collect(g)
+
+        if len(flat_proto) >= 5 and flat_proto[4].mesh:
+            m_main = flat_proto[4].mesh
+            f_marco: list[int] = list(range(17))
+            f_fixa_esq: list[int] = []
+            f_ce: list[int] = []
+            f_cd: list[int] = []
+            f_fixa_dir: list[int] = []
+
+            for fi in range(17, len(m_main.faces)):
+                f = m_main.faces[fi]
+                pts = [v for v in f.vertices]
+                xs = [p.x() for p in pts]
+                ys = [p.y() for p in pts]
+                min_x, max_x = min(xs), max(xs)
+                min_y, max_y = min(ys), max(ys)
+
+                if max_x <= 0.501 and max_y <= 0.085:
+                    f_fixa_esq.append(fi)
+                elif 0.499 <= min_x and max_x <= 1.001 and min_y >= 0.075:
+                    f_ce.append(fi)
+                elif 1.199 <= min_x and max_x <= 1.701 and min_y >= 0.075:
+                    f_cd.append(fi)
+                elif min_x >= 1.499 and max_y <= 0.085:
+                    f_fixa_dir.append(fi)
+
+            def build_submesh_p3(indices, shift_x: float = 0.0):
+                nm = Mesh()
+                for fi in indices:
+                    f = m_main.faces[fi]
+                    nf = nm.add_face([QVector3D(pt.x() + shift_x, pt.y(), pt.z()) for pt in f.vertices])
+                    if f.attrs:
+                        nf.attrs = dict(f.attrs)
+                    for h in f.holes:
+                        nm.add_hole(nf, [QVector3D(pt.x() + shift_x, pt.y(), pt.z()) for pt in h])
+                return nm
+
+            # Na malha original do SKP/IGZ, a folha centro-direita estava modelada entreaberta em 20cm (0.20m).
+            # Aplicamos um deslocamento de -0.20m em X na folha e nos seus puxadores para que a porta inicie 100% FECHADA.
+            g_marco = Group(mesh=build_submesh_p3(f_marco), name="Marco e Trilhos")
+            g_fixa_esq = Group(mesh=build_submesh_p3(f_fixa_esq), name="Folha Fixa Esquerda")
+            g_ce = Group(mesh=build_submesh_p3(f_ce), name="Folha Centro Esquerda")
+            g_cd = Group(mesh=build_submesh_p3(f_cd, shift_x=-0.20), name="Folha Centro Direita")
+            g_fixa_dir = Group(mesh=build_submesh_p3(f_fixa_dir), name="Folha Fixa Direita")
+
+            p0 = flat_proto[0]
+            p0.name = "Puxador Externo Folha Centro Esquerda"
+            p1 = flat_proto[1]
+            p1.name = "Puxador Interno Folha Centro Esquerda"
+            p2 = flat_proto[2]
+            p2.name = "Puxador Externo Folha Centro Direita"
+            p3 = flat_proto[3]
+            p3.name = "Puxador Interno Folha Centro Direita"
+            for p in (p2, p3):
+                if p.mesh:
+                    for v in p.mesh.vertices:
+                        v.position.setX(v.position.x() - 0.20)
+                    p.mesh._mut_serial = getattr(p.mesh, "_mut_serial", 0) + 1
+
+            loaded_groups = [g_marco, g_fixa_esq, g_ce, p0, p1, g_cd, p2, p3, g_fixa_dir]
+
+            loaded_groups = [g_marco, g_fixa_esq, g_ce, p0, p1, g_cd, p2, p3, g_fixa_dir]
+
     sub_pieces: List[Group] = []
     def flatten_pieces(g: Group) -> None:
         if g.mesh and len(g.mesh.faces) > 0:
@@ -584,29 +800,30 @@ def load_porta_original_usuario(igz_path: Path, item_id: str, largura_mm: float,
                     scale_x = target_w / orig_w
                     for v in cloned_mesh.vertices:
                         v.position.setX(v.position.x() * scale_x)
-                elif is_j4f or "porta_correr_vidro_4f" in igz_path.name:
+                elif is_j4f or "porta_correr_vidro_4f" in igz_path.name or "porta_3" in igz_path.name:
                     # Janela ou Porta de correr 4 folhas: 2 fixas laterais + 2 móveis centrais
                     center_delta = delta_w * 0.5
-                    is_porta_4f = "porta_correr_vidro_4f" in igz_path.name
+                    is_p_vidro_4f = "porta_correr_vidro_4f" in igz_path.name
+                    is_p3 = "porta_3" in igz_path.name
                     for v in cloned_mesh.vertices:
                         vx = v.position.x()
                         vz = v.position.z()
                         if "Marco" in p_name:
-                            if is_porta_4f and 0.70 < vz < 1.20 and 1.30 < vx < 1.60:
+                            if is_p_vidro_4f and 0.70 < vz < 1.20 and 1.30 < vx < 1.60:
                                 v.position.setX(vx + center_delta)
-                            elif vx > (2.80 if is_porta_4f else 1.80):
+                            elif vx > (2.80 if is_p_vidro_4f else (1.80 if not is_p3 else 1.90)):
                                 v.position.setX(vx + delta_w)
-                            elif vx > (2.10 if is_porta_4f else 1.30):
+                            elif vx > (2.10 if is_p_vidro_4f else (1.30 if not is_p3 else 1.40)):
                                 v.position.setX(vx + d_quart * 3.0)
-                            elif vx > (1.40 if is_porta_4f else 0.90):
-                                v.position.setX(vx + center_delta if is_porta_4f else vx + d_quart * 2.0)
-                            elif vx > (0.70 if is_porta_4f else 0.40):
+                            elif vx > (1.40 if is_p_vidro_4f else (0.90 if not is_p3 else 0.95)):
+                                v.position.setX(vx + center_delta if (is_p_vidro_4f or is_p3) else vx + d_quart * 2.0)
+                            elif vx > (0.70 if is_p_vidro_4f else 0.40):
                                 v.position.setX(vx + d_quart)
                         elif "Fixa Esquerda" in p_name:
                             if vx > 0.25:
                                 v.position.setX(vx + d_quart)
                         elif "Centro Esquerda" in p_name:
-                            if is_porta_4f:
+                            if is_p_vidro_4f or is_p3:
                                 if vx > 1.00:
                                     v.position.setX(vx + center_delta)
                                 else:
@@ -617,8 +834,8 @@ def load_porta_original_usuario(igz_path: Path, item_id: str, largura_mm: float,
                                 else:
                                     v.position.setX(vx + d_quart)
                         elif "Centro Direita" in p_name:
-                            if is_porta_4f:
-                                if vx > 1.80:
+                            if is_p_vidro_4f or is_p3:
+                                if vx > (1.80 if is_p_vidro_4f else 1.50):
                                     v.position.setX(vx + d_quart * 3.0)
                                 else:
                                     v.position.setX(vx + center_delta)
@@ -628,7 +845,7 @@ def load_porta_original_usuario(igz_path: Path, item_id: str, largura_mm: float,
                                 else:
                                     v.position.setX(vx + d_quart * 2.0)
                         elif "Fixa Direita" in p_name:
-                            if vx > (2.50 if is_porta_4f else 1.60):
+                            if vx > (2.50 if is_p_vidro_4f else (1.60 if not is_p3 else 1.80)):
                                 v.position.setX(vx + delta_w)
                             else:
                                 v.position.setX(vx + d_quart * 3.0)
@@ -768,8 +985,27 @@ def load_porta_original_usuario(igz_path: Path, item_id: str, largura_mm: float,
                 hinge_u = min_u_f if n == primeira else max_u_f
                 angle = 90.0 * sx * sy * (-1 if n == primeira else 1)
             else:
-                hinge_u = min_u_f if flip_x else max_u_f
-                angle = 95.0 * sx * sy
+                # Portas de 1 folha:
+                # Detectamos se as ferragens/puxadores estão situados no lado direito ou esquerdo da folha.
+                # Se o puxador está à direita (como em porta_porshoy1, porta_ferro, porta_vidro_externa_ce, etc.)
+                # ou porta_simples, a dobradiça (pivô) deve ficar na lateral esquerda (min_u_f) e abrir com ângulo negativo.
+                # Se o puxador está à esquerda (como em porta_22, porta_d1, porta_d2), a dobradiça fica na direita (max_u_f).
+                right_handle_models = (
+                    "porta_simples",
+                    "porta_porshoy1",
+                    "porta_porshoy2",
+                    "porta_ferro",
+                    "porta_vidro_externa_ce",
+                    "porta_externa_ce",
+                    "porta_comp1_ce",
+                    "porta_comp2_ce",
+                )
+                if any(m in igz_path.name for m in right_handle_models):
+                    hinge_u = max_u_f if flip_x else min_u_f
+                    angle = -95.0 * sx * sy
+                else:
+                    hinge_u = min_u_f if flip_x else max_u_f
+                    angle = 95.0 * sx * sy
             hinge_n = max_n_f if flip_y else min_n_f
             hp_2d = p_orig_2d + u_dir * hinge_u + n_dir * hinge_n
             folha.ext["hinge_pivot"] = QVector3D(hp_2d.x(), hp_2d.y(), 0.0)
@@ -820,22 +1056,39 @@ def load_porta_original_usuario(igz_path: Path, item_id: str, largura_mm: float,
                 sp.ext["hinge_pivot"] = QVector3D(hp_2d.x(), hp_2d.y(), 0.0)
                 sp.ext["door_angle"] = 95.0 * sx * sy
 
-    elif "porta_correr_vidro_4f" in igz_path.name:
+    elif "porta_correr_vidro_4f" in igz_path.name or "porta_3" in igz_path.name:
+        is_p3 = "porta_3" in igz_path.name
+        dist_ce = max(0.20, (0.500 if is_p3 else 0.6449) + d_quart)
+        dist_cd = max(0.20, (0.500 if is_p3 else 0.6409) + d_quart)
         for sp in sub_pieces:
             if "Centro Esquerda" in sp.name:
+                if is_p3 and "Puxador" in sp.name:
+                    continue
                 sp.name = "Folha de Correr Centro Esquerda"
                 if getattr(sp, "ext", None) is None:
                     sp.ext = {}
+                if is_p3:
+                    sp.ext["linked_pieces"] = [
+                        "Puxador Externo Folha Centro Esquerda",
+                        "Puxador Interno Folha Centro Esquerda",
+                    ]
                 sp.ext["slide_axis"] = QVector3D(-u_dir.x() * sx, -u_dir.y() * sx, 0.0)
-                sp.ext["slide_distance"] = max(0.20, 0.6449 + d_quart)
+                sp.ext["slide_distance"] = dist_ce
             elif "Centro Direita" in sp.name:
+                if is_p3 and "Puxador" in sp.name:
+                    continue
                 sp.name = "Folha de Correr Centro Direita"
                 if getattr(sp, "ext", None) is None:
                     sp.ext = {}
+                if is_p3:
+                    sp.ext["linked_pieces"] = [
+                        "Puxador Externo Folha Centro Direita",
+                        "Puxador Interno Folha Centro Direita",
+                    ]
                 sp.ext["slide_axis"] = QVector3D(u_dir.x() * sx, u_dir.y() * sx, 0.0)
-                sp.ext["slide_distance"] = max(0.20, 0.6409 + d_quart)
-            elif "Fixa" in sp.name:
-                # Folhas fixas laterais não abrem nem giram
+                sp.ext["slide_distance"] = dist_cd
+            elif "Fixa" in sp.name or (is_p3 and "Marco" in sp.name):
+                # Folhas fixas laterais e marco não abrem nem giram
                 if getattr(sp, "ext", None) is None:
                     sp.ext = {}
                 sp.ext["is_fixed"] = True

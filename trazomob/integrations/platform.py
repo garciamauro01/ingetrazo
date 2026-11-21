@@ -115,7 +115,6 @@ def capabilities(window: Any = None, viewport: Any = None) -> dict[str, bool]:
         "plugin_tool": callable(getattr(win, "_activate_plugin_tool", None)),
         "insert_component": callable(getattr(win, "_on_insert_component", None)),
         "insert_person": callable(getattr(win, "_on_insert_person_2d", None)),
-        "open_library": callable(getattr(win, "_on_open_library", None)),
         "insert_user_component": callable(
             getattr(win, "insert_user_component", None)),
         "import_user_component": callable(
@@ -257,16 +256,6 @@ def insert_person_2d(window: Any, image: str, height: float = 1.75,
     return True
 
 
-def open_component_library(window: Any) -> bool:
-    """Abre a biblioteca de componentes do host."""
-    fn = getattr(window_of(window), "_on_open_library", None)
-    if not callable(fn):
-        logger.debug("host sem _on_open_library")
-        return False
-    fn()
-    return True
-
-
 def insert_user_component(window: Any, entry: dict) -> bool:
     """Insere um componente da biblioteca do próprio usuário, pronto para
     posicionar. ``entry`` é uma ficha de :mod:`core.user_library`."""
@@ -331,7 +320,7 @@ __all__ = [
     "capabilities", "supports",
     "apply_display_style", "set_style_field", "sync_style_menu", "toggle_xray",
     "legacy_style_toolbar", "activate_plugin_tool", "insert_component",
-    "insert_person_2d", "open_component_library", "insert_user_component",
+    "insert_person_2d", "insert_user_component",
     "import_user_component", "open_user_library", "register_extension_dock",
     "import_module",
 ]

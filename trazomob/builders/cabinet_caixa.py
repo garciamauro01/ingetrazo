@@ -1450,7 +1450,7 @@ class CaixaMixin:
                 )
             ]
 
-            face_tb_t = "base" if not travessa_traseira_em_pe else "traseira"
+            face_tb_t = "base" if not travessa_traseira_em_pe else "frontal"
             ops_trav_t = [
                 o.to_dict() for o in make_stretcher_joint_holes(
                     largura_travessa_mm=(LTT * 1000.0) if not travessa_traseira_em_pe else (LTT * 1000.0),

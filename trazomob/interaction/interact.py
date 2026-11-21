@@ -717,35 +717,25 @@ class CabinetInteract:
 
 
                 proj_u = [pt.x() * u_x + pt.y() * u_y for pt in pts]
-
                 proj_f = [pt.x() * f_x + pt.y() * f_y for pt in pts]
 
-
+                is_rear_door = "verso" in getattr(piece, "name", "").lower() or getattr(piece, "ext", {}).get("is_rear_door", False)
 
                 meta_side = getattr(piece, "ext", {}).get("trazomob", {}).get("door_side")
-
                 is_right = (itype == "door_right" or meta_side == "right")
 
-
-
                 target_u = max(proj_u) if is_right else min(proj_u)
-
-                target_f = max(proj_f)
-
-
+                target_f = min(proj_f) if is_rear_door else max(proj_f)
 
                 best_pt = min(pts, key=lambda pt: (
-
                     ((pt.x() * u_x + pt.y() * u_y) - target_u) ** 2 +
-
                     ((pt.x() * f_x + pt.y() * f_y) - target_f) ** 2
-
                 ))
 
-
-
-                ang = 95.0 if is_right else -95.0
-
+                if is_rear_door:
+                    ang = -95.0 if is_right else 95.0
+                else:
+                    ang = 95.0 if is_right else -95.0
                 piece.ext["hinge_pivot"] = QVector3D(best_pt.x(), best_pt.y(), 0.0)
 
                 piece.ext["door_angle"] = ang

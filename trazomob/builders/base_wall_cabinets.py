@@ -396,6 +396,352 @@ class BalcaoAereoBuilder:
         return groups
 
     @classmethod
+    def build_balcao_duplo(
+        cls, largura_mm: float, altura_mm: float, prof_mm: float,
+        esp_mm: float = 15.0, rodape_mm: float = 100.0,
+        num_portas: int = 2, num_portas_verso: int = 2,
+        num_prateleiras: int = 1,
+        material: str = "MDF Branco TX 15mm", material_frentes: str | None = None,
+        esp_frentes_mm: float | None = None,
+        offset: tuple[float, float, float] = (0.0, 0.0, 0.0),
+        puxador_tipo: str = "alca", puxador_cor: str = "preto", puxador_pos: str = "padrao",
+        desconto_perfil_mm: float = 35.0, perfil_modelo: str = "gola",
+        larg_travessa_frontal_mm: float = 70.0, larg_travessa_traseira_mm: float = 70.0,
+        travessa_frontal_em_pe: bool = False, travessa_traseira_em_pe: bool = False,
+        recuo_porta_topo_mm: float = 50.0,
+        material_travessas: str | None = None, esp_travessas_mm: float | None = None,
+        fita_travessas_modo: str = "frontal_1L", fita_travessas_faces: dict[str, bool] | None = None,
+        fita_caixa_modo: str = "frontal_1L",
+        material_fita_caixa: str | None = None, material_fita_travessas: str | None = None,
+        gerar_furacao: bool = True, dispositivo_fixacao: str = "minifix_cavilha",
+        lado_abertura_porta: str = "esquerda",
+        mat_ctx: ModuloMaterialContext | None = None,
+    ) -> list[Group]:
+        """Balcão de ilha bilateral com portas na frente e no fundo (1 a 4 portas por lado).
+
+        Estrutura:
+        - 2 Laterais contínuas (profundidade total P).
+        - 1 Base inferior contínua.
+        - 1 Divisória longitudinal central em Y = P/2 (separa lado frente e lado fundo).
+        - Divisórias verticais transversais proporcionais ao número de portas de cada lado.
+        - Prateleiras frontais e traseiras independentes.
+        - Travessas superiores frontais e traseiras.
+        - Rodapé frontal e traseiro.
+        - Portas frontais (em Y=0 abrindo para frente) e traseiras (em Y=P abrindo para trás).
+        """
+        from ..domain.module_geometry import MAX_DOORS, auto_divisoes_for_doors
+
+        if mat_ctx is None:
+            mat_ctx = ModuloMaterialContext(
+                material_caixa=material,
+                material_fita_caixa=material_fita_caixa,
+                fita_caixa_modo=fita_caixa_modo,
+                material_frentes=material_frentes or material,
+            )
+
+        n_p_front = max(1, min(MAX_DOORS, int(num_portas)))
+        n_p_rear = max(1, min(MAX_DOORS, int(num_portas_verso or num_portas)))
+
+        L = largura_mm / 1000.0
+        A = altura_mm / 1000.0
+        P = prof_mm / 1000.0
+        E = esp_mm / 1000.0
+        R = rodape_mm / 1000.0
+        altura_caixa = A - R
+        largura_interna = max(0.10, L - 2 * E)
+
+        ox, oy, oz = offset
+        cor = cls.get_material_color(material)
+        mat_frente = material_frentes or material
+        E_frente = (esp_frentes_mm or esp_mm) / 1000.0
+        cor_frente = cls.get_material_color(mat_frente)
+
+        groups: list[Group] = []
+
+        # 1. Laterais contínuas (Esquerda e Direita)
+        groups.append(cls.build_lateral_esquerda(
+            name="Balcao Ilha - Lateral Esquerda",
+            origin=(ox, oy, oz + R),
+            size=(E, P, altura_caixa),
+            material=material, fita_c1=True, fita_c2=True, color=cor,
+            ctx=mat_ctx,
+        ))
+        groups.append(cls.build_lateral_direita(
+            name="Balcao Ilha - Lateral Direita",
+            origin=(ox + L - E, oy, oz + R),
+            size=(E, P, altura_caixa),
+            material=material, fita_c1=True, fita_c2=True, color=cor,
+            ctx=mat_ctx,
+        ))
+
+        # 2. Base Inferior contínua
+        groups.append(cls.build_base_inferior(
+            name="Balcao Ilha - Base Inferior",
+            origin=(ox + E, oy, oz + R),
+            size=(largura_interna, P, E),
+            material=material, fita_c1=True, fita_c2=True, color=cor,
+            ctx=mat_ctx,
+        ))
+
+        # 3. Rodapé frontal e traseiro
+        if R > 0.02:
+            recuo_rod = 0.030
+            larg_rod = max(0.05, largura_interna)
+            # Frontal
+            groups.append(cls.build_travessa_peca(
+                name="Balcao Ilha - Rodape Frontal",
+                origin=(ox + E, oy + recuo_rod, oz),
+                size=(larg_rod, E, R),
+                material=material, fita_c1=True, color=cor,
+                ctx=mat_ctx,
+            ))
+            # Traseiro
+            groups.append(cls.build_travessa_peca(
+                name="Balcao Ilha - Rodape Traseiro",
+                origin=(ox + E, oy + P - recuo_rod - E, oz),
+                size=(larg_rod, E, R),
+                material=material, fita_c1=True, color=cor,
+                ctx=mat_ctx,
+            ))
+
+        # 4. Travessas superiores de amarração (Frontal e Traseira)
+        larg_trav_f = (larg_travessa_frontal_mm or 70.0) / 1000.0
+        larg_trav_r = (larg_travessa_traseira_mm or 70.0) / 1000.0
+        eff_esp_trav = (esp_travessas_mm or esp_mm) / 1000.0
+        mat_trav = material_travessas or material
+
+        # Travessa frontal
+        if travessa_frontal_em_pe:
+            groups.append(cls.build_travessa_peca(
+                name="Balcao Ilha - Travessa Superior Frontal",
+                origin=(ox + E, oy, oz + R + altura_caixa - larg_trav_f),
+                size=(largura_interna, eff_esp_trav, larg_trav_f),
+                material=mat_trav, fita_c1=True, color=cor,
+                ctx=mat_ctx,
+            ))
+        else:
+            groups.append(cls.build_travessa_peca(
+                name="Balcao Ilha - Travessa Superior Frontal",
+                origin=(ox + E, oy, oz + R + altura_caixa - eff_esp_trav),
+                size=(largura_interna, larg_trav_f, eff_esp_trav),
+                material=mat_trav, fita_c1=True, color=cor,
+                ctx=mat_ctx,
+            ))
+
+        # Travessa traseira
+        if travessa_traseira_em_pe:
+            groups.append(cls.build_travessa_peca(
+                name="Balcao Ilha - Travessa Superior Traseira",
+                origin=(ox + E, oy + P - eff_esp_trav, oz + R + altura_caixa - larg_trav_r),
+                size=(largura_interna, eff_esp_trav, larg_trav_r),
+                material=mat_trav, fita_c1=True, color=cor,
+                ctx=mat_ctx,
+            ))
+        else:
+            groups.append(cls.build_travessa_peca(
+                name="Balcao Ilha - Travessa Superior Traseira",
+                origin=(ox + E, oy + P - larg_trav_r, oz + R + altura_caixa - eff_esp_trav),
+                size=(largura_interna, larg_trav_r, eff_esp_trav),
+                material=mat_trav, fita_c1=True, color=cor,
+                ctx=mat_ctx,
+            ))
+
+        # 5. Divisória longitudinal central (separa compartimento frontal e traseiro)
+        y_div_long = oy + (P - E) / 2.0
+        alt_div_long = altura_caixa - 2 * E
+        groups.append(cls.build_travessa_peca(
+            name="Balcao Ilha - Divisoria Longitudinal Central",
+            origin=(ox + E, y_div_long, oz + R + E),
+            size=(largura_interna, E, alt_div_long),
+            material=material, fita_c1=True, color=cor,
+            ctx=mat_ctx,
+        ))
+
+        # Profundidade útil de cada lado
+        prof_lado = max(0.15, (P - E) / 2.0)
+        recuo_frontal_prat = 0.025
+        prof_prat = max(0.10, prof_lado - recuo_frontal_prat)
+
+        # 6. Estrutura interna e prateleiras para o LADO FRONTAL (Y de oy a y_div_long)
+        n_div_f = auto_divisoes_for_doors(n_p_front) if n_p_front >= 3 else 0
+        n_bays_f = n_div_f + 1
+        larg_por_porta_f = max(0.05, (largura_interna - n_div_f * E) / n_p_front)
+        door_counts_f = [n_p_front // n_bays_f] * n_bays_f
+        for i in range(n_p_front % n_bays_f):
+            door_counts_f[i] += 1
+        larg_vaos_f = [max(0.05, qtd * larg_por_porta_f) for qtd in door_counts_f]
+
+        x_curr_f = ox + E
+        x_vaos_f: list[float] = []
+        for d_i in range(n_div_f):
+            x_vaos_f.append(x_curr_f)
+            x_div = x_curr_f + larg_vaos_f[d_i]
+            groups.append(cls.build_divisoria(
+                name=f"Balcao Ilha - Divisoria Frontal {d_i + 1}",
+                origin=(x_div, oy, oz + R + E),
+                size=(E, prof_lado, alt_div_long),
+                material=material, fita_c1=True, color=cor,
+                ctx=mat_ctx,
+            ))
+            x_curr_f = x_div + E
+        x_vaos_f.append(x_curr_f)
+
+        if num_prateleiras > 0:
+            passo = alt_div_long / (num_prateleiras + 1)
+            for v_idx, (xv, lv) in enumerate(zip(x_vaos_f, larg_vaos_f)):
+                for i in range(1, num_prateleiras + 1):
+                    z_prat = oz + R + E + (i * passo)
+                    groups.append(cls.build_prateleira(
+                        name=f"Balcao Ilha - Prateleira Frontal Vao {v_idx + 1} - Nivel {i}",
+                        origin=(xv, oy + recuo_frontal_prat, z_prat),
+                        size=(max(0.05, lv - 0.002), prof_prat, E),
+                        material=material, fita_c1=True, color=cor,
+                        ctx=mat_ctx,
+                    ))
+
+        # 7. Estrutura interna e prateleiras para o LADO TRASEIRO (Y de y_div_long + E a oy + P)
+        y_rear_start = y_div_long + E
+        n_div_r = auto_divisoes_for_doors(n_p_rear) if n_p_rear >= 3 else 0
+        n_bays_r = n_div_r + 1
+        larg_por_porta_r = max(0.05, (largura_interna - n_div_r * E) / n_p_rear)
+        door_counts_r = [n_p_rear // n_bays_r] * n_bays_r
+        for i in range(n_p_rear % n_bays_r):
+            door_counts_r[i] += 1
+        larg_vaos_r = [max(0.05, qtd * larg_por_porta_r) for qtd in door_counts_r]
+
+        x_curr_r = ox + E
+        x_vaos_r: list[float] = []
+        for d_i in range(n_div_r):
+            x_vaos_r.append(x_curr_r)
+            x_div = x_curr_r + larg_vaos_r[d_i]
+            groups.append(cls.build_divisoria(
+                name=f"Balcao Ilha - Divisoria Traseira {d_i + 1}",
+                origin=(x_div, y_rear_start, oz + R + E),
+                size=(E, prof_lado, alt_div_long),
+                material=material, fita_c1=True, color=cor,
+                ctx=mat_ctx,
+            ))
+            x_curr_r = x_div + E
+        x_vaos_r.append(x_curr_r)
+
+        if num_prateleiras > 0:
+            passo = alt_div_long / (num_prateleiras + 1)
+            for v_idx, (xv, lv) in enumerate(zip(x_vaos_r, larg_vaos_r)):
+                for i in range(1, num_prateleiras + 1):
+                    z_prat = oz + R + E + (i * passo)
+                    groups.append(cls.build_prateleira(
+                        name=f"Balcao Ilha - Prateleira Traseira Vao {v_idx + 1} - Nivel {i}",
+                        origin=(xv, y_rear_start, z_prat),
+                        size=(max(0.05, lv - 0.002), prof_prat, E),
+                        material=material, fita_c1=True, color=cor,
+                        ctx=mat_ctx,
+                    ))
+
+        # 8. Kit Portas Frontais (em Y = oy)
+        lado = str(lado_abertura_porta or "esquerda").strip().lower()
+        default_side = "right" if lado.startswith(("dir", "right")) else "left"
+        bay_door_sides_f: list[list[str]] = []
+        for qtd in door_counts_f:
+            if qtd <= 0:
+                bay_door_sides_f.append([])
+            elif qtd == 1:
+                bay_door_sides_f.append([default_side])
+            else:
+                bay_door_sides_f.append(["left" if i % 2 == 0 else "right" for i in range(qtd)])
+        door_sides_f = [s for bay in bay_door_sides_f for s in bay]
+
+        recuo_topo = (recuo_porta_topo_mm / 1000.0) if travessa_frontal_em_pe else 0.0
+        groups.extend(FrentesKitBuilder.build_kit_portas_giro(
+            largura_mm=largura_mm,
+            altura_mm=altura_caixa * 1000.0,
+            num_portas=n_p_front,
+            offset=(ox, oy, oz + R),
+            esp_frente_mm=E_frente * 1000.0,
+            material=mat_frente,
+            color=cor_frente,
+            door_sides=door_sides_f,
+            prefixo="Balcao Ilha - Frente",
+            puxador_tipo=puxador_tipo,
+            puxador_cor=puxador_cor,
+            puxador_pos=puxador_pos,
+            desconto_perfil_mm=desconto_perfil_mm,
+            perfil_modelo=perfil_modelo,
+            is_upper=False,
+            gerar_furacao=gerar_furacao,
+            recuo_topo_mm=recuo_topo * 1000.0,
+            mat_ctx=mat_ctx,
+        ))
+
+        # 9. Kit Portas Traseiras (em Y = oy + P)
+        bay_door_sides_r: list[list[str]] = []
+        for qtd in door_counts_r:
+            if qtd <= 0:
+                bay_door_sides_r.append([])
+            elif qtd == 1:
+                bay_door_sides_r.append([default_side])
+            else:
+                bay_door_sides_r.append(["left" if i % 2 == 0 else "right" for i in range(qtd)])
+        door_sides_r = [s for bay in bay_door_sides_r for s in bay]
+
+        folga_m = FrentesKitBuilder.resolve_folga_mm(None, mat_ctx) / 1000.0
+        alt_porta_r = max(0.05, altura_caixa - recuo_topo - (2.0 * folga_m))
+        larg_disp_r = L - (2.0 * folga_m) - (n_p_rear - 1) * folga_m
+        larg_porta_r = max(0.10, larg_disp_r / n_p_rear)
+
+        x_atual_r = ox + folga_m
+        z_atual_r = oz + R + folga_m
+        y_rear_door = oy + P
+
+        from ..builders.cabinet_caixa import CaixaMixin
+        from ..production.machining import make_hinge_cup_holes
+        for i in range(n_p_rear):
+            side = door_sides_r[i] if i < len(door_sides_r) else "left"
+            lado_txt = "Dir" if side == "right" else "Esq"
+            nome_p_r = f"Balcao Ilha - Verso Porta {i + 1} ({lado_txt})" if n_p_rear > 1 else f"Balcao Ilha - Verso Porta Unica ({lado_txt})"
+
+            # Para porta traseira (posicionada em Y=oy+P), a face voltada para o interior do móvel
+            # é a face FRONTAL (-Y da chapa). Portanto os canecos de dobradiça usam face="frontal".
+            ops_porta_verso = None
+            if gerar_furacao:
+                lado_dob = "esquerda" if side == "left" else "direita"
+                ops_porta_verso = [
+                    o.to_dict() for o in make_hinge_cup_holes(
+                        altura_porta_mm=alt_porta_r * 1000.0,
+                        lado_dobradica=lado_dob,
+                        largura_porta_mm=larg_porta_r * 1000.0,
+                        face="frontal",
+                    )
+                ]
+
+            builder_porta = CaixaMixin.build_porta_esquerda if side == "left" else CaixaMixin.build_porta_direita
+            door_piece = builder_porta(
+                name=nome_p_r,
+                origin=(x_atual_r, y_rear_door, z_atual_r),
+                size=(larg_porta_r, E_frente, alt_porta_r),
+                material=mat_frente,
+                color=cor_frente,
+                puxador_tipo=puxador_tipo,
+                puxador_cor=puxador_cor,
+                puxador_pos=puxador_pos,
+                desconto_perfil_mm=desconto_perfil_mm,
+                perfil_modelo=perfil_modelo,
+                door_side=side,
+                is_upper=False,
+                gerar_furacao=gerar_furacao,
+                operacoes=ops_porta_verso,
+                ctx=mat_ctx,
+            )
+            # Marca a porta como verso para a cinemática de abertura interativa e posicionamento de ferragens
+            if getattr(door_piece, "ext", None) is None:
+                door_piece.ext = {}
+            door_piece.ext["is_rear_door"] = True
+            door_piece.ext["door_side"] = side
+            groups.append(door_piece)
+            x_atual_r += larg_porta_r + folga_m
+
+        return groups
+
+    @classmethod
     def build_gaveteiro(
         cls, largura_mm: float, altura_mm: float, prof_mm: float,
         num_gavetas: int = 4, esp_mm: float = 15.0, rodape_mm: float = 100.0,

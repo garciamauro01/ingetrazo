@@ -119,7 +119,7 @@ class SidebarApplyMixin:
             new_params.pop("num_prateleiras", None)
 
         # Divisórias verticais
-        if tipo == "balcao":
+        if tipo in ("balcao", "balcao_duplo", "balcao_ilha"):
             from ..domain.module_geometry import auto_divisoes_for_doors
             new_params["num_divisoes"] = auto_divisoes_for_doors(int(self.sp_qtd_elem.value()))
         elif tipo == "nicho":
@@ -161,7 +161,7 @@ class SidebarApplyMixin:
 
         # Parâmetros de travessas (apenas para módulos de cozinha inferiores)
         _IDS_COZINHA_INFERIORES = {
-            "balcao", "gaveteiro", "balcao_misto", "balcao_pia",
+            "balcao", "balcao_duplo", "balcao_ilha", "gaveteiro", "balcao_misto", "balcao_pia",
             "balcao_canto", "balcao_canto_l", "porta_tempero", "balcao_forno"
         }
         if tipo in _IDS_COZINHA_INFERIORES and hasattr(self, "chk_travessa_frontal_em_pe"):

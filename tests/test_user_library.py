@@ -1,12 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez and IngeTrazo contributors.
-"""The user's own component library: what gets copied, what is only
-referenced, and what happens when a file the manifest names is gone.
+"""The user's own component library: every import is copied into it.
 
-The point of these tests is the PROMISE, not the JSON: a managed import
-must survive moving the original, a referenced one must never be copied or
-deleted behind the user's back, and nothing the manifest says may read or
-write outside the library folder.
+The point of these tests is the PROMISE, not the JSON: an import must survive
+moving the original, no entry may point back to the file the user imported
+from, and nothing the manifest says may read or write outside the library.
 """
 from __future__ import annotations
 
@@ -36,12 +34,12 @@ def _obj(path, *, mtllib=None):
 
 
 # ---------------------------------------------------------------------------
-# Managed vs referenced
+# Every import is managed
 # ---------------------------------------------------------------------------
 
-def test_managed_copy_survives_deleting_the_original(library, tmp_path):
+def test_import_copy_survives_deleting_the_original(library, tmp_path):
     src = _obj(tmp_path / "geladeira.obj")
-    entry = user_library.register(src, nombre="Geladeira", managed=True)
+    entry = user_library.register(src, nombre="Geladeira")
 
     assert entry["modo"] == "gerenciado"
     original = user_library.resolve(entry)
@@ -49,29 +47,32 @@ def test_managed_copy_survives_deleting_the_original(library, tmp_path):
     assert original.is_file()
     # Inside the library, not the folder the user imported it from.
     assert library.resolve() in original.resolve().parents
+    assert entry["archivo"] == original.relative_to(
+        library.resolve()).as_posix()
 
     src.unlink()
     still_there = user_library.resolve(entry)
     assert still_there is not None and still_there.is_file()
 
 
-def test_reference_mode_indexes_in_place_and_never_deletes(library, tmp_path):
+def test_import_never_indexes_the_original_in_place(library, tmp_path):
     src = _obj(tmp_path / "fogao.obj")
-    entry = user_library.register(src, nombre="Fogão", managed=False)
+    entry = user_library.register(src, nombre="Fogão")
+    copied = user_library.resolve(entry)
 
-    assert entry["modo"] == "referencia"
-    assert user_library.resolve(entry).resolve() == src.resolve()
-    assert not (library / "models").exists() or \
-        not any((library / "models").iterdir())
+    assert entry["modo"] == "gerenciado"
+    assert copied is not None and copied.resolve() != src.resolve()
+    assert library.resolve() in copied.resolve().parents
 
     assert user_library.remove(entry["id"]) is True
+    assert not copied.exists()
     assert src.is_file()
 
 
-def test_remove_deletes_the_managed_copy_but_not_the_original(library,
+def test_remove_deletes_the_library_copy_but_not_the_original(library,
                                                               tmp_path):
     src = _obj(tmp_path / "forno.obj")
-    entry = user_library.register(src, nombre="Forno", managed=True)
+    entry = user_library.register(src, nombre="Forno")
     copy = user_library.resolve(entry)
 
     assert user_library.remove(entry["id"]) is True
@@ -80,14 +81,16 @@ def test_remove_deletes_the_managed_copy_but_not_the_original(library,
     assert user_library.get(entry["id"]) is None
 
 
-def test_missing_reference_is_reported_not_dropped(library, tmp_path):
+def test_missing_library_copy_is_reported_not_dropped(library, tmp_path):
     src = _obj(tmp_path / "some.obj")
-    entry = user_library.register(src, nombre="Some", managed=False)
-    src.unlink()
+    entry = user_library.register(src, nombre="Some")
+    copy = user_library.resolve(entry)
+    assert copy is not None
+    copy.unlink()
 
     assert user_library.resolve(entry) is None
     assert user_library.missing(entry) is True
-    # The ficha is still there: the user can relocate or remove it.
+    # The ficha is still there: the user can re-import or remove it.
     assert user_library.get(entry["id"]) is not None
     assert user_library.index()[0]["nombre"] == "Some"
 
@@ -102,7 +105,7 @@ def test_managed_obj_brings_its_mtl_and_textures(library, tmp_path):
         "newmtl Body\nKd 0.9 0.9 0.9\nmap_Kd tex.png\n", encoding="utf-8")
     src = _obj(tmp_path / "brastemp.obj", mtllib="mat.mtl")
 
-    entry = user_library.register(src, nombre="Brastemp", managed=True)
+    entry = user_library.register(src, nombre="Brastemp")
     folder = user_library.resolve(entry).parent
 
     assert (folder / "mat.mtl").is_file()
@@ -148,7 +151,7 @@ def test_index_ignores_entries_with_unsafe_ids(library):
 
 def test_update_edits_metadata_but_not_identity(library, tmp_path):
     src = _obj(tmp_path / "x.obj")
-    entry = user_library.register(src, nombre="Antigo", managed=False)
+    entry = user_library.register(src, nombre="Antigo")
 
     updated = user_library.update(
         entry["id"], nombre="Novo", marca="Electrolux", tipo="Geladeira",
@@ -163,7 +166,7 @@ def test_update_edits_metadata_but_not_identity(library, tmp_path):
     # Identity and the file it points at were not in the editable set.
     assert updated["id"] == entry["id"]
     assert updated["archivo"] == entry["archivo"]
-    assert updated["modo"] == "referencia"
+    assert updated["modo"] == "gerenciado"
     # And it persisted.
     assert user_library.get(entry["id"])["nombre"] == "Novo"
 
@@ -171,25 +174,46 @@ def test_update_edits_metadata_but_not_identity(library, tmp_path):
 def test_registering_the_same_file_twice_updates_instead_of_duplicating(
         library, tmp_path):
     src = _obj(tmp_path / "unico.obj")
-    first = user_library.register(src, nombre="Um", managed=False)
-    again = user_library.register(src, nombre="Dois", managed=False)
+    first = user_library.register(src, nombre="Um")
+    again = user_library.register(src, nombre="Dois")
 
     assert again["id"] == first["id"]
     assert len(user_library.index()) == 1
     assert user_library.get(first["id"])["nombre"] == "Dois"
+    assert again["modo"] == "gerenciado"
 
 
-def test_reimport_can_promote_a_reference_to_a_managed_copy(library,
-                                                            tmp_path):
+def test_reimport_keeps_one_managed_copy(library, tmp_path):
     src = _obj(tmp_path / "promover.obj")
-    entry = user_library.register(src, nombre="Um", managed=False)
-    promoted = user_library.register(src, nombre="Um", managed=True)
+    first = user_library.register(src, nombre="Um")
+    again = user_library.register(src, nombre="Um")
 
-    assert promoted["id"] == entry["id"]
-    assert promoted["modo"] == "gerenciado"
-    copy = user_library.resolve(promoted)
+    assert again["id"] == first["id"]
+    assert again["modo"] == "gerenciado"
+    copy = user_library.resolve(again)
     assert copy is not None
     assert library.resolve() in copy.resolve().parents
+    assert len(user_library.index()) == 1
+
+
+def test_legacy_reference_is_promoted_on_reimport(library, tmp_path):
+    src = _obj(tmp_path / "antigo.obj")
+    library.mkdir(parents=True)
+    (library / user_library.MANIFEST).write_text(json.dumps({
+        "version": 1,
+        "componentes": [{
+            "id": "antigo-1", "nombre": "Antigo", "modo": "referencia",
+            "archivo": str(src), "origen": str(src),
+        }],
+    }), encoding="utf-8")
+
+    promoted = user_library.register(src, nombre="Antigo")
+
+    assert promoted["id"] == "antigo-1"
+    assert promoted["modo"] == "gerenciado"
+    path = user_library.resolve(promoted)
+    assert path is not None
+    assert library.resolve() in path.resolve().parents
 
 
 def test_facets_count_types_brands_and_tags(library, tmp_path):
@@ -209,7 +233,7 @@ def test_facets_count_types_brands_and_tags(library, tmp_path):
     assert facets["tags"]["inox"] == 2
 
 
-def test_add_folder_indexes_references_and_tags_the_folders(library,
+def test_add_folder_copies_every_model_and_tags_the_folders(library,
                                                             tmp_path):
     branch = tmp_path / "Geladeiras" / "Brastemp"
     branch.mkdir(parents=True)
@@ -220,14 +244,17 @@ def test_add_folder_indexes_references_and_tags_the_folders(library,
 
     assert {e["nombre"] for e in added} == {"BRM54", "outra"}
     for entry in added:
-        assert entry["modo"] == "referencia"
+        assert entry["modo"] == "gerenciado"
+        path = user_library.resolve(entry)
+        assert path is not None
+        assert library.resolve() in path.resolve().parents
     by_name = {e["nombre"]: e for e in added}
     assert "Brastemp" in by_name["BRM54"]["tags"]
     assert "outra" not in by_name["BRM54"]["tags"]
 
 
 def test_thumbnails_live_under_the_library(library, tmp_path):
-    entry = user_library.register(_obj(tmp_path / "com.obj"), managed=False)
+    entry = user_library.register(_obj(tmp_path / "com.obj"))
     assert user_library.thumbnail(entry) is None
     path = user_library.thumbnail_path(entry)
     assert path == library / "thumbs" / f"{entry['id']}.png"

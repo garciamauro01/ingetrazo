@@ -9,17 +9,14 @@ model bought from an artist — and this module records where it is, what it
 is and how it should be read. That is what keeps the collection the user's
 own and the app a manager rather than a redistributor.
 
-Two modes, because indexing and copying are different promises:
+Every import is copied. The model and the files it needs (MTL, textures,
+.bin) go into ``<library>/models/<id>/``, and the manifest keeps only a path
+relative to the library. Moving or deleting the original changes nothing,
+and a component in the scene is always a link to a file the library owns.
 
-``gerenciado``
-    The model and the files it needs (MTL, textures, .bin) are copied into
-    ``<library>/models/<id>/``. Portable: moving or deleting the original
-    changes nothing.
-
-``referencia``
-    The file stays where it is and the manifest keeps its absolute path.
-    Nothing is copied. Useful for a folder that is already organised; a
-    missing file is reported, never silently dropped.
+Older manifests with ``modo: "referencia"`` are still read so an existing
+installation keeps working; registering or re-registering a file promotes
+such an entry to a managed copy. No new reference entry is ever written.
 
 The manifest is ``library.json`` under the library root, in the same
 vocabulary the online catalogue uses (``nombre``, ``categoria``, ``licencia``,
@@ -35,7 +32,9 @@ import re
 import shutil
 import unicodedata
 import uuid
-from pathlib import Path
+import zipfile
+from datetime import datetime, timezone
+from pathlib import Path, PurePosixPath
 
 from core.paths import user_data_dir
 
@@ -314,7 +313,7 @@ def sidecars(path: Path) -> list[Path]:
 # ---------------------------------------------------------------------------
 
 def _entry(ident: str, src: Path, *, nombre, categoria, tipo, marca, modelo,
-           tags, fuente, licencia, autor, notas, cm, matrix, managed,
+           tags, fuente, licencia, autor, notas, cm, matrix,
            escala, y_up, unidad) -> dict:
     return {
         "id": ident,
@@ -324,8 +323,8 @@ def _entry(ident: str, src: Path, *, nombre, categoria, tipo, marca, modelo,
         "marca": str(marca or ""),
         "modelo": str(modelo or ""),
         "tags": [str(t) for t in (tags or []) if str(t).strip()],
-        "modo": "gerenciado" if managed else "referencia",
-        "archivo": _relative_archive(ident, src.name) if managed else str(src),
+        "modo": "gerenciado",
+        "archivo": _relative_archive(ident, src.name),
         "origen": str(src),
         "cm": list(cm) if cm else None,
         "matrix": list(matrix) if matrix else None,
@@ -361,13 +360,14 @@ def register(source, *, nombre: str | None = None, categoria: str = "",
              tipo: str = "", marca: str = "", modelo: str = "",
              tags=None, fuente: str = "", licencia: str = "",
              autor: str = "", notas: str = "", cm=None, matrix=None,
-             managed: bool = True, escala: float = 1.0,
-             y_up: bool = False, unidad: str = "m") -> dict:
-    """Index one model file. Returns its entry.
+             escala: float = 1.0, y_up: bool = False,
+             unidad: str = "m") -> dict:
+    """Copy one model file into the library and return its entry.
 
-    ``managed=True`` copies the file and its sidecars into the library;
-    ``managed=False`` only remembers the path. The same file indexed twice
-    (same resolved origin) is updated rather than duplicated.
+    The file and its sidecars always go to ``models/<id>/``; there is no
+    reference-only mode. The same file imported twice (same resolved origin)
+    is updated rather than duplicated. A legacy reference entry found on
+    re-import is promoted to a managed copy.
     """
     src = Path(source).expanduser()
     if not src.is_file():
@@ -386,9 +386,9 @@ def register(source, *, nombre: str | None = None, categoria: str = "",
         except (OSError, ValueError):
             same = False
         if same:
-            # Re-importing a file that was only referenced can promote it to
-            # a managed copy; the reverse never silently deletes a copy.
-            if managed and e.get("modo") != "gerenciado":
+            # A legacy entry that only referenced the file is promoted to a
+            # managed copy on re-import. Every new import is already managed.
+            if e.get("modo") != "gerenciado":
                 ident = str(e.get("id"))
                 dest_dir = models_dir() / ident
                 dest_dir.mkdir(parents=True, exist_ok=True)
@@ -421,23 +421,21 @@ def register(source, *, nombre: str | None = None, categoria: str = "",
 
     ident = _new_id(nombre or src.stem, origin,
                     {e.get("id") for e in entries})
-    if managed:
-        dest_dir = models_dir() / ident
-        dest_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dest_dir / src.name)
-        for dep in sidecars(src):
-            target = dest_dir / _rel_name(dep, src.parent)
-            try:
-                target.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(dep, target)
-            except OSError:
-                pass
+    dest_dir = models_dir() / ident
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src, dest_dir / src.name)
+    for dep in sidecars(src):
+        target = dest_dir / _rel_name(dep, src.parent)
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(dep, target)
+        except OSError:
+            pass
 
     entry = _entry(ident, src, nombre=nombre, categoria=categoria, tipo=tipo,
                    marca=marca, modelo=modelo, tags=tags, fuente=fuente,
                    licencia=licencia, autor=autor, notas=notas, cm=cm,
-                   matrix=matrix, managed=managed, escala=escala, y_up=y_up,
-                   unidad=unidad)
+                   matrix=matrix, escala=escala, y_up=y_up, unidad=unidad)
     entries.append(entry)
     _write(data)
     _bake_decoration(entry)
@@ -469,8 +467,8 @@ def update(ident: str, **fields) -> dict | None:
 
 
 def remove(ident: str, delete_files: bool = True) -> bool:
-    """Drop an entry. A managed copy goes with it; a referenced original
-    never does."""
+    """Drop an entry. The copy inside the library goes with it; the user's
+    original file is never touched."""
     data = _read()
     entries = data.get("componentes") or []
     keep, gone = [], None
@@ -502,10 +500,11 @@ def remove(ident: str, delete_files: bool = True) -> bool:
 # Bulk indexing
 # ---------------------------------------------------------------------------
 
-def add_folder(folder, *, recursive: bool = True, managed: bool = False,
+def add_folder(folder, *, recursive: bool = True,
                tags=None, **fields) -> list[dict]:
-    """Index every model under ``folder``. The relative folders become tags,
-    so ``Geladeiras/Brastemp/BRM54.obj`` arrives tagged with both."""
+    """Copy every model under ``folder`` into the library. The relative
+    folders become tags, so ``Geladeiras/Brastemp/BRM54.obj`` arrives tagged
+    with both."""
     root = Path(folder).expanduser()
     if not root.is_dir():
         return []
@@ -521,7 +520,7 @@ def add_folder(folder, *, recursive: bool = True, managed: bool = False,
         except ValueError:
             folder_tags = []
         added.append(register(
-            path, nombre=path.stem, managed=managed,
+            path, nombre=path.stem,
             tags=list(tags or []) + folder_tags, **fields))
     return added
 
@@ -546,3 +545,247 @@ def facets(entries=None) -> dict:
             if tag:
                 out["tags"][tag] = out["tags"].get(tag, 0) + 1
     return out
+
+
+# ---------------------------------------------------------------------------
+# Portable bundles: export / import the whole user library
+# ---------------------------------------------------------------------------
+
+BUNDLE_MANIFEST = "bundle.json"
+BUNDLE_FORMAT = "ingetrazo-user-library"
+BUNDLE_VERSION = 1
+
+
+def _portable_entry(entry: dict) -> dict:
+    """A copy of ``entry`` without the absolute path of the original file.
+
+    ``origen`` is provenance, not something the app resolves, but it would
+    leak the donor's disk layout into another machine. Keep only the file
+    name; ``archivo`` stays relative to the library root.
+    """
+    out = dict(entry)
+    origin = str(out.get("origen") or "").strip()
+    if origin:
+        out["origen"] = re.split(r"[\\/]", origin)[-1]
+    return out
+
+
+def export_bundle(dest, *, entries=None) -> dict:
+    """Write the whole library to ``dest`` as a self-contained ``.zip``.
+
+    Only managed entries whose model file still exists are exported; a legacy
+    reference entry or a missing file cannot travel and is skipped. No
+    absolute path is written into the bundle.
+    """
+    target = Path(dest).expanduser()
+    if target.suffix.lower() != ".zip":
+        target = target.with_suffix(".zip")
+    target.parent.mkdir(parents=True, exist_ok=True)
+
+    entries = index() if entries is None else entries
+    root = library_root().resolve()
+    included: list[dict] = []
+    members: set[str] = set()
+
+    for entry in entries:
+        ident = entry.get("id")
+        if not valid_id(ident) or entry.get("modo") == "referencia":
+            continue
+        model = resolve(entry)
+        if model is None:
+            continue
+        try:
+            model_rel = model.resolve().relative_to(root)
+        except ValueError:
+            continue
+        members.add(model_rel.as_posix())
+        included.append(_portable_entry(entry))
+
+        model_folder = models_dir() / ident
+        if model_folder.is_dir():
+            for path in model_folder.rglob("*"):
+                if path.is_file():
+                    members.add(path.relative_to(library_root()).as_posix())
+        thumb = thumbnail(ident)
+        if thumb is not None:
+            members.add(thumb.relative_to(library_root()).as_posix())
+
+    data = _read()
+    bundle = {
+        "format": BUNDLE_FORMAT,
+        "version": BUNDLE_VERSION,
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "library_version": data.get("version", VERSION),
+        "unidad": data.get("unidad", "m"),
+        "entries": len(included),
+        "files": len(members),
+    }
+
+    tmp = target.with_name(target.name + ".part")
+    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr(BUNDLE_MANIFEST,
+                    json.dumps(bundle, ensure_ascii=False, indent=2) + "\n")
+        zf.writestr(MANIFEST,
+                    json.dumps({"version": data.get("version", VERSION),
+                                "unidad": data.get("unidad", "m"),
+                                "componentes": included},
+                               ensure_ascii=False, indent=2) + "\n")
+        for name in sorted(members):
+            zf.write(library_root() / name, name)
+    tmp.replace(target)
+    return {"path": target, "entries": len(included),
+            "files": len(members), "skipped": len(entries) - len(included)}
+
+
+def _valid_member(name: str) -> PurePosixPath:
+    """Reject anything that could write outside the library on import."""
+    path = PurePosixPath(name)
+    if (not name or name.endswith("/") or path.is_absolute()
+            or ".." in path.parts or path.parts[0] not in ("models", "thumbs")):
+        raise ValueError(f"arquivo inválido no pacote: {name!r}")
+    if path.parts[0] == "models":
+        if len(path.parts) < 3 or not valid_id(path.parts[1]):
+            raise ValueError(f"modelo inválido no pacote: {name!r}")
+    elif len(path.parts) != 2:
+        raise ValueError(f"miniatura inválida no pacote: {name!r}")
+    return path
+
+
+def _read_bundle(source, zf: zipfile.ZipFile) -> tuple[dict, dict, list[str]]:
+    names = zf.namelist()
+    if BUNDLE_MANIFEST not in names or MANIFEST not in names:
+        raise ValueError("não é um pacote da biblioteca do IngeTrazo")
+    bundle = json.loads(zf.read(BUNDLE_MANIFEST).decode("utf-8"))
+    if (not isinstance(bundle, dict)
+            or bundle.get("format") != BUNDLE_FORMAT
+            or bundle.get("version") != BUNDLE_VERSION):
+        raise ValueError("formato de pacote não reconhecido")
+    data = json.loads(zf.read(MANIFEST).decode("utf-8"))
+    if not isinstance(data, dict) or not isinstance(
+            data.get("componentes"), list):
+        raise ValueError("manifesto do pacote inválido")
+
+    entries: dict[str, dict] = {}
+    for entry in data["componentes"]:
+        if not isinstance(entry, dict):
+            raise ValueError("entrada inválida no pacote")
+        ident = entry.get("id")
+        if not valid_id(ident) or ident in entries:
+            raise ValueError(f"id inválido ou repetido no pacote: {ident!r}")
+        if entry.get("modo") == "referencia":
+            raise ValueError("o pacote contém uma referência, não uma cópia")
+        archivo = str(entry.get("archivo") or "")
+        rel = PurePosixPath(archivo)
+        if (not archivo or rel.is_absolute() or ".." in rel.parts
+                or len(rel.parts) < 3 or rel.parts[0] != "models"
+                or rel.parts[1] != ident):
+            raise ValueError(f"arquivo de modelo inválido: {archivo!r}")
+        entries[ident] = _portable_entry(entry)
+
+    members: list[str] = []
+    for name in names:
+        if name in (BUNDLE_MANIFEST, MANIFEST):
+            continue
+        _valid_member(name)
+        members.append(name)
+    for entry in entries.values():
+        if entry["archivo"] not in members:
+            raise ValueError(
+                f"falta o arquivo {entry['archivo']!r} no pacote")
+    return bundle, entries, members
+
+
+def _copy_member(zf: zipfile.ZipFile, name: str, root: Path) -> Path:
+    target = root / Path(name)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with zf.open(name) as source, target.open("wb") as dest:
+        shutil.copyfileobj(source, dest)
+    return target
+
+
+def import_bundle(source, *, mode: str = "merge") -> dict:
+    """Import a bundle made by :func:`export_bundle`.
+
+    ``mode='merge'`` keeps the current library and adds only ids that do not
+    exist yet. ``mode='replace'`` builds the new library in a staging folder
+    and swaps it in only after every file has been copied; the previous
+    library is kept as a backup until the swap succeeds.
+    """
+    if mode not in ("merge", "replace"):
+        raise ValueError("mode deve ser 'merge' ou 'replace'")
+    src = Path(source).expanduser()
+    if not src.is_file():
+        raise FileNotFoundError(f"pacote não encontrado: {src}")
+    with zipfile.ZipFile(src) as zf:
+        bundle, incoming, members = _read_bundle(src, zf)
+        if mode == "merge":
+            return _merge_bundle(zf, incoming, members)
+        return _replace_bundle(zf, bundle, incoming, members)
+
+
+def _merge_bundle(zf: zipfile.ZipFile, incoming: dict,
+                  members: list[str]) -> dict:
+    root = library_root()
+    existing = {str(e.get("id")) for e in index()}
+    added: list[dict] = []
+    copied: list[Path] = []
+    try:
+        for ident, entry in incoming.items():
+            if ident in existing:
+                continue
+            for name in members:
+                if (name.startswith(f"models/{ident}/")
+                        or name == f"thumbs/{ident}.png"):
+                    copied.append(_copy_member(zf, name, root))
+            added.append(entry)
+        if added:
+            data = _read()
+            current = {str(e.get("id")) for e in data["componentes"]
+                       if isinstance(e, dict)}
+            data["componentes"].extend(
+                entry for entry in added if entry["id"] not in current)
+            _write(data)
+    except Exception:
+        for path in copied:
+            try:
+                path.unlink()
+            except OSError:
+                pass
+        raise
+    return {"mode": "merge", "added": len(added),
+            "skipped": len(incoming) - len(added), "files": len(copied)}
+
+
+def _replace_bundle(zf: zipfile.ZipFile, bundle: dict, incoming: dict,
+                    members: list[str]) -> dict:
+    root = library_root()
+    root.parent.mkdir(parents=True, exist_ok=True)
+    token = uuid.uuid4().hex
+    stage = root.parent / f".{root.name}.import-{token}"
+    backup = root.parent / f".{root.name}.backup-{token}"
+    try:
+        stage.mkdir(parents=True)
+        for name in members:
+            _copy_member(zf, name, stage)
+        (stage / MANIFEST).write_text(
+            json.dumps({"version": bundle.get("library_version", VERSION),
+                        "unidad": bundle.get("unidad", "m"),
+                        "componentes": list(incoming.values())},
+                       ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8")
+        (stage / BUNDLE_MANIFEST).write_text(
+            json.dumps(bundle, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8")
+        if root.exists():
+            root.rename(backup)
+        stage.rename(root)
+    except Exception:
+        if stage.exists():
+            shutil.rmtree(stage, ignore_errors=True)
+        if backup.exists() and not root.exists():
+            backup.rename(root)
+        raise
+    if backup.exists():
+        shutil.rmtree(backup, ignore_errors=True)
+    return {"mode": "replace", "entries": len(incoming),
+            "files": len(members)}

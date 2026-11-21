@@ -62,6 +62,29 @@ def _build_balcao(cls, params: Dict[str, Any], ctx: Dict[str, Any]) -> Tuple[Lis
     return pieces, name
 
 
+@register_module_builder(("balcao_duplo", "balcao_ilha"))
+def _build_balcao_duplo(cls, params: Dict[str, Any], ctx: Dict[str, Any]) -> Tuple[List[Group], str]:
+    L, A, P = ctx["L_mm"], ctx["A_mm"], ctx["P_mm"]
+    name = f"Balcao Ilha {int(L)}x{int(A)}x{int(P)}"
+    pieces = cls.build_balcao_duplo(
+        L, A, P,
+        esp_mm=ctx["esp_mm"],
+        rodape_mm=ctx["rodape_mm"],
+        num_portas=params.get("num_portas", 2),
+        num_portas_verso=params.get("num_portas_verso", params.get("num_portas", 2)),
+        num_prateleiras=params.get("num_prateleiras", 1),
+        lado_abertura_porta=params.get("lado_abertura_porta", "esquerda"),
+        material=ctx["material"],
+        material_frentes=ctx["material_frentes"],
+        esp_frentes_mm=ctx["esp_frentes_mm"],
+        offset=ctx["offset"],
+        mat_ctx=ctx.get("mat_ctx"),
+        **ctx["pux_kw"],
+        **ctx["travessas_kwargs"],
+    )
+    return pieces, name
+
+
 @register_module_builder("gaveteiro")
 def _build_gaveteiro(cls, params: Dict[str, Any], ctx: Dict[str, Any]) -> Tuple[List[Group], str]:
     L, A, P = ctx["L_mm"], ctx["A_mm"], ctx["P_mm"]

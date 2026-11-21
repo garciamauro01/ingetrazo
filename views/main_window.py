@@ -8042,10 +8042,6 @@ class MainWindow(QMainWindow):
         soften_smooth_edges(mesh, cos_threshold=0.55)
         return _linked(Group(mesh, name=entry.get("nombre", "")))
 
-    def _on_open_library(self) -> None:
-        from views.library_dialog import LibraryDialog
-        LibraryDialog(self).exec()
-
     # ---- the user's own components -----------------------------------
     def insert_user_component(self, entry: dict) -> None:
         """Hand one of the user's indexed models to the placement tool.

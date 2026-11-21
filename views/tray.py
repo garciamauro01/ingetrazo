@@ -1201,13 +1201,6 @@ class ComponentsPanel(QWidget):
             btn.clicked.connect(callback)
             grid.addWidget(btn, i // self.COLS, i % self.COLS)
         lay.addLayout(grid)
-        # The bundled grid is a handful; the rest of the catalogue lives
-        # online and is browsed from here (see core/library.py).
-        more = QPushButton(tr("More components…"))
-        more.setToolTip(tr(
-            "Browse the online library and download a model as a component"))
-        more.clicked.connect(window._on_open_library)
-        lay.addWidget(more)
         # Your own models: files you already have, indexed here (by type,
         # brand, model) instead of downloaded from anyone.
         mine = QPushButton(tr("My components…"))

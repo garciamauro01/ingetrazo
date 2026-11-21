@@ -203,7 +203,11 @@ class JointResolver:
             eh_deitada = dim_y_mm > dim_z_mm
             largura_util_mm = dim_y_mm if eh_deitada else dim_z_mm
             esp_util_mm = dim_z_mm if eh_deitada else dim_y_mm
-            face_tambor = "base" if eh_deitada else "traseira"
+            # Para travessas deitadas, face_tambor é "base". Para travessa em pé:
+            # se for frontal (perto de Y=0), tambor fica na face interna traseira (+Y da chapa).
+            # se for traseira (perto do fundo / Y max), tambor fica na face interna frontal (-Y da chapa).
+            is_rear_stretcher = "traseira" in (getattr(trav, "name", "") or "").lower() or t_min.y() > 0.30
+            face_tambor = "base" if eh_deitada else ("frontal" if is_rear_stretcher else "traseira")
 
             for sup, s_min, s_max in suportes:
                 sobrepos_y = min(t_max.y(), s_max.y()) - max(t_min.y(), s_min.y())
@@ -569,12 +573,18 @@ class JointResolver:
                     dist_esq = abs(x_dobradica - s_min.x())
                     faces_para_calco = ["direita"] if dist_dir <= dist_esq else ["esquerda"]
 
+                # Verifica se a porta é traseira (localizada próxima a Y max do móvel / verso)
+                is_rear_door = "verso" in p_name or getattr(porta, "ext", {}).get("is_rear_door", False) or (p_min.y() > (s_min.y() + s_max.y()) / 2.0)
+                prof_sup_mm = (s_max.y() - s_min.y()) * 1000.0
+                recuo_calco_x = (prof_sup_mm - 37.0) if is_rear_door else 37.0
+
                 calcos_faltantes = []
                 for cy in calcos_y_sup:
                     ja_tem = any(
                         op.get("tipo") == "furo"
                         and op.get("face") in faces_para_calco
                         and ("cal" in str(op.get("descricao", "")).lower())
+                        and abs(float(op.get("x", 0.0)) - recuo_calco_x) < 10.0
                         and (
                             abs(float(op.get("y", 0.0)) - cy) < 6.0
                             or abs(float(op.get("y", 0.0)) - (cy - 16.0)) < 4.0
@@ -589,7 +599,7 @@ class JointResolver:
                     for f_cal in faces_para_calco:
                         novos_calcos = make_hinge_plate_holes(
                             posicoes_y_mm=calcos_faltantes,
-                            recuo_borda_frontal_mm=37.0,
+                            recuo_borda_frontal_mm=recuo_calco_x,
                             face=f_cal,
                             tipo_fixacao="parafuso",
                         )
