@@ -27,6 +27,7 @@ from PySide6.QtGui import (QDrag, QIcon, QKeySequence, QMouseEvent, QPixmap,
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
+    QDialog,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -558,6 +559,8 @@ class TrazoMobModuleRibbonBar(QToolBar):
         for label, slot in (
             (tr("Import model…"), self._import_user_component),
             (tr("Add folder…"), self._add_user_folder),
+            (tr("Edit…"), self._edit_selected_user_component),
+            (tr("Save geometry…"), self._save_selected_geometry),
             (tr("Manage…"), self._open_user_library),
         ):
             button = QPushButton(label)
@@ -798,6 +801,27 @@ class TrazoMobModuleRibbonBar(QToolBar):
         if not isinstance(entry, dict) or not entry:
             return
         host.insert_user_component(self.main_window, entry)
+
+    def _edit_selected_user_component(self) -> None:
+        """Abre a ficha do componente selecionado para editar nome, marca,
+        categoria, dimensões, matriz e notas."""
+        grid = self._current_library_grid()
+        item = grid.currentItem() if grid is not None else None
+        entry = item.data(Qt.UserRole) if item is not None else None
+        if not isinstance(entry, dict) or not entry:
+            return
+        from views.user_library_dialog import ComponentDialog
+
+        dialog = ComponentDialog(self, entry=entry)
+        if dialog.exec() != QDialog.Accepted:
+            return
+        self.refresh_user_library(force=True)
+
+    def _save_selected_geometry(self) -> None:
+        """Salva a geometria do objeto selecionado na cena na biblioteca."""
+        if not host.save_user_component_geometry(self.main_window):
+            return
+        self.refresh_user_library(force=True)
 
     def _fill_library_thumbs(self) -> None:
         from core import user_library

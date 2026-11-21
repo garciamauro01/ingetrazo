@@ -9,8 +9,8 @@ from types import SimpleNamespace
 import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QImage
-from PySide6.QtWidgets import (QListView, QListWidget, QMenu, QPushButton,
-                               QTabWidget, QWidget)
+from PySide6.QtWidgets import (QDialog, QListView, QListWidget, QMenu,
+                               QPushButton, QTabWidget, QWidget)
 
 from core import user_library
 from trazomob.integrations import platform as host
@@ -137,6 +137,25 @@ def test_double_click_inserts_user_component(ribbon, monkeypatch):
     assert win.inserted == []
 
 
+def test_edit_button_opens_component_dialog(ribbon, monkeypatch):
+    bar, _win, _state = ribbon
+    captured = {}
+
+    class FakeDialog:
+        def __init__(self, parent, *, entry):
+            captured["entry"] = entry
+
+        def exec(self):
+            return QDialog.Accepted
+
+    monkeypatch.setattr("views.user_library_dialog.ComponentDialog", FakeDialog)
+    tabs = _category_tabs(bar)
+    grid = tabs.widget(0).currentWidget().findChild(QListWidget)
+    grid.setCurrentRow(0)
+    bar._edit_selected_user_component()
+    assert captured["entry"]["id"] == "geladeira"
+
+
 def test_revision_change_rebuilds_browser(ribbon, fake_library):
     bar, _win, state = ribbon
     tabs = _category_tabs(bar)
@@ -151,6 +170,16 @@ def test_revision_change_rebuilds_browser(ribbon, fake_library):
     assert "Banheiro" in labels
     brands = tabs.widget(labels.index("Banheiro"))
     assert "Deca" in [brands.tabText(i) for i in range(brands.count())]
+
+
+def test_save_geometry_button_calls_host(ribbon, monkeypatch):
+    bar, win, _state = ribbon
+    called = []
+    monkeypatch.setattr(
+        host, "save_user_component_geometry",
+        lambda window: called.append(window) or True)
+    bar._save_selected_geometry()
+    assert called == [win]
 
 
 def test_transfer_menu_offers_export_and_import(ribbon):

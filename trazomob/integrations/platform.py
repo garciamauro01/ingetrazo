@@ -117,6 +117,8 @@ def capabilities(window: Any = None, viewport: Any = None) -> dict[str, bool]:
         "insert_person": callable(getattr(win, "_on_insert_person_2d", None)),
         "insert_user_component": callable(
             getattr(win, "insert_user_component", None)),
+        "save_user_geometry": callable(
+            getattr(win, "save_user_component_geometry", None)),
         "import_user_component": callable(
             getattr(win, "import_user_component", None)),
         "open_user_library": callable(
@@ -268,6 +270,16 @@ def insert_user_component(window: Any, entry: dict) -> bool:
     return True
 
 
+def save_user_component_geometry(window: Any, group=None) -> bool:
+    """Salva a geometria editada de um componente da biblioteca do usuário."""
+    fn = getattr(window_of(window), "save_user_component_geometry", None)
+    if not callable(fn):
+        logger.debug("host sem save_user_component_geometry")
+        return False
+    fn(group)
+    return True
+
+
 def import_user_component(window: Any, path: str | None = None) -> bool:
     """Abre a ficha de importação de um componente e, se confirmada, o
     posiciona. Um host sem o recurso devolve ``False`` sem quebrar."""
@@ -320,7 +332,7 @@ __all__ = [
     "capabilities", "supports",
     "apply_display_style", "set_style_field", "sync_style_menu", "toggle_xray",
     "legacy_style_toolbar", "activate_plugin_tool", "insert_component",
-    "insert_person_2d", "insert_user_component",
+    "insert_person_2d", "insert_user_component", "save_user_component_geometry",
     "import_user_component", "open_user_library", "register_extension_dock",
     "import_module",
 ]

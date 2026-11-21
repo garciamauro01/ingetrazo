@@ -408,9 +408,6 @@ class MaterialEditorDialog(QDialog):
         if not self._highlight_active or not self._current_mat or self.scene is None:
             return
 
-        from formats.meshexport import world_faces
-        from core.group import effective_material
-        from core.materials import effective_attrs
         from pathlib import Path
         from PySide6.QtGui import QPen, QBrush, QColor, QPolygonF
         from PySide6.QtCore import QPointF
@@ -456,27 +453,21 @@ class MaterialEditorDialog(QDialog):
             if len(pts_2d) >= 3:
                 painter.drawPolygon(QPolygonF(pts_2d))
 
-        # Realça faces dos grupos (incluindo paredes pintadas externamente)
-        for g in getattr(self.scene, "groups", []):
-            if hasattr(self.scene, "entity_visible") and not self.scene.entity_visible(g):
-                continue
-            paint = effective_material(g)
-            if hasattr(g, "mesh") and hasattr(g.mesh, "faces"):
-                for f in g.mesh.faces:
-                    if f.attrs.get("hidden"):
-                        continue
-                    eff = effective_attrs(f.attrs, paint) if paint else f.attrs
-                    if _resolve_mat_name(eff) == cur_mat:
-                        _draw_face(f)
+        # As faces precisam ser as que o viewport DESENHA: em coordenadas do
+        # mundo e com a pintura efetiva. Usar ``g.mesh.faces`` direto mostrava
+        # a geometria em coordenadas locais — sem o ``xform`` do grupo — e o
+        # destaque aparecia deslocado (à frente) do objeto na cena.
+        from formats.meshexport import painted_group_faces, world_faces_painted
 
-        # Realça faces soltas da cena
-        loose = getattr(self.scene, "loose_mesh", None) or getattr(self.scene, "mesh", None)
-        if loose and hasattr(loose, "faces"):
-            for f in loose.faces:
-                if f.attrs.get("hidden"):
-                    continue
-                if _resolve_mat_name(f.attrs) == cur_mat:
-                    _draw_face(f)
+        if self._group is not None:
+            shown = painted_group_faces(self._group)
+        else:
+            shown = world_faces_painted(self.scene)
+        for face, attrs in shown:
+            if (attrs or {}).get("hidden"):
+                continue
+            if _resolve_mat_name(attrs or {}) == cur_mat:
+                _draw_face(face)
 
         painter.restore()
 

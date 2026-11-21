@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import re
 import shutil
@@ -37,6 +38,8 @@ from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 
 from core.paths import user_data_dir
+
+logger = logging.getLogger("core.user_library")
 
 #: Bumped when the layout changes in a way older builds must notice.
 VERSION = 1
@@ -494,6 +497,64 @@ def remove(ident: str, delete_files: bool = True) -> bool:
         pass
     _write(data)
     return True
+
+
+def replace_geometry(ident: str, group, *, thumb_size: int = 128) -> dict | None:
+    """Save the geometry of a scene group as the library component ``ident``.
+
+    The group is flattened in local coordinates: its placement in the scene
+    (``xform``) stays in the document and is not baked into the definition,
+    so every instance can keep its own position. The new definition is an
+    ``.igz`` inside ``models/<id>/`` and the manifest is updated to point at
+    it. The old file is kept, so documents still holding the previous link
+    revision can be reopened.
+    """
+    entry = get(ident)
+    if entry is None or not valid_id(ident):
+        return None
+    mesh = getattr(group, "mesh", None)
+    if mesh is None or not getattr(mesh, "faces", ()):
+        raise ValueError("o grupo selecionado não tem geometria")
+
+    from core.scene import Scene
+    from formats import igz
+    from views import component_loader
+
+    children = getattr(group, "children", None)
+    saved_xform = getattr(group, "xform", None)
+    group.xform = None
+    try:
+        flat = component_loader.flatten(group) if (children or saved_xform is not None) else group
+    finally:
+        group.xform = saved_xform
+
+    folder = models_dir() / ident
+    folder.mkdir(parents=True, exist_ok=True)
+    target = folder / f"{ident}.igz"
+    scene = Scene()
+    scene.groups.append(flat)
+    igz.save_scene(scene, target, binary=True)
+
+    data = _read()
+    updated = None
+    for item in data.get("componentes") or []:
+        if item.get("id") == ident:
+            item["modo"] = "gerenciado"
+            item["archivo"] = target.relative_to(library_root()).as_posix()
+            updated = dict(item)
+            break
+    if updated is None:
+        return None
+    _write(data)
+
+    try:
+        fitted = component_loader.fit(
+            flat, cm=updated.get("cm"), anchor="base")
+        component_loader.save_thumbnail(
+            fitted, thumbnail_path(ident), thumb_size)
+    except Exception as exc:  # noqa: BLE001 - a miniatura não é a geometria
+        logger.debug("falha ao gerar miniatura de %s: %s", ident, exc)
+    return updated
 
 
 # ---------------------------------------------------------------------------

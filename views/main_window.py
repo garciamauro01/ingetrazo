@@ -8086,6 +8086,63 @@ class MainWindow(QMainWindow):
             self.insert_user_component(entry)
         return entry
 
+    def save_user_component_geometry(self, group=None) -> None:
+        """Salva na biblioteca a geometria editada de um componente do usuário.
+
+        O objeto precisa ter vindo da biblioteca do usuário (ele carrega
+        ``ext['igz_link']`` com ``library='user'``). A posição do objeto na
+        cena não entra na definição: só a malha local é gravada.
+        """
+        from core import user_library
+        from trazomob.integrations import library_links
+
+        scene = getattr(self.viewport, "scene", None)
+        if scene is None:
+            return
+        candidates = ([group] if group is not None else
+                      [g for g in getattr(scene, "selection", ())
+                       if isinstance(g, Group)])
+        target, link = None, None
+        for candidate in candidates:
+            candidate_link = library_links.link_of(candidate)
+            if candidate_link and candidate_link.get("library") == "user":
+                target, link = candidate, candidate_link
+                break
+        if target is None:
+            QMessageBox.information(
+                self, tr("Save geometry to library"),
+                tr("Select a component that came from your library first."))
+            return
+
+        ident = str(link.get("id") or "")
+        entry = user_library.get(ident) or (link.get("entry") or {})
+        name = entry.get("nombre") or ident
+        answer = QMessageBox.question(
+            self, tr("Save geometry to library"),
+            tr("Replace the geometry of “{name}” with the selected object?",
+               name=name),
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if answer != QMessageBox.Yes:
+            return
+        try:
+            updated = user_library.replace_geometry(ident, target)
+        except (OSError, ValueError) as exc:
+            QMessageBox.warning(self, tr("Save geometry to library"), str(exc))
+            return
+        if updated is None:
+            QMessageBox.warning(
+                self, tr("Save geometry to library"),
+                tr("This component is no longer in your library."))
+            return
+
+        count = library_links.refresh_user_groups(scene, ident, updated)
+        self.viewport.notify_scene_changed()
+        self.viewport.update()
+        flash = getattr(self.viewport, "flash_status", None)
+        if callable(flash):
+            flash(tr("Geometry saved to “{name}” ({n} instances updated).",
+                     name=name, n=count))
+
     def _on_open_user_library(self, brand: str | None = None) -> None:
         from views.user_library_dialog import UserLibraryDialog
         UserLibraryDialog(self, brand=brand if isinstance(brand, str)

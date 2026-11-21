@@ -365,6 +365,35 @@ def rebuild_scene_links(scene, *, on_missing=None) -> dict:
     return stats
 
 
+def user_definition(entry: dict):
+    """A geometria da definição do usuário, sem aplicar o ``xform`` da cena."""
+    return _definition(link_from_entry(entry, library="user"))
+
+
+def refresh_user_groups(scene, ident: str, entry: dict) -> int:
+    """Atualiza todas as instâncias de um componente após salvar a geometria.
+
+    Cada grupo mantém seu ``xform`` (posição na cena); só a malha/children e
+    o payload do vínculo são trocados pela nova definição da biblioteca.
+    """
+    proto = user_definition(entry)
+    if proto is None or not _has_geometry(proto):
+        return 0
+    payload = link_from_entry(entry, library="user")
+    count = 0
+    for group in _iter_groups(getattr(scene, "groups", ()) or ()):
+        link = link_of(group)
+        if (link is None or link.get("library") != "user"
+                or str(link.get("id")) != str(ident)):
+            continue
+        set_link(group, payload)
+        group.mesh = proto.mesh
+        group.children = list(getattr(proto, "children", ()) or ())
+        group.component = True
+        count += 1
+    return count
+
+
 def _report(stats: dict) -> None:
     """Avisa na barra de status que parte dos vínculos não carregou.
 
@@ -646,6 +675,7 @@ def mark_imported_groups(groups, source=None) -> None:
 __all__ = [
     "LINK_KEY", "IMPORT_LIBRARY", "link_of", "is_linked", "set_link",
     "clear_link", "materialize", "link_from_entry", "link_imported_group",
-    "cache_root", "rebuild_group", "rebuild_scene_links", "set_host_window",
+    "cache_root", "rebuild_group", "rebuild_scene_links", "user_definition",
+    "refresh_user_groups", "set_host_window",
     "mark_built_component", "mark_imported_groups",
 ]

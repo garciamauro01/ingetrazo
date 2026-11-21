@@ -169,6 +169,14 @@ def _group_faces(group):
             yield f, _shown(f, paint)
 
 
+def painted_group_faces(group):
+    """As faces de ``group`` em coordenadas do mundo, com a pintura que
+    cada uma mostra — a mesma travessia de :func:`world_faces_painted`, para
+    quem já tem o grupo (por exemplo, um diálogo aberto sobre um componente).
+    """
+    return _group_faces(group)
+
+
 def _feet(mesh):
     """Where a figure stands: the middle of its footprint, at its lowest
     point — the vertical it turns about."""

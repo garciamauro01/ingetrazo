@@ -52,3 +52,66 @@ def test_extract_scene_materials_face_texture(tmp_path):
 
     item = next(m for m in mats if m["name"] == "madeira_nogueira")
     assert item["texture_path"] == str(tex_file)
+
+
+def test_material_highlight_is_drawn_in_world_coordinates(qapp):
+    """O destaque deve seguir o xform do grupo, não a malha local."""
+    from types import SimpleNamespace
+
+    from PySide6.QtGui import QMatrix4x4
+    from trazomob.ui.material_editor_dialog import MaterialEditorDialog
+
+    scene = Scene()
+    mesh = Mesh()
+    face = mesh.add_face([QVector3D(0, 0, 0), QVector3D(1, 0, 0),
+                          QVector3D(1, 1, 0)])
+    face.attrs = {"mat": "Vermelho", "color": (1.0, 0.0, 0.0)}
+    group = Group(mesh, name="Bloco")
+    moved = QMatrix4x4()
+    moved.translate(10.0, 0.0, 0.0)
+    group.xform = moved
+    scene.groups.append(group)
+
+    class Viewport:
+        def world_to_pixel(self, point):
+            return (point.x(), point.y())
+
+    class Painter:
+        def __init__(self):
+            self.polygons = []
+
+        def save(self):
+            pass
+
+        def restore(self):
+            pass
+
+        def setRenderHint(self, *_args):
+            pass
+
+        def setPen(self, *_args):
+            pass
+
+        def setBrush(self, *_args):
+            pass
+
+        def drawPolygon(self, polygon):
+            self.polygons.append(polygon)
+
+    dialog = SimpleNamespace(_highlight_active=True, _current_mat="Vermelho",
+                             scene=scene, _group=None)
+    painter = Painter()
+    MaterialEditorDialog._draw_material_highlight(dialog, Viewport(), painter)
+
+    assert len(painter.polygons) == 1
+    xs = [point.x() for point in painter.polygons[0]]
+    assert min(xs) == pytest.approx(10.0)
+    assert max(xs) == pytest.approx(11.0)
+
+    # Aberto sobre um grupo específico: mesma posição, sem varrer a cena inteira.
+    dialog._group = group
+    group_painter = Painter()
+    MaterialEditorDialog._draw_material_highlight(dialog, Viewport(), group_painter)
+    assert len(group_painter.polygons) == 1
+    xs = [point.x() for point in group_painter.polygons[0]]
+    assert min(xs) == pytest.approx(10.0)
