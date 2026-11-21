@@ -13,6 +13,7 @@ from PySide6.QtGui import QColor, QFont, QPainter, QPen, QVector3D
 
 from core.group import Group
 
+from ..domain.module_utils import is_esquadria
 from ..domain.snap_contract import (
     SNAP_PAREDE_NENHUM,
     get_module_snap_parede,
@@ -48,21 +49,12 @@ def get_module_bounds(mod: Group) -> Optional[Tuple[float, float, float, float, 
 
 
 def is_esquadria_group(mod: Optional[Group]) -> bool:
-    """Identifica se o grupo é uma esquadria (porta ou janela) e não um módulo de marcenaria."""
-    if mod is None:
-        return False
-    ext = getattr(mod, "ext", None)
-    if isinstance(ext, dict):
-        if "trazomob_esquadria" in ext:
-            return True
-        for key in ("trazomob", "trazomob_module"):
-            info = ext.get(key)
-            if isinstance(info, dict):
-                if str(info.get("kind", "")) == "esquadria":
-                    return True
-                if str(info.get("tipo", "")).startswith(("porta_", "janela_")):
-                    return True
-    return getattr(mod, "layer", "") == "ESQUADRIAS"
+    """Identifica se o grupo é uma esquadria (porta ou janela) e não um módulo de marcenaria.
+
+    Mantido como nome público (reexportado por ``magnetic_drag``); a regra em si
+    vive em ``domain.module_utils.is_esquadria``.
+    """
+    return is_esquadria(mod)
 
 
 def get_module_reference_bounds(mod: Group) -> Optional[Tuple[float, float, float, float, float, float]]:

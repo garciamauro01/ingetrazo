@@ -3,12 +3,21 @@
 """Dados e resolução de caminho compartilhados pelas esquadrias do Trazomob."""
 from __future__ import annotations
 
-from pathlib import Path
-
 from ..assets.catalog import (
     get_esquadria_files,
     get_novas_portas_cinematica,
     get_novas_portas_folhas,
+)
+from ..domain.module_utils import is_esquadria, resolve_igz_path
+
+__all__ = (
+    "CORES",
+    "ESQUADRIA_FILES",
+    "NOVAS_PORTAS_FOLHAS",
+    "NOVAS_PORTAS_CINEMATICA",
+    "PORTA_PROTO_CACHE",
+    "is_esquadria",
+    "resolve_igz_path",
 )
 
 CORES = {
@@ -28,35 +37,6 @@ NOVAS_PORTAS_FOLHAS = get_novas_portas_folhas()
 NOVAS_PORTAS_CINEMATICA = get_novas_portas_cinematica()
 PORTA_PROTO_CACHE: dict[str, tuple[list, float, float, float]] = {}
 
-
-def resolve_igz_path(base_dir, item_id: str):
-    """Resolve o .igz de uma esquadria, com portas e janelas em pastas próprias.
-
-    O nome do arquivo é preservado para não afetar os carregadores que
-    reconhecem o modelo por ``igz_path.name``. A subpasta vem do prefixo do
-    id e é definitiva: janelas só em ``janelas/``, portas só em ``portas/``.
-    Não há busca em nenhuma outra pasta.
-    """
-    from pathlib import Path
-    components = Path(base_dir) / "assets" / "components"
-    subpasta = "janelas" if item_id.startswith("janela_") else "portas"
-    mapped = ESQUADRIA_FILES.get(item_id)
-    arquivo = mapped[0] if mapped else f"{item_id}.igz"
-    candidatos = list(dict.fromkeys([
-        components / subpasta / f"{item_id}.igz",
-        components / subpasta / arquivo,
-    ]))
-    for candidato in candidatos:
-        if candidato.exists():
-            return candidato
-    # Nenhum arquivo encontrado: devolve o caminho canônico ao chamador.
-    return candidatos[0]
-
-
-def is_esquadria(item_id: str) -> bool:
-    """Um id é esquadria quando está no manifesto ou usa um prefixo reservado."""
-    if not isinstance(item_id, str):
-        return False
-    return (item_id in ESQUADRIA_FILES
-            or item_id.startswith("janela_")
-            or item_id.startswith("porta_"))
+# ``resolve_igz_path`` e ``is_esquadria`` são reexportados de domain.module_utils:
+# a resolução de arquivo e a classificação são contratos compartilhados com a
+# interação, a UI e os ganchos do host — não pertencem apenas ao builder.

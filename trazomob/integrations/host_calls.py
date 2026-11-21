@@ -268,15 +268,11 @@ def scale_factor_override(scale_tool: Any, ctx: Any, viewport: Any,
 
     groups = getattr(scale_tool, "_groups", [])
 
-    def _is_esquadria(group):
-        ext = getattr(group, "ext", None)
-        if isinstance(ext, dict) and "trazomob_esquadria" in ext:
-            return True
-        return getattr(group, "layer", "") == "ESQUADRIAS"
+    from ..domain.module_utils import is_esquadria
 
     if not any(_is_trazomob_module(group) for group in groups):
         return default
-    if any(_is_esquadria(group) for group in groups):
+    if any(is_esquadria(group) for group in groups):
         return default
 
     grip = getattr(scale_tool, "_grip", None)

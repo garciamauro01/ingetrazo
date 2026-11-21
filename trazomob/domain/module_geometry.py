@@ -16,7 +16,8 @@ from typing import Any, Tuple, Optional
 from PySide6.QtGui import QVector3D
 
 from core.group import Group, iter_placements
-from ..domain.schema import kind_of, module_params
+from ..domain.module_utils import is_esquadria, shift_module_geometry
+from ..domain.schema import module_params
 
 
 def get_module_carcass_bounds(mod: Group) -> Optional[Tuple[float, float, float, float, float, float]]:
@@ -32,16 +33,9 @@ def get_module_carcass_bounds(mod: Group) -> Optional[Tuple[float, float, float,
     min_y, max_y = float("inf"), float("-inf")
     min_z, max_z = float("inf"), float("-inf")
     found = False
-    tipo = ""
-    is_esquadria = getattr(mod, "layer", "") == "ESQUADRIAS"
-    if getattr(mod, "ext", None) and isinstance(mod.ext, dict):
-        if kind_of(mod) == "esquadria":
-            is_esquadria = True
-        tipo = str(module_params(mod).get("tipo", ""))
-        if tipo.startswith(("porta_", "janela_")):
-            is_esquadria = True
-
-    if is_esquadria:
+    ext = getattr(mod, "ext", None)
+    tipo = str(module_params(mod).get("tipo", "")) if isinstance(ext, dict) else ""
+    if is_esquadria(mod):
         ignore_terms: tuple[str, ...] = ("Folha", "Fechadura", "Ferragem", "Maçaneta", "Alavanca", "Espelho", "Puxador")
     elif tipo in ("peca_porta", "peca_portas_correr"):
         ignore_terms = ("Puxador", "Perfil", "Base Projetada")
@@ -134,36 +128,8 @@ def preserve_module_back_alignment(old_mod: Group, new_mod: Group, rot_z_deg: fl
     shift_module_geometry(new_mod, shift)
 
 
-def shift_module_geometry(group: Group, shift: QVector3D) -> None:
-    """Translada vértices e metadados cinemáticos de todas as peças de um módulo."""
-    if shift.length() <= 1e-7:
-        return
-    targets = getattr(group, "children", []) or [group]
-    for t in targets:
-        m_sub = getattr(t, "mesh", None)
-        if m_sub and hasattr(m_sub, "vertices"):
-            for v in m_sub.vertices:
-                v.position += shift
-            m_sub._mut_serial = getattr(m_sub, "_mut_serial", 0) + 1
-        t_ext = getattr(t, "ext", None)
-        if isinstance(t_ext, dict):
-            if "orig_vertices" in t_ext:
-                t_ext["orig_vertices"] = [p + shift for p in t_ext["orig_vertices"]]
-            if "hinge_pivot" in t_ext and isinstance(t_ext["hinge_pivot"], QVector3D):
-                t_ext["hinge_pivot"] = t_ext["hinge_pivot"] + shift
-            tm = t_ext.get("trazomob")
-            if isinstance(tm, dict):
-                for key in ("rot_origin", "hinge_pivot"):
-                    orig_pt = tm.get(key)
-                    if isinstance(orig_pt, QVector3D):
-                        tm[key] = orig_pt + shift
-                    elif isinstance(orig_pt, (list, tuple)) and len(orig_pt) == 3:
-                        shifted = (
-                            float(orig_pt[0]) + shift.x(),
-                            float(orig_pt[1]) + shift.y(),
-                            float(orig_pt[2]) + shift.z(),
-                        )
-                        tm[key] = list(shifted) if isinstance(orig_pt, list) else shifted
+# ``shift_module_geometry`` e ``is_esquadria`` são reexportados de
+# ``domain.module_utils``; ver o topo deste arquivo.
 
 
 def get_reference_module(scene) -> Optional[Group]:
