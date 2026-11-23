@@ -95,6 +95,10 @@ def normalize_snap_parede(value: Any) -> str:
 
 def get_module_snap_parede(mod: Any) -> str:
     """Le ``snap_parede`` dos metadados do modulo (com fallback ``auto``)."""
+    from .module_utils import is_library_decoration
+
+    if is_library_decoration(mod):
+        return SNAP_PAREDE_NENHUM
     ext = getattr(mod, "ext", None)
     if not isinstance(ext, dict):
         return DEFAULT_SNAP_PAREDE

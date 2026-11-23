@@ -466,12 +466,17 @@ class MagneticDragInputMixin:
         # Se o módulo for uma esquadria (porta/janela), usamos sempre os limites estáveis do marco/caixaria
         # (get_module_reference_bounds), pois a folha aberta gira para fora da parede e não deve
         # alterar a referência de posicionamento (snap e recorte do vão).
+        from ..domain.module_utils import is_library_decoration
+
         _m_name = module.name.lower() if hasattr(module, "name") else ""
         _m_kind = getattr(module, "ext", {}).get("trazomob", {}).get("kind", "") if hasattr(module, "ext") and isinstance(module.ext, dict) else ""
-        is_esq_target = bool(
-            (hasattr(module, "ext") and isinstance(module.ext, dict) and ("trazomob_esquadria" in module.ext or _m_kind == "esquadria"))
-            or getattr(module, "layer", "") == "ESQUADRIAS"
-            or (("porta" in _m_name or "janela" in _m_name) and _m_kind != "module" and "roupeiro" not in _m_name and "balcao" not in _m_name and "armario" not in _m_name and "aereo" not in _m_name)
+        is_esq_target = (
+            not is_library_decoration(module)
+            and bool(
+                (hasattr(module, "ext") and isinstance(module.ext, dict) and ("trazomob_esquadria" in module.ext or _m_kind == "esquadria"))
+                or getattr(module, "layer", "") == "ESQUADRIAS"
+                or (("porta" in _m_name or "janela" in _m_name) and _m_kind != "module" and "roupeiro" not in _m_name and "balcao" not in _m_name and "armario" not in _m_name and "aereo" not in _m_name)
+            )
         )
         self._drag_is_esquadria = is_esq_target
         if is_esq_target:
@@ -772,8 +777,11 @@ class MagneticDragInputMixin:
                     logger.debug("sincronização das luzes falhou após arrastar: %s", exc)
 
             # Se algum dos grupos movidos for uma esquadria, atualiza os recortes de parede
+            from ..domain.module_utils import is_library_decoration
+
             if any(
-                hasattr(g, "ext") and isinstance(g.ext, dict) and (
+                not is_library_decoration(g)
+                and hasattr(g, "ext") and isinstance(g.ext, dict) and (
                     "trazomob_esquadria" in g.ext
                     or g.ext.get("trazomob", {}).get("kind") == "esquadria"
                     or getattr(g, "layer", "") == "ESQUADRIAS"

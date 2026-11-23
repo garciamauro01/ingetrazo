@@ -282,13 +282,14 @@ def save_glb(scene, path, face_me=None, only=None) -> None:
             mat["pbrMetallicRoughness"]["baseColorFactor"] = [r, g, b, 1.0]
         # The finish (core.finish): plain glTF for every program, and the
         # name in extras for Render with Blender's full materials.
+        extras = {}
         finish = info.get("finish")
         if finish:
             from core.finish import PBR
             rough, metal, trans, ior = PBR[finish]
             pbr = mat["pbrMetallicRoughness"]
             pbr["roughnessFactor"], pbr["metallicFactor"] = rough, metal
-            mat["extras"] = {"ingetrazo_finish": finish}
+            extras["ingetrazo_finish"] = finish
             ext = {}
             if trans:
                 ext["KHR_materials_transmission"] = {
@@ -298,6 +299,11 @@ def save_glb(scene, path, face_me=None, only=None) -> None:
             if ext:
                 mat["extensions"] = ext
                 used_ext.update(ext)
+        pbr_id = info.get("pbr_id")
+        if pbr_id:
+            extras["trazomob_pbr_id"] = str(pbr_id)
+        if extras:
+            mat["extras"] = extras
         op = info.get("opacity")
         if op is not None:                     # glass and the like
             factor = mat["pbrMetallicRoughness"].setdefault(

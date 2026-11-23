@@ -306,6 +306,14 @@ class ComponentDialog(QDialog):
                 "The model file is missing. The entry keeps its metadata."))
             return
         self._group = loaded.group
+        # Se já existe miniatura gerada em disco para o item, usa diretamente a miniatura oficial
+        thumb_path = user_library.thumbnail(entry)
+        if thumb_path and thumb_path.is_file():
+            pix = QPixmap(str(thumb_path))
+            if not pix.isNull():
+                self._preview.setPixmap(pix.scaled(
+                    180, 180, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                return
         self._preview.setPixmap(
             component_loader.thumbnail_pixmap(loaded.group, 180))
 

@@ -2089,6 +2089,47 @@ class MaterialsPanel(QWidget):
         name_row.addStretch(0)   # only what the field cannot take
         root.addLayout(name_row)
 
+        opacity_row = QHBoxLayout()
+        opacity_row.setContentsMargins(0, 0, 0, 0)
+        opacity_row.setSpacing(4)
+        opacity_row.addWidget(QLabel(tr("Opacity")))
+        self._opacity_slider = QSlider(Qt.Horizontal)
+        style_slider(self._opacity_slider)
+        self._opacity_slider.setRange(5, 100)
+        self._opacity_slider.setValue(100)
+        self._opacity_slider.setMinimumWidth(40)
+        self._opacity_slider.setToolTip(tr(
+            "Transparency of the active colour or texture (5–100 %)"))
+        self._opacity_box = QSpinBox()
+        self._opacity_box.setRange(5, 100)
+        self._opacity_box.setSingleStep(5)
+        self._opacity_box.setSuffix(" %")
+        self._opacity_box.setValue(100)
+        self._opacity_box.setToolTip(tr(
+            "Transparency of the active colour or texture (5–100 %)"))
+
+        def _on_opacity_slider_val(val: int) -> None:
+            self._opacity_box.blockSignals(True)
+            self._opacity_box.setValue(val)
+            self._opacity_box.blockSignals(False)
+            if not self._opacity_slider.isSliderDown():
+                self._on_opacity_edited(val)
+
+        def _on_opacity_box_val(val: int) -> None:
+            self._opacity_slider.blockSignals(True)
+            self._opacity_slider.setValue(val)
+            self._opacity_slider.blockSignals(False)
+            if not self._opacity_slider.isSliderDown():
+                self._on_opacity_edited(val)
+
+        self._opacity_slider.valueChanged.connect(_on_opacity_slider_val)
+        self._opacity_slider.sliderReleased.connect(
+            lambda: self._on_opacity_edited(self._opacity_slider.value()))
+        self._opacity_box.valueChanged.connect(_on_opacity_box_val)
+        opacity_row.addWidget(self._opacity_slider, 1)
+        opacity_row.addWidget(self._opacity_box)
+        root.addLayout(opacity_row)
+
         # The usual "edit material": tile width/height + rotation, tucked
         # behind an Edit toggle so the panel stays clean. Edits the active
         # texture for future paints, and Apply re-stamps the selected
@@ -2412,6 +2453,7 @@ class MaterialsPanel(QWidget):
         bar = area.verticalScrollBar() if area is not None else None
         keep = bar.value() if bar is not None else None
         colors: dict = {}
+        color_opacities: dict = {}
         textures: dict = {}
         opacities: dict = {}   # texture path → translucency (glass)
         names: dict = {}     # swatch key → material name (registry identity)
@@ -2435,7 +2477,7 @@ class MaterialsPanel(QWidget):
                 path = tex.get("path") if tex else None
                 col = attrs.get("color")
                 k = (attrs.get("mat"), path,
-                     attrs.get("opacity") if path else None,
+                     attrs.get("opacity"),
                      None if path or col is None else tuple(col))
                 if k not in keys:
                     keys.add(k)
@@ -2479,13 +2521,17 @@ class MaterialsPanel(QWidget):
             else:
                 col = attrs.get("color")
                 if col is not None:
-                    colors[tuple(col)] = col
+                    ckey = tuple(col)
+                    colors[ckey] = col
+                    if attrs.get("opacity") is not None:
+                        color_opacities.setdefault(ckey, attrs.get("opacity"))
                     if mat:
-                        names.setdefault(("c", tuple(col)), mat)
+                        names.setdefault(("c", ckey), mat)
         # The same swatches as on screen (a Delete, a Paste that brought no
         # new paint): they stay — laying out a hundred buttons again took
         # ~0.2 s on the plant of #158.
-        sig = (tuple((k, tuple(c), names.get(("c", k)))
+        sig = (tuple((k, tuple(c), names.get(("c", k)),
+                      color_opacities.get(k))
                      for k, c in colors.items()),
                tuple((p, repr(sorted(t.items())), names.get(("t", p)),
                       opacities.get(p), _file_stamp(p))
@@ -2507,8 +2553,9 @@ class MaterialsPanel(QWidget):
             name = names.get(("c", tuple(col)))
             label = name or tr("Color")
             b = _swatch_button(_color_pixmap(tuple(col)), label)
-            b.clicked.connect(lambda _=False, c=tuple(col), n=name:
-                              self._apply_color(c, name=n))
+            b.clicked.connect(lambda _=False, c=tuple(col), n=name,
+                              o=color_opacities.get(tuple(col)):
+                              self._apply_color(c, name=n, opacity=o))
             if name:
                 # Slice (b): edit the material once, restamp every face
                 # that wears it — right-click the swatch; and its finish
@@ -2544,13 +2591,18 @@ class MaterialsPanel(QWidget):
             QTimer.singleShot(0, lambda b=bar, v=keep: b.setValue(v))
 
     # ---- Apply / add --------------------------------------------------------
-    def _apply_color(self, rgb, name: str | None = None) -> None:
+    def _apply_color(self, rgb, name: str | None = None,
+                     opacity: float | None = None) -> None:
+        if opacity is None and name:
+            existing = self._window.viewport.scene.materials.get(name)
+            if existing is not None:
+                opacity = existing.opacity
         PaintTool.current_is_default = False
         PaintTool.current_color = tuple(rgb)
         PaintTool.current_texture = None
-        PaintTool.current_opacity = None
+        PaintTool.current_opacity = opacity
         PaintTool.current_material = self._material_for(
-            name, color=tuple(rgb))
+            name, color=tuple(rgb), opacity=opacity)
         self._window._activate_tool("paint")
         self._refresh_preview()
 
@@ -2569,6 +2621,9 @@ class MaterialsPanel(QWidget):
             menu.addAction(tr("Rename…"),
                            lambda: QTimer.singleShot(
                                0, lambda: self._ask_rename(name)))
+            menu.addAction(tr("Opacity") + "…",
+                           lambda: QTimer.singleShot(
+                               0, lambda: self._ask_material_opacity(name)))
         if color is not None:
             # The dialog opens once the menu has closed: a modal opened
             # inside the menu's own event loop came back without a colour.
@@ -2660,6 +2715,7 @@ class MaterialsPanel(QWidget):
         active = PaintTool.current_material
         if active is not None and active.name == old_name:
             PaintTool.current_material = new_mat
+            PaintTool.current_opacity = new_mat.opacity
             if new_mat.color is not None and not PaintTool.current_texture:
                 PaintTool.current_color = tuple(new_mat.color)
         recent = rename_recent(PaintTool.recent, old_name,
@@ -2695,6 +2751,66 @@ class MaterialsPanel(QWidget):
         new = new.strip() if ok else ""
         if new and new != name:
             self._renamed(name, new)
+
+    def _set_material_opacity(self, name: str, opacity: float | None) -> bool:
+        """Update *name*'s translucency across every face and group wearing it."""
+        from core.materials import Material
+        old = self._window.viewport.scene.materials.get(name)
+        if old is None:
+            return False
+        op = (round(float(opacity), 4)
+              if opacity is not None and float(opacity) < 0.999 else None)
+        if old.opacity == op:
+            return True
+        new_mat = Material(old.name, color=old.color, texture=old.texture,
+                           opacity=op, finish=old.finish)
+        return self._restamp(name, new_mat)
+
+    def _on_opacity_edited(self, pct: int) -> None:
+        """Apply a 5–100 % opacity change to the active material or selection."""
+        if PaintTool.current_is_default:
+            return
+        from core.history import SetFaceOpacityCommand
+        from core.materials import Material
+        pct = max(5, min(100, int(pct)))
+        op = round(pct / 100.0, 4) if pct < 100 else None
+        PaintTool.current_opacity = op
+        self._opacity_slider.blockSignals(True)
+        self._opacity_box.blockSignals(True)
+        self._opacity_slider.setValue(pct)
+        self._opacity_box.setValue(pct)
+        self._opacity_slider.blockSignals(False)
+        self._opacity_box.blockSignals(False)
+
+        mat = PaintTool.current_material
+        scene = self._window.viewport.scene
+        if mat is not None and mat.name in scene.materials:
+            self._set_material_opacity(mat.name, op)
+            return
+        if mat is not None:
+            PaintTool.current_material = Material(
+                mat.name, color=mat.color, texture=mat.texture,
+                opacity=op, finish=mat.finish)
+        targets = [f for f in scene.selection if isinstance(f, Face)]
+        if targets:
+            self._window.viewport.history.execute(
+                SetFaceOpacityCommand(targets, op))
+            self._window.viewport.notify_scene_changed()
+            self.refresh_in_model()
+
+    def _ask_material_opacity(self, name: str) -> None:
+        """Right-click ▸ Opacity… on a swatch of «In model»."""
+        mat = self._window.viewport.scene.materials.get(name)
+        if mat is None:
+            return
+        cur = int(round(100 * float(
+            mat.opacity if mat.opacity is not None else 1.0)))
+        cur = max(5, min(100, cur))
+        pct, ok = QInputDialog.getInt(
+            self, tr("Opacity"), tr("Opacity (%):"), cur, 5, 100, 5)
+        if ok:
+            self._set_material_opacity(
+                name, pct / 100.0 if pct < 100 else None)
 
     def _on_name_edited(self) -> None:
         """The name field of «Active:» was confirmed. In the model: rename
@@ -2891,7 +3007,8 @@ class MaterialsPanel(QWidget):
         if mat is not None:
             from core.materials import Material
             PaintTool.current_material = Material(
-                self._recoloured_name(mat.name, rgb), color=rgb)
+                self._recoloured_name(mat.name, rgb), color=rgb,
+                opacity=PaintTool.current_opacity)
         self._window.statusBar().showMessage(
             tr("Active colour changed — click faces to paint it"), 3000)
         return True
@@ -2903,6 +3020,10 @@ class MaterialsPanel(QWidget):
                        opacity: float | None = None) -> None:
         w = sw if sw is not None else (size or self._tile_size)
         h = sh if sh is not None else (size or self._tile_size)
+        if opacity is None and name:
+            existing = self._window.viewport.scene.materials.get(name)
+            if existing is not None:
+                opacity = existing.opacity
         PaintTool.current_is_default = False
         PaintTool.current_texture = {"path": path, "sw": w, "sh": h,
                                      "rot": 0.0}
@@ -3009,7 +3130,7 @@ class MaterialsPanel(QWidget):
         self._refresh_preview()
 
     def _refresh_name_bar(self) -> None:
-        """The name field and colour button say what «Active:» holds."""
+        """The name field, colour button and opacity slider say what «Active:» holds."""
         if getattr(self, "_name_edit", None) is None:
             return
         default = PaintTool.current_is_default
@@ -3025,6 +3146,20 @@ class MaterialsPanel(QWidget):
                        for c in PaintTool.current_color[:3])
             self._color_btn.setStyleSheet(
                 f"background: rgb({r},{g},{b}); border: 1px solid #555;")
+        if getattr(self, "_opacity_slider", None) is not None:
+            op = PaintTool.current_opacity
+            if op is None and mat is not None and mat.opacity is not None:
+                op = mat.opacity
+            pct = 100 if (default or op is None) else max(
+                5, min(100, int(round(float(op) * 100))))
+            self._opacity_slider.blockSignals(True)
+            self._opacity_box.blockSignals(True)
+            self._opacity_slider.setValue(pct)
+            self._opacity_box.setValue(pct)
+            self._opacity_slider.blockSignals(False)
+            self._opacity_box.blockSignals(False)
+            self._opacity_slider.setEnabled(not default)
+            self._opacity_box.setEnabled(not default)
 
     def _refresh_preview(self) -> None:
         self._refresh_name_bar()

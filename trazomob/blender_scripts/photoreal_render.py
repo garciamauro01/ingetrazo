@@ -13,6 +13,7 @@ de arquitetura e marcenaria foto-realista no Blender (Cycles / EEVEE Next):
 import json
 import math
 import os
+import re
 import sys
 import bpy
 import bmesh
@@ -155,6 +156,498 @@ def _set_bsdf_prop(bsdf, names, value):
     return False
 
 
+def _is_shaggy_carpet(preset_type, cfg):
+    """Retorna ``(is_shaggy, is_short_pile)`` a partir do preset/subtipo do tapete ou carpete."""
+    if cfg.get("shaggy") is False:
+        return False, False
+    sub = str(cfg.get("sub_type", "")).lower()
+    if any(k in sub for k in ("sem pelos", "liso", "trama baixa", "sisal", "kilim", "boucl", "comercial")):
+        return False, False
+    if any(k in sub for k in ("pelo curto", "aveludado", "fios curtos")):
+        return True, True
+    if cfg.get("shaggy") is True or preset_type == "carpete_felpudo":
+        return True, False
+    if any(k in sub for k in ("felpudo", "shaggy", "pelo alto")):
+        return True, False
+    return True, False
+
+
+def _apply_carpet_hair_particles(mat, hair_length=0.019, is_short_pile=False):
+    """Adiciona fios 3D (Hair Particles) nos objetos da cena que utilizam ``mat``."""
+    scene = getattr(bpy.context, "scene", None)
+    objects = getattr(scene, "objects", ()) if scene is not None else ()
+    if not objects:
+        return
+
+    render = getattr(scene, "render", None)
+    if render is not None and hasattr(render, "hair_type"):
+        try:
+            render.hair_type = "STRIP"
+        except Exception:
+            pass
+
+    for obj in objects:
+        if getattr(obj, "type", None) != "MESH":
+            continue
+        slots = list(getattr(obj, "material_slots", ()) or ())
+        slot_idx = next(
+            (idx for idx, slot in enumerate(slots) if getattr(slot, "material", None) == mat),
+            None,
+        )
+        if slot_idx is None:
+            continue
+
+        mod_name = f"TrazoTapete_Fios_{slot_idx + 1}"
+        if any(getattr(m, "name", "") == mod_name for m in (getattr(obj, "modifiers", ()) or ())):
+            continue
+
+        mod = obj.modifiers.new(mod_name, "PARTICLE_SYSTEM")
+        ps_holder = getattr(obj, "particle_systems", None)
+        psys = getattr(mod, "particle_system", None)
+        if psys is None and ps_holder:
+            psys = ps_holder[-1]
+        if psys is None or getattr(psys, "settings", None) is None:
+            continue
+
+        scale = getattr(obj, "scale", (1.0, 1.0, 1.0))
+        scale_z = max(0.05, abs(float(scale[2])) if len(scale) >= 3 else 1.0)
+        local_length = float(hair_length) / scale_z
+
+        ps = psys.settings
+        ps.type = "HAIR"
+        ps.count = 22000 if is_short_pile else 18000
+        ps.hair_length = local_length
+        ps.hair_step = 3
+        ps.root_radius = 0.0018 if is_short_pile else 0.0025
+        ps.tip_radius = 0.0008 if is_short_pile else 0.0010
+        ps.use_advanced_hair = True
+        ps.brownian_factor = 0.012 if is_short_pile else 0.025
+        ps.child_type = "SIMPLE"
+        ps.rendered_child_count = 8
+        ps.child_radius = 0.005 if is_short_pile else 0.008
+        ps.clump_factor = 0.20
+        if hasattr(ps, "material"):
+            ps.material = slot_idx + 1
+
+        if len(slots) > 1 and hasattr(obj, "vertex_groups") and hasattr(getattr(obj, "data", None), "polygons"):
+            vert_indices = sorted({
+                v_idx
+                for poly in obj.data.polygons
+                if getattr(poly, "material_index", 0) == slot_idx
+                for v_idx in getattr(poly, "vertices", ())
+            })
+            if vert_indices:
+                vg = obj.vertex_groups.new(name=f"TrazoTapete_Area_{slot_idx + 1}")
+                vg.add(vert_indices, 1.0, "REPLACE")
+                ps.vertex_group_density = vg.name
+
+
+def _is_transparent_hit(hit_obj, poly_index):
+    """Retorna True se o polígono atingido pertencer a material de vidro/translúcido."""
+    if hit_obj is None:
+        return False
+    mat = None
+    slots = getattr(hit_obj, "material_slots", None)
+    if slots:
+        mat_idx = 0
+        mesh_data = getattr(hit_obj, "data", None)
+        polys = getattr(mesh_data, "polygons", None)
+        if polys is not None and isinstance(poly_index, int) and 0 <= poly_index < len(polys):
+            mat_idx = getattr(polys[poly_index], "material_index", 0)
+        if 0 <= mat_idx < len(slots):
+            mat = getattr(slots[mat_idx], "material", None)
+        if mat is None:
+            mat = getattr(slots[0], "material", None)
+    if mat is None:
+        return False
+    name_l = (getattr(mat, "name", "") or "").lower()
+    if any(k in name_l for k in ("vidro", "glass", "reflecta", "voil")):
+        return True
+    nt = getattr(mat, "node_tree", None)
+    nodes = getattr(nt, "nodes", ()) if nt else ()
+    bsdf = next((n for n in nodes if getattr(n, "type", None) == "BSDF_PRINCIPLED"), None)
+    if bsdf is not None:
+        trans_sock = bsdf.inputs.get("Transmission Weight") or bsdf.inputs.get("Transmission")
+        if trans_sock is not None and float(getattr(trans_sock, "default_value", 0.0) or 0.0) > 0.15:
+            return True
+        alpha_sock = bsdf.inputs.get("Alpha")
+        if alpha_sock is not None and float(getattr(alpha_sock, "default_value", 1.0) or 1.0) < 0.85:
+            return True
+    return False
+
+
+def _ray_reaches_sky(scene, depsgraph, target_pt, direction, max_dist=50.0):
+    """Dispara raio de fora para dentro verificando se a direção alcança o ponto sem bater em parede opaca."""
+    if depsgraph is None or not direction:
+        return True
+    d = Vector(direction)
+    if d.length < 1e-6:
+        return True
+    d.normalize()
+    inward = -d
+    target = Vector(target_pt)
+    probe = target + d * max_dist
+    stop_margin = 0.05
+    step = 0.02
+
+    for _ in range(8):
+        rem = (target - probe).dot(inward) - stop_margin
+        if rem <= step:
+            return True
+        try:
+            hit, loc, _norm, poly_idx, hit_obj, _mat = scene.ray_cast(
+                depsgraph, probe, inward, distance=rem
+            )
+        except Exception:
+            return True
+        if not hit:
+            return True
+        if not _is_transparent_hit(hit_obj, poly_idx):
+            return False
+        probe = Vector(loc) + inward * step
+    return False
+
+
+def _segment_blocked_by_opaque(scene, depsgraph, p_from, p_to):
+    """Retorna True se houver geometria opaca entre ``p_from`` e ``p_to``."""
+    if depsgraph is None:
+        return False
+    a = Vector(p_from)
+    b = Vector(p_to)
+    diff = b - a
+    total = diff.length
+    if total < 0.08:
+        return False
+    d = diff / total
+    step = 0.02
+    probe = a + d * step
+    stop_margin = 0.05
+
+    for _ in range(8):
+        rem = (b - probe).dot(d) - stop_margin
+        if rem <= step:
+            return False
+        try:
+            hit, loc, _norm, poly_idx, hit_obj, _mat = scene.ray_cast(
+                depsgraph, probe, d, distance=rem
+            )
+        except Exception:
+            return False
+        if not hit:
+            return False
+        if not _is_transparent_hit(hit_obj, poly_idx):
+            return True
+        probe = Vector(loc) + d * step
+    return False
+
+
+def _is_tight_enclosure(scene, depsgraph, pt):
+    """Retorna True se ``pt`` estiver dentro de um nicho/móvel estreito (< 0.9m de vão)."""
+    if depsgraph is None:
+        return False
+    axes = (
+        (Vector((1.0, 0.0, 0.0)), Vector((-1.0, 0.0, 0.0))),
+        (Vector((0.0, 1.0, 0.0)), Vector((0.0, -1.0, 0.0))),
+    )
+    for pos_d, neg_d in axes:
+        try:
+            hit_p, loc_p, *_ = scene.ray_cast(depsgraph, pt, pos_d, distance=0.9)
+            hit_n, loc_n, *_ = scene.ray_cast(depsgraph, pt, neg_d, distance=0.9)
+        except Exception:
+            continue
+        if hit_p and hit_n:
+            span = (Vector(loc_p) - Vector(loc_n)).length
+            if span < 0.9:
+                return True
+    return False
+
+
+def _room_probe_points(scene, depsgraph, cam_cfg):
+    """Calcula pontos internos representativos do cômodo a partir da câmera."""
+    eye = Vector(cam_cfg.get("eye", (0.0, 0.0, 1.6)))
+    target = Vector(cam_cfg.get("target", (0.0, 1.0, 1.0)))
+    diff = target - eye
+    dist = diff.length
+    fwd = (diff / dist) if dist > 1e-6 else Vector((0.0, 1.0, 0.0))
+
+    p_eye = eye + fwd * min(0.25, max(0.05, dist * 0.15))
+    points = [p_eye]
+    if dist > 0.6:
+        p_mid = eye.lerp(target, 0.55)
+        if not _is_tight_enclosure(scene, depsgraph, p_mid):
+            points.append(p_mid)
+    return points
+
+
+def _sky_sample_directions():
+    """Retorna 21 direções distribuídas no hemisfério superior e linha do horizonte."""
+    dirs = [(0.0, 0.0, 1.0)]
+    for i in range(8):
+        ang = math.radians(i * 45.0)
+        dirs.append((0.766 * math.cos(ang), 0.766 * math.sin(ang), 0.643))
+    for i in range(8):
+        ang = math.radians(i * 45.0 + 22.5)
+        dirs.append((0.966 * math.cos(ang), 0.966 * math.sin(ang), 0.259))
+    dirs.extend(((1.0, 0.0, 0.0), (-1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, -1.0, 0.0)))
+    return dirs
+
+
+def measure_room_confinement(scene, depsgraph, cam_cfg, sun_dir=None):
+    """Mede se a câmera está em ambiente confinado (teto/paredes opacas) e quanto céu/sol entra."""
+    if depsgraph is None or not cam_cfg:
+        return {
+            "enclosed": False,
+            "has_ceiling": False,
+            "sky_open_ratio": 1.0,
+            "sky_exposure": 1.0,
+            "sun_visibility": 1.0,
+        }
+
+    probe_pts = _room_probe_points(scene, depsgraph, cam_cfg)
+    up_dirs = (
+        (0.0, 0.0, 1.0),
+        (0.35, 0.0, 0.937),
+        (-0.35, 0.0, 0.937),
+        (0.0, 0.35, 0.937),
+        (0.0, -0.35, 0.937),
+    )
+    open_up = sum(
+        1 for d in up_dirs if any(_ray_reaches_sky(scene, depsgraph, pt, d) for pt in probe_pts)
+    )
+    has_ceiling = open_up <= 1
+
+    sky_dirs = _sky_sample_directions()
+    open_sky = sum(
+        1 for d in sky_dirs if any(_ray_reaches_sky(scene, depsgraph, pt, d) for pt in probe_pts)
+    )
+    sky_open_ratio = open_sky / float(len(sky_dirs))
+
+    enclosed = bool(has_ceiling or sky_open_ratio < 0.15)
+    sky_exposure = min(1.0, sky_open_ratio * 1.8) if enclosed else 1.0
+
+    sun_visibility = 1.0
+    if sun_dir:
+        s_base = Vector(sun_dir)
+        if s_base.length > 1e-6:
+            s_base.normalize()
+            perp_a = s_base.cross(Vector((0.0, 0.0, 1.0)) if abs(s_base.z) < 0.9 else Vector((1.0, 0.0, 0.0))).normalized()
+            perp_b = s_base.cross(perp_a).normalized()
+            sun_samples = (
+                s_base,
+                (s_base + perp_a * 0.06).normalized(),
+                (s_base - perp_a * 0.06).normalized(),
+                (s_base + perp_b * 0.06).normalized(),
+                (s_base - perp_b * 0.06).normalized(),
+            )
+            open_sun = sum(
+                1 for d in sun_samples if any(_ray_reaches_sky(scene, depsgraph, pt, d) for pt in probe_pts)
+            )
+            sun_visibility = open_sun / float(len(sun_samples))
+
+    return {
+        "enclosed": enclosed,
+        "has_ceiling": has_ceiling,
+        "sky_open_ratio": sky_open_ratio,
+        "sky_exposure": sky_exposure,
+        "sun_visibility": sun_visibility,
+    }
+
+
+def _configure_material_shadow_containment(mat, preset_type, cfg, bsdf):
+    """Garante sombra dupla-face opaca no EEVEE para paredes, tetos e chapas não transparentes."""
+    sub_l = str((cfg or {}).get("sub_type", "")).lower()
+    name_l = (getattr(mat, "name", "") or "").lower()
+    cfg_op = (cfg or {}).get("opacity")
+    has_opacity_override = False
+    if cfg_op is not None:
+        try:
+            has_opacity_override = float(cfg_op) < 0.99
+        except (TypeError, ValueError):
+            has_opacity_override = False
+    is_transparent = (
+        preset_type == "vidro"
+        or has_opacity_override
+        or "transluc" in sub_l
+        or "translúcid" in sub_l
+        or "acrílico" in sub_l
+        or "acrilico" in sub_l
+        or "voil" in sub_l
+        or any(k in name_l for k in ("vidro", "glass", "reflecta", "voil"))
+    )
+    if not is_transparent and not preset_type and bsdf is not None:
+        trans_sock = bsdf.inputs.get("Transmission Weight") or bsdf.inputs.get("Transmission")
+        if trans_sock is not None and float(getattr(trans_sock, "default_value", 0.0) or 0.0) > 0.15:
+            is_transparent = True
+        alpha_sock = bsdf.inputs.get("Alpha")
+        if alpha_sock is not None and float(getattr(alpha_sock, "default_value", 1.0) or 1.0) < 0.85:
+            is_transparent = True
+
+    if is_transparent:
+        return
+    if hasattr(mat, "use_backface_culling"):
+        mat.use_backface_culling = False
+    if hasattr(mat, "shadow_method"):
+        try:
+            mat.shadow_method = "OPAQUE"
+        except Exception:
+            pass
+
+
+def _apply_opacity_override(mat, bsdf, cfg, *, nodes=None, links=None):
+    """Aplica transparência explícita (0..1) configurada no Editor de Materiais."""
+    if not isinstance(cfg, dict) or cfg.get("opacity") is None or bsdf is None:
+        return
+    try:
+        op_val = max(0.0, min(1.0, float(cfg["opacity"])))
+    except (TypeError, ValueError):
+        return
+    if op_val >= 0.999:
+        return
+
+    alpha_inp = bsdf.inputs.get("Alpha")
+    if alpha_inp is not None:
+        existing_links = list(getattr(alpha_inp, "links", ()) or ())
+        if existing_links and nodes is not None and links is not None:
+            link = existing_links[0]
+            src_sock = getattr(link, "from_socket", None)
+            if src_sock is None and isinstance(link, (tuple, list)) and link:
+                src_sock = link[0]
+            if src_sock is not None:
+                try:
+                    links.remove(link)
+                    mult = nodes.new("ShaderNodeMath")
+                    mult.operation = "MULTIPLY"
+                    links.new(src_sock, mult.inputs[0])
+                    mult.inputs[1].default_value = op_val
+                    links.new(mult.outputs[0], alpha_inp)
+                except Exception:
+                    _set_bsdf_prop(bsdf, ("Alpha",), op_val)
+            else:
+                _set_bsdf_prop(bsdf, ("Alpha",), op_val)
+        else:
+            _set_bsdf_prop(bsdf, ("Alpha",), op_val)
+
+    if hasattr(mat, "blend_method"):
+        try:
+            mat.blend_method = "BLEND"
+        except Exception:
+            pass
+    if hasattr(mat, "use_backface_culling"):
+        mat.use_backface_culling = False
+
+
+def _sanitize_gltf_mat_name(raw):
+    """Espelha ``formats.meshexport.export_names`` para casar nomes sanitizados no GLB."""
+    raw_s = str(raw or "").strip()
+    if not raw_s:
+        return ""
+    base = "".join(c if c.isalnum() or c in "._-" else "_" for c in raw_s).strip("._-")
+    if not base:
+        return ""
+    if base[0].isdigit():
+        base = f"m_{base}"
+    return base.lower()
+
+
+def _match_material_override(mat, bsdf, nodes, overrides):
+    """Encontra o override de material correspondente a ``mat``.
+
+    Prioriza o identificador exato ``trazomob_pbr_id`` gravado pelo exportador GLB
+    nos custom properties do material (sem depender de heurística de nome). Mantém
+    fallbacks exatos para GLBs externos ou antigos onde o extra ainda não exista.
+    """
+    if not isinstance(overrides, dict) or not overrides:
+        return {}
+
+    # 0. Identificador exato anexado diretamente ao material durante a exportação GLB
+    pbr_id = mat.get("trazomob_pbr_id") if hasattr(mat, "get") else None
+    if pbr_id:
+        cfg = overrides.get(str(pbr_id))
+        if isinstance(cfg, dict) and cfg:
+            return cfg
+        return {}
+
+    mat_name = getattr(mat, "name", None) or ""
+    name_lower = mat_name.lower()
+    cfg = overrides.get(mat_name) or overrides.get(name_lower)
+    if isinstance(cfg, dict) and cfg:
+        return cfg
+
+    # Remove sufixo de deduplicacao do Blender (.001, .002)
+    mat_no_dup = re.sub(r"\.\d{3}$", "", mat_name)
+    if mat_no_dup != mat_name:
+        cfg = overrides.get(mat_no_dup) or overrides.get(mat_no_dup.lower())
+        if isinstance(cfg, dict) and cfg:
+            return cfg
+
+    # 1. Correspondencia pela sanitizacao exata de formats.meshexport.export_names
+    # (ex.: "[Color C02]" -> "Color_C02", "*2" -> "m_2" / "m_2_2", "10 - Default" -> "m_10_-_Default")
+    san_map = {}
+    for k, v in overrides.items():
+        if not isinstance(v, dict):
+            continue
+        sk = _sanitize_gltf_mat_name(k)
+        if sk and sk not in san_map:
+            san_map[sk] = v
+
+    mat_san = _sanitize_gltf_mat_name(mat_no_dup)
+    if mat_san in san_map:
+        return san_map[mat_san]
+
+    mat_san_base = re.sub(r"_\d+$", "", mat_san)
+    if mat_san_base and mat_san_base != "m" and mat_san_base in san_map:
+        return san_map[mat_san_base]
+
+    # 2. Fallback de espaco vs underscore + sufixo de colisao glTF (_2, _3)
+    clean_name = mat_no_dup.replace("_", " ").strip().lower()
+    base_clean = re.sub(r" \d+$", "", clean_name).strip()
+    for k, v in overrides.items():
+        if not isinstance(v, dict):
+            continue
+        k_clean = str(k).replace("_", " ").strip().lower()
+        if k_clean == clean_name or (base_clean and k_clean == base_clean):
+            return v
+
+    # 3. Materiais texturizados anonimos (matN no GLB) identificados pelo stem da imagem
+    tex_img_node = next((n for n in nodes if getattr(n, "type", None) == "TEX_IMAGE"), None)
+    img = getattr(tex_img_node, "image", None) if tex_img_node is not None else None
+    img_name = getattr(img, "name", None) or getattr(img, "filepath", None) or ""
+    if img_name:
+        img_clean = os.path.basename(str(img_name))
+        img_clean = re.sub(r"\.\d{3}$", "", img_clean)
+        stem = os.path.splitext(img_clean)[0]
+        if stem:
+            cfg = overrides.get(stem) or overrides.get(stem.lower())
+            if isinstance(cfg, dict) and cfg:
+                return cfg
+            stem_san = _sanitize_gltf_mat_name(stem)
+            if stem_san in san_map:
+                return san_map[stem_san]
+
+    # 4. Correspondencia por cor RGB hexadecimal (ex.: 'Cor #A3A3A3')
+    base_col_inp = bsdf.inputs.get("Base Color") if bsdf is not None else None
+    if base_col_inp and hasattr(base_col_inp, "default_value"):
+        c_val = base_col_inp.default_value
+        if isinstance(c_val, (tuple, list)) or hasattr(c_val, "__len__"):
+            r, g, b = float(c_val[0]) * 255.0, float(c_val[1]) * 255.0, float(c_val[2]) * 255.0
+            best_diff = 999.0
+            best_cfg = None
+            for k, v in overrides.items():
+                if not isinstance(v, dict):
+                    continue
+                m_hex = re.match(r"(?i)^cor\s*#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$", str(k).strip())
+                if m_hex:
+                    kr, kg, kb = int(m_hex.group(1), 16), int(m_hex.group(2), 16), int(m_hex.group(3), 16)
+                    diff = abs(r - kr) + abs(g - kg) + abs(b - kb)
+                    if diff <= 4.0 and diff < best_diff:
+                        best_diff = diff
+                        best_cfg = v
+            if best_cfg is not None:
+                return best_cfg
+
+    return {}
+
+
 def setup_photoreal_materials(use_bevel=True, material_overrides=None, clay_mode=False):
     """Varre todos os materiais do modelo e aplica shaders PBR de alta fidelidade para marcenaria,
     respeitando overrides configurados pelo usuário na interface do TrazoMob (tecido, pedra, madeira, etc.).
@@ -201,50 +694,12 @@ def setup_photoreal_materials(use_bevel=True, material_overrides=None, clay_mode
             _set_bsdf_prop(bsdf, ("Roughness",), 1.0)
             continue
         elif "emit[" in name_lower:
-            import re
             m = re.search(r"emit\[([0-9\.]+)\]", name_lower)
             pwr = float(m.group(1)) if m else 10.0
             _set_bsdf_prop(bsdf, ("Emission Strength", "Emission"), pwr)
             continue
 
-        mat_name = mat.name or ""
-        name_lower = mat_name.lower()
-        cfg = overrides.get(mat_name) or overrides.get(name_lower) or {}
-
-        # Fallback de correspondência flexível:
-        # 1. Trata diferenças de underscore vs espaço (ex: 'Azulejos_azul_e_bege' vs 'Azulejos azul e bege')
-        # 2. Trata sufixos de duplicação do glTF (ex: 'Tinta_Parede_Off-White_2')
-        # 3. Trata correspondência por cor hexadecimal (ex: 'Cor #A3A3A3' -> mat39 com cor [0.64, 0.64, 0.64])
-        if not cfg:
-            clean_name = mat_name.replace("_", " ").strip().lower()
-            import re
-            base_clean = re.sub(r" \d+$", "", clean_name).strip()
-            for k, v in overrides.items():
-                k_clean = str(k).replace("_", " ").strip().lower()
-                if k_clean == clean_name or k_clean == base_clean:
-                    cfg = v
-                    break
-
-        if not cfg:
-            # Tenta casar pela cor RGB com tolerância matemática euclidiana (evita falhas de arredondamento IEEE-754)
-            base_col_inp = bsdf.inputs.get("Base Color")
-            if base_col_inp and hasattr(base_col_inp, "default_value"):
-                c_val = base_col_inp.default_value
-                r, g, b = c_val[0] * 255.0, c_val[1] * 255.0, c_val[2] * 255.0
-                import re
-                best_diff = 999.0
-                best_cfg = None
-                for k, v in overrides.items():
-                    m_hex = re.match(r"(?i)^cor\s*#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$", str(k).strip())
-                    if m_hex:
-                        kr, kg, kb = int(m_hex.group(1), 16), int(m_hex.group(2), 16), int(m_hex.group(3), 16)
-                        diff = abs(r - kr) + abs(g - kg) + abs(b - kb)
-                        # Tolera até 4 níveis de discrepância na soma dos 3 canais RGB (delta de 1.3 por canal)
-                        if diff <= 4.0 and diff < best_diff:
-                            best_diff = diff
-                            best_cfg = v
-                if best_cfg is not None:
-                    cfg = best_cfg
+        cfg = _match_material_override(mat, bsdf, nodes, overrides)
 
 
         # ── 1. Injeta Nó de Bevel (Chanfro / Quina Arredondada Fotorrealista) ──
@@ -257,7 +712,11 @@ def setup_photoreal_materials(use_bevel=True, material_overrides=None, clay_mode
 
         # ── 2. SE O USUÁRIO DEFINIU PRESET EXPLICITAMENTE NO PAINEL ──
         preset_type = cfg.get("type")
+        if preset_type == "auto":
+            preset_type = None
+        _configure_material_shadow_containment(mat, preset_type, cfg, bsdf)
         if preset_type:
+            _apply_opacity_override(mat, bsdf, cfg, nodes=nodes, links=links)
             roughness = float(cfg.get("roughness", 0.5))
             specular = float(cfg.get("specular", 0.5)) if "specular" in cfg else None
             bump_strength = float(cfg.get("bump", 0.02))
@@ -280,7 +739,46 @@ def setup_photoreal_materials(use_bevel=True, material_overrides=None, clay_mode
                 links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
                 continue
 
-            elif preset_type == "pedra":
+            elif preset_type in ("tapete", "carpete_felpudo"):
+                # Tapete / Carpete (Felpudo Shaggy / Pelo Curto 3D ou Trama Plana Sem Pelos)
+                sub = str(cfg.get("sub_type", "")).lower()
+                is_shaggy, is_short_pile = _is_shaggy_carpet(preset_type, cfg)
+                eff_bump = float(cfg.get("bump", 0.055 if is_shaggy else 0.03))
+                _set_bsdf_prop(bsdf, ("Roughness",), max(0.70, roughness))
+                _set_bsdf_prop(bsdf, ("Metallic",), 0.0)
+                _set_bsdf_prop(bsdf, ("Specular IOR Level", "Specular"), specular if specular is not None else 0.08)
+                _set_bsdf_prop(bsdf, ("Sheen Weight", "Sheen"), 0.95 if is_shaggy else 0.65)
+                _set_bsdf_prop(bsdf, ("Sheen Roughness",), 0.65 if is_shaggy else 0.45)
+
+                bump = nodes.new("ShaderNodeBump")
+                if not is_shaggy and ("boucl" in sub or "comercial" in sub):
+                    voronoi = nodes.new("ShaderNodeTexVoronoi")
+                    voronoi.inputs["Scale"].default_value = 180.0
+                    bump.inputs["Strength"].default_value = eff_bump or 0.025
+                    links.new(voronoi.outputs["Distance"], bump.inputs["Height"])
+                else:
+                    noise = nodes.new("ShaderNodeTexNoise")
+                    noise.inputs["Scale"].default_value = (
+                        140.0 if is_short_pile else (95.0 if is_shaggy else 220.0)
+                    )
+                    if "Detail" in noise.inputs:
+                        noise.inputs["Detail"].default_value = 10.0
+                    bump.inputs["Strength"].default_value = eff_bump or (0.055 if is_shaggy else 0.03)
+                    links.new(noise.outputs["Fac"], bump.inputs["Height"])
+                links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+
+                if is_shaggy:
+                    hair_len = (
+                        max(0.004, eff_bump * 0.14)
+                        if is_short_pile
+                        else max(0.010, eff_bump * 0.35)
+                    )
+                    _apply_carpet_hair_particles(
+                        mat,
+                        hair_length=hair_len,
+                        is_short_pile=is_short_pile,
+                    )
+                continue
                 # Pedra / Mármore / Granito / Quartzo / Porcelanato
                 is_polido = cfg.get("sub_type", "polido") == "polido"
                 _set_bsdf_prop(bsdf, ("Roughness",), roughness if not is_polido else 0.06)
@@ -390,18 +888,70 @@ def setup_photoreal_materials(use_bevel=True, material_overrides=None, clay_mode
                 continue
 
             elif preset_type == "emissivo":
-                # Superfície que emite luz (LED / Neon / Tela)
-                _set_bsdf_prop(bsdf, ("Roughness",), 0.2)
+                # Superfície que emite luz (LED / Neon / Painel Iluminado / Tela de TV)
                 sub = str(cfg.get("sub_type", "")).lower()
-                strength = 5.0
-                if "3000k" in sub or "quente" in sub:
-                    emit_col = (1.0, 0.82, 0.58, 1.0)
-                elif "6000k" in sub or "fria" in sub:
-                    emit_col = (0.85, 0.92, 1.0, 1.0)
+                is_screen = any(k in sub for k in ("painel", "tv", "tela", "monitor"))
+                tex_img_node = next((n for n in nodes if getattr(n, "type", None) == "TEX_IMAGE"), None)
+                emit_sock = bsdf.inputs.get("Emission Color") or bsdf.inputs.get("Emission")
+
+                if is_screen:
+                    screen_rough = min(0.12, roughness if roughness > 0.0 else 0.08)
+                    _set_bsdf_prop(bsdf, ("Roughness",), screen_rough)
+                    _set_bsdf_prop(bsdf, ("Metallic",), 0.0)
+                    _set_bsdf_prop(bsdf, ("Specular IOR Level", "Specular"), 0.85)
+                    _set_bsdf_prop(bsdf, ("Coat Weight", "Clearcoat"), 0.5)
+                    _set_bsdf_prop(bsdf, ("Coat Roughness", "Clearcoat Roughness"), 0.03)
+
+                    if (
+                        tex_img_node is not None
+                        and emit_sock is not None
+                        and "Color" in getattr(tex_img_node, "outputs", {})
+                    ):
+                        for link in list(getattr(emit_sock, "links", ())):
+                            links.remove(link)
+                        links.new(tex_img_node.outputs["Color"], emit_sock)
+                        _set_bsdf_prop(bsdf, ("Emission Strength",), 2.4)
+                        light_col = (0.78, 0.88, 1.0)
+                    else:
+                        base_inp = bsdf.inputs.get("Base Color")
+                        base_val = getattr(base_inp, "default_value", (0.0, 0.0, 0.0, 1.0)) if base_inp else (0.0, 0.0, 0.0, 1.0)
+                        r, g, b = float(base_val[0]), float(base_val[1]), float(base_val[2])
+                        top = max(r, g, b)
+                        if top < 0.22:
+                            emit_col = (0.76, 0.86, 1.0, 1.0)
+                            _set_bsdf_prop(bsdf, ("Base Color",), (0.12, 0.16, 0.22, 1.0))
+                        else:
+                            scale = max(1.0, 0.85 / top)
+                            emit_col = (
+                                min(1.0, r * scale),
+                                min(1.0, g * scale),
+                                min(1.0, b * scale),
+                                1.0,
+                            )
+                        _set_bsdf_prop(bsdf, ("Emission Color", "Emission"), emit_col)
+                        _set_bsdf_prop(bsdf, ("Emission Strength",), 2.8)
+                        light_col = emit_col[:3]
+
+                    try:
+                        mat["trazomob_emissive_kind"] = "screen"
+                        mat["trazomob_emissive_color"] = list(light_col)
+                    except Exception:
+                        pass
                 else:
-                    emit_col = (1.0, 0.95, 0.88, 1.0)
-                _set_bsdf_prop(bsdf, ("Emission Color",), emit_col)
-                _set_bsdf_prop(bsdf, ("Emission Strength",), strength)
+                    _set_bsdf_prop(bsdf, ("Roughness",), 0.2)
+                    if "3000k" in sub or "quente" in sub:
+                        emit_col = (1.0, 0.82, 0.58, 1.0)
+                    elif "6000k" in sub or "fria" in sub:
+                        emit_col = (0.85, 0.92, 1.0, 1.0)
+                    else:
+                        emit_col = (1.0, 0.95, 0.88, 1.0)
+                    _set_bsdf_prop(bsdf, ("Emission Color", "Emission"), emit_col)
+                    _set_bsdf_prop(bsdf, ("Emission Strength",), 8.0)
+                    try:
+                        mat["trazomob_emissive_kind"] = "led"
+                        mat["trazomob_emissive_color"] = list(emit_col[:3])
+                    except Exception:
+                        pass
                 continue
 
             elif preset_type == "parede":
@@ -444,8 +994,11 @@ def setup_photoreal_materials(use_bevel=True, material_overrides=None, clay_mode
             tex_img_node = next((n for n in nodes if n.type == "TEX_IMAGE"), None)
             if tex_img_node:
                 # Conexão automática de transparência Alpha para imagens PNG recortadas
-                if "Alpha" in tex_img_node.outputs and "Alpha" in bsdf.inputs:
-                    links.new(tex_img_node.outputs["Alpha"], bsdf.inputs["Alpha"])
+                alpha_inp = bsdf.inputs.get("Alpha")
+                if ("Alpha" in tex_img_node.outputs and alpha_inp is not None
+                        and not getattr(alpha_inp, "links", ())):
+                    links.new(tex_img_node.outputs["Alpha"], alpha_inp)
+            _apply_opacity_override(mat, bsdf, cfg, nodes=nodes, links=links)
             if bevel_node:
                 links.new(bevel_node.outputs["Normal"], bsdf.inputs["Normal"])
 
@@ -537,7 +1090,44 @@ def _find_blender_hdri(name="interior.exr"):
     return None
 
 
-def apply_lighting_preset(scene, preset_name="dia", sun_dir=None):
+def _compute_interior_bounce(interior_lights):
+    """Calcula preenchimento indireto sutil de rebote interno (<= 0.04) com base nas luzes internas."""
+    total_power = 0.0
+    r_acc = 0.0
+    g_acc = 0.0
+    b_acc = 0.0
+    for lt in interior_lights or ():
+        if not lt.get("on", True):
+            continue
+        pwr = max(0.0, float(lt.get("power", 0.0)))
+        if pwr <= 0.0:
+            continue
+        col = lt.get("color", (1.0, 0.9, 0.8))
+        total_power += pwr
+        r_acc += float(col[0]) * pwr
+        g_acc += float(col[1]) * pwr
+        b_acc += float(col[2]) * pwr
+    if total_power <= 0.0:
+        return 0.0, (0.0, 0.0, 0.0, 1.0)
+    strength = min(0.04, max(0.005, (total_power / 1200.0) * 0.04))
+    col_avg = (
+        max(0.0, min(1.0, r_acc / total_power)),
+        max(0.0, min(1.0, g_acc / total_power)),
+        max(0.0, min(1.0, b_acc / total_power)),
+        1.0,
+    )
+    return strength, col_avg
+
+
+def apply_lighting_preset(
+    scene,
+    preset_name="dia",
+    sun_dir=None,
+    *,
+    engine="cycles",
+    confinement=None,
+    interior_lights=None,
+):
     """Aplica iluminação profissional de ambientes internos com suporte a HDRI de alta fidelidade."""
     world = bpy.data.worlds.new(f"TrazoMob_World_{preset_name}")
     scene.world = world
@@ -558,48 +1148,67 @@ def apply_lighting_preset(scene, preset_name="dia", sun_dir=None):
         links.new(bg.outputs["Background"], out_node.inputs["Surface"])
         return
 
-    # Localiza HDRI de estúdio / interior arquitetônico
-    hdri_file = "interior.exr" if preset_name in ("dia", "tarde", "estudio") else "night.exr"
-    hdri_path = _find_blender_hdri(hdri_file) or _find_blender_hdri("studio.exr")
+    is_eevee = str(engine or "cycles").lower() != "cycles"
+    conf = confinement if (is_eevee and isinstance(confinement, dict)) else None
+    is_confined = bool(conf and (conf.get("enclosed") or float(conf.get("sky_exposure", 1.0)) < 1.0))
+    sky_open_ratio = float(conf.get("sky_open_ratio", 1.0)) if is_confined else 1.0
+    sky_exposure = max(0.0, min(1.0, float(conf.get("sky_exposure", 1.0)))) if is_confined else 1.0
+    sun_visibility = max(0.0, min(1.0, float(conf.get("sun_visibility", 1.0)))) if is_confined else 1.0
+    fully_sealed = is_confined and sky_open_ratio < 0.02
 
-    if hdri_path and os.path.exists(hdri_path):
-        # Configuração Dual-Ray via Light Path:
-        # 1. Reflexos e Iluminação Indireta usam o HDRI fotográfico (metais, pedras, vidros e madeiras ganham reflexos ricos).
-        # 2. A visualização de fundo direta da câmera usa um fundo arquitetônico limpo e elegante.
-        env_node = nodes.new("ShaderNodeTexEnvironment")
-        try:
-            env_node.image = bpy.data.images.load(hdri_path)
-        except Exception:
-            env_node = None
+    base_strength = 1.0 if preset_name == "estudio" else (0.75 if preset_name == "dia" else 0.5)
 
-        if env_node and env_node.image:
-            bg_refl = nodes.new("ShaderNodeBackground")
-            bg_refl.inputs["Strength"].default_value = 1.0 if preset_name == "estudio" else (0.75 if preset_name == "dia" else 0.5)
-            links.new(env_node.outputs["Color"], bg_refl.inputs["Color"])
+    if fully_sealed:
+        bounce_strength, bounce_col = _compute_interior_bounce(interior_lights)
+        bg = nodes.new("ShaderNodeBackground")
+        bg.inputs["Color"].default_value = bounce_col
+        bg.inputs["Strength"].default_value = bounce_strength
+        links.new(bg.outputs["Background"], out_node.inputs["Surface"])
+    else:
+        # Localiza HDRI de estúdio / interior arquitetônico
+        hdri_file = "interior.exr" if preset_name in ("dia", "tarde", "estudio") else "night.exr"
+        hdri_path = _find_blender_hdri(hdri_file) or _find_blender_hdri("studio.exr")
 
-            bg_cam = nodes.new("ShaderNodeBackground")
-            if preset_name == "noturno":
-                bg_cam.inputs["Color"].default_value = (0.015, 0.02, 0.04, 1.0)
-            elif preset_name == "tarde":
-                bg_cam.inputs["Color"].default_value = (0.96, 0.94, 0.90, 1.0)
+        if hdri_path and os.path.exists(hdri_path):
+            # Configuração Dual-Ray via Light Path:
+            # 1. Reflexos e Iluminação Indireta usam o HDRI fotográfico (metais, pedras, vidros e madeiras ganham reflexos ricos).
+            # 2. A visualização de fundo direta da câmera usa um fundo arquitetônico limpo e elegante.
+            env_node = nodes.new("ShaderNodeTexEnvironment")
+            try:
+                env_node.image = bpy.data.images.load(hdri_path)
+            except Exception:
+                env_node = None
+
+            if env_node and env_node.image:
+                bg_refl = nodes.new("ShaderNodeBackground")
+                bg_refl.inputs["Strength"].default_value = base_strength * sky_exposure
+                links.new(env_node.outputs["Color"], bg_refl.inputs["Color"])
+
+                bg_cam = nodes.new("ShaderNodeBackground")
+                if preset_name == "noturno":
+                    bg_cam.inputs["Color"].default_value = (0.015, 0.02, 0.04, 1.0)
+                elif preset_name == "tarde":
+                    bg_cam.inputs["Color"].default_value = (0.96, 0.94, 0.90, 1.0)
+                else:
+                    bg_cam.inputs["Color"].default_value = (0.94, 0.95, 0.96, 1.0)
+                bg_cam.inputs["Strength"].default_value = 1.0
+
+                mix = nodes.new("ShaderNodeMixShader")
+                lp = nodes.new("ShaderNodeLightPath")
+                links.new(lp.outputs["Is Camera Ray"], mix.inputs["Fac"])
+                links.new(bg_refl.outputs["Background"], mix.inputs[1])
+                links.new(bg_cam.outputs["Background"], mix.inputs[2])
+                links.new(mix.outputs["Shader"], out_node.inputs["Surface"])
             else:
-                bg_cam.inputs["Color"].default_value = (0.94, 0.95, 0.96, 1.0)
-            bg_cam.inputs["Strength"].default_value = 1.0
-
-            mix = nodes.new("ShaderNodeMixShader")
-            lp = nodes.new("ShaderNodeLightPath")
-            links.new(lp.outputs["Is Camera Ray"], mix.inputs["Fac"])
-            links.new(bg_refl.outputs["Background"], mix.inputs[1])
-            links.new(bg_cam.outputs["Background"], mix.inputs[2])
-            links.new(mix.outputs["Shader"], out_node.inputs["Surface"])
+                bg = nodes.new("ShaderNodeBackground")
+                bg.inputs["Color"].default_value = (0.92, 0.94, 0.96, 1.0)
+                bg.inputs["Strength"].default_value = 1.0 * sky_exposure
+                links.new(bg.outputs["Background"], out_node.inputs["Surface"])
         else:
             bg = nodes.new("ShaderNodeBackground")
             bg.inputs["Color"].default_value = (0.92, 0.94, 0.96, 1.0)
+            bg.inputs["Strength"].default_value = 1.0 * sky_exposure
             links.new(bg.outputs["Background"], out_node.inputs["Surface"])
-    else:
-        bg = nodes.new("ShaderNodeBackground")
-        bg.inputs["Color"].default_value = (0.92, 0.94, 0.96, 1.0)
-        links.new(bg.outputs["Background"], out_node.inputs["Surface"])
 
     # Se o preset tiver sol físico direcional (dia / tarde)
     if preset_name in ("dia", "tarde") and sun_dir:
@@ -607,9 +1216,14 @@ def apply_lighting_preset(scene, preset_name="dia", sun_dir=None):
         if preset_name == "tarde":
             d = Vector((d.x, d.y, max(0.12, d.z * 0.35))).normalized()
         sun_light = bpy.data.lights.new("TrazoMob Sun", type="SUN")
-        sun_light.energy = 3.5 if preset_name == "dia" else 2.5
+        base_sun_energy = 3.5 if preset_name == "dia" else 2.5
+        sun_light.energy = 0.0 if fully_sealed else (base_sun_energy * sun_visibility)
         soft_deg = float(scene.get("sun_softness", 2.5))
         sun_light.angle = math.radians(soft_deg)
+        if hasattr(sun_light, "use_shadow"):
+            sun_light.use_shadow = True
+        if hasattr(sun_light, "shadow_cascade_max_distance"):
+            sun_light.shadow_cascade_max_distance = 50.0
         if preset_name == "tarde":
             sun_light.color = (1.0, 0.78, 0.52)
         sun_obj = bpy.data.objects.new("TrazoMob Sun", sun_light)
@@ -673,6 +1287,9 @@ def setup_render_engine(scene, engine="cycles", samples=128):
             "use_gtao": True,
             "use_ssr": True,
             "use_ssr_refraction": True,
+            "shadow_ray_count": 4,
+            "shadow_step_count": 12,
+            "gtao_distance": 0.5,
         }
         for flag, enabled in eevee_flags.items():
             if hasattr(scene.eevee, flag):
@@ -789,8 +1406,12 @@ def _create_led_strip_light(scene, depsgraph, index, lt, color, power):
     ldata.color = color
     if hasattr(ldata, "spread"):
         ldata.spread = math.radians(150.0)
+    if hasattr(ldata, "use_shadow"):
+        ldata.use_shadow = True
     if hasattr(ldata, "shadow_buffer_clip_start"):
         ldata.shadow_buffer_clip_start = 0.005
+    if hasattr(ldata, "use_contact_shadows"):
+        ldata.use_contact_shadows = True
 
     lobj = bpy.data.objects.new(ldata.name, ldata)
     scene.collection.objects.link(lobj)
@@ -844,6 +1465,204 @@ def _create_led_strip_light(scene, depsgraph, index, lt, color, power):
         print(f"[TrazoMob] Aviso ao criar difusor emissivo LED: {exc}")
 
 
+def _emissive_plane_basis(fwd_dir):
+    """Retorna eixos ortonormais ``(u_axis, v_axis)`` perpendiculares a ``fwd_dir``."""
+    ref = Vector((0.0, 0.0, 1.0)) if abs(fwd_dir.z) < 0.9 else Vector((0.0, 1.0, 0.0))
+    u_axis = ref.cross(fwd_dir)
+    if u_axis.length < 1e-4:
+        u_axis = Vector((1.0, 0.0, 0.0))
+    u_axis.normalize()
+    v_axis = fwd_dir.cross(u_axis).normalized()
+    return u_axis, v_axis
+
+
+def _pick_emissive_direction(scene, depsgraph, mw, rot3, polys):
+    """Escolhe a direção principal de emissão de um grupo de polígonos no mundo."""
+    clusters = []
+    for p in polys:
+        area = float(getattr(p, "area", 0.0) or 0.0)
+        if area <= 1e-8:
+            continue
+        n_world = rot3 @ Vector(p.normal)
+        if n_world.length < 1e-6:
+            continue
+        n_world.normalize()
+        ctr_world = mw @ Vector(p.center)
+        matched = None
+        for c in clusters:
+            if c["normal"].dot(n_world) >= 0.85:
+                matched = c
+                break
+        if matched is None:
+            clusters.append({
+                "normal": n_world.copy(),
+                "area": area,
+                "weighted_ctr": ctr_world * area,
+                "polys": [p],
+            })
+        else:
+            matched["area"] += area
+            matched["weighted_ctr"] += ctr_world * area
+            matched["normal"] = (matched["normal"] + n_world * area).normalized()
+            matched["polys"].append(p)
+
+    if not clusters:
+        return None
+
+    # Se houver múltiplas orientações (ex.: chapa ou luminária 3D), prioriza a face desobstruída e com maior área.
+    best = None
+    best_score = -1.0
+    for c in clusters:
+        ctr = c["weighted_ctr"] / max(c["area"], 1e-8)
+        n = c["normal"]
+        clear = True
+        if depsgraph is not None and hasattr(scene, "ray_cast"):
+            try:
+                hit, *_ = scene.ray_cast(depsgraph, ctr + n * 0.008, n, distance=0.08)
+                clear = not hit
+            except Exception:
+                clear = True
+        score = c["area"] * (10.0 if clear else 1.0)
+        if score > best_score:
+            best_score = score
+            best = c
+    return best
+
+
+def create_emissive_material_lights(scene, depsgraph=None):
+    """Cria AreaLights suaves para materiais configurados como ``emissivo`` no Editor PBR.
+
+    No EEVEE (com raytracing desligado para manter luz direta estável), meshes emissivas
+    não iluminam o ambiente ao redor; no Cycles, telas escuras de TV com emissão preservada
+    para não estourar a imagem contribuem pouca luz indireta. A AreaLight calibrada resolve
+    ambos os motores mantendo a imagem original da superfície emissora intacta.
+    """
+    created = []
+    objects = getattr(scene, "objects", ()) or ()
+    idx = 0
+
+    for obj in objects:
+        if getattr(obj, "type", None) != "MESH" or getattr(obj, "data", None) is None:
+            continue
+        slots = list(getattr(obj, "material_slots", ()) or ())
+        if not slots:
+            continue
+        polys_all = list(getattr(obj.data, "polygons", ()) or ())
+        verts_all = getattr(obj.data, "vertices", None)
+        if not polys_all or verts_all is None:
+            continue
+
+        mw = obj.matrix_world
+        rot3 = mw.to_3x3()
+
+        for slot_idx, slot in enumerate(slots):
+            mat = getattr(slot, "material", None)
+            if mat is None:
+                continue
+            em_kind = mat.get("trazomob_emissive_kind") if hasattr(mat, "get") else None
+            if not em_kind:
+                continue
+
+            polys = [p for p in polys_all if getattr(p, "material_index", 0) == slot_idx]
+            if not polys:
+                continue
+
+            chosen = _pick_emissive_direction(scene, depsgraph, mw, rot3, polys)
+            if chosen is None:
+                continue
+
+            fwd_dir = chosen["normal"]
+            u_axis, v_axis = _emissive_plane_basis(fwd_dir)
+            front_polys = chosen["polys"]
+            pts = [
+                mw @ Vector(verts_all[v_idx].co)
+                for p in front_polys
+                for v_idx in getattr(p, "vertices", ())
+            ]
+            if not pts:
+                continue
+
+            u_vals = [pt.dot(u_axis) for pt in pts]
+            v_vals = [pt.dot(v_axis) for pt in pts]
+            w_vals = [pt.dot(fwd_dir) for pt in pts]
+
+            u_mid = 0.5 * (min(u_vals) + max(u_vals))
+            v_mid = 0.5 * (min(v_vals) + max(v_vals))
+            w_front = max(w_vals)
+            size_u = max(0.04, max(u_vals) - min(u_vals))
+            size_v = max(0.04, max(v_vals) - min(v_vals))
+
+            center_front = u_axis * u_mid + v_axis * v_mid + fwd_dir * w_front
+
+            base_off = 0.045 if em_kind == "screen" else 0.025
+            light_off = base_off
+            if depsgraph is not None and hasattr(scene, "ray_cast"):
+                for cand in (base_off, base_off * 0.5, base_off * 1.5):
+                    try:
+                        hit, *_ = scene.ray_cast(depsgraph, center_front + fwd_dir * cand, fwd_dir, distance=0.05)
+                    except Exception:
+                        hit = False
+                    if not hit:
+                        light_off = cand
+                        break
+
+            light_pos = center_front + fwd_dir * light_off
+            raw_col = mat.get("trazomob_emissive_color") if hasattr(mat, "get") else None
+            if raw_col and len(raw_col) >= 3:
+                emit_col = (float(raw_col[0]), float(raw_col[1]), float(raw_col[2]))
+            else:
+                emit_col = (0.78, 0.88, 1.0) if em_kind == "screen" else (1.0, 0.95, 0.88)
+
+            area_m2 = max(0.02, size_u * size_v)
+            if em_kind == "screen":
+                energy = max(14.0, min(48.0, area_m2 * 52.0))
+                spread_deg = 155.0
+            else:
+                energy = max(25.0, min(180.0, max(size_u, size_v) * 45.0))
+                spread_deg = 150.0
+
+            idx += 1
+            ldata = bpy.data.lights.new(f"TrazoEmissive_{idx}", type="AREA")
+            ldata.shape = "RECTANGLE"
+            ldata.size = size_u
+            ldata.size_y = size_v
+            ldata.energy = energy
+            ldata.color = emit_col
+            if hasattr(ldata, "spread"):
+                ldata.spread = math.radians(spread_deg)
+            if hasattr(ldata, "use_shadow"):
+                ldata.use_shadow = True
+            if hasattr(ldata, "shadow_buffer_clip_start"):
+                ldata.shadow_buffer_clip_start = 0.02
+            if hasattr(ldata, "use_contact_shadows"):
+                ldata.use_contact_shadows = True
+
+            lobj = bpy.data.objects.new(ldata.name, ldata)
+            scene.collection.objects.link(lobj)
+
+            z_axis = -fwd_dir
+            mat_rot = Matrix((u_axis, v_axis, z_axis)).transposed().to_4x4()
+            lobj.matrix_world = Matrix.Translation(light_pos) @ mat_rot
+            for vis_attr in ("visible_camera", "visible_glossy", "visible_transmission"):
+                if hasattr(lobj, vis_attr):
+                    try:
+                        setattr(lobj, vis_attr, False)
+                    except Exception:
+                        pass
+
+            created.append({
+                "on": True,
+                "kind": "emissive_area",
+                "pos": [float(light_pos.x), float(light_pos.y), float(light_pos.z)],
+                "power": float(energy),
+                "color": list(emit_col),
+            })
+
+    if created:
+        say("emissive_lights", len(created))
+    return created
+
+
 def main():
     job = load_job()
     bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -868,16 +1687,49 @@ def main():
     # 4. Iluminação e Ambiente
     preset = job.get("preset", "dia")
     sun_dir = job.get("sun")
-    scene["sun_softness"] = float(job.get("sun_softness", 2.5))
-    apply_lighting_preset(scene, preset_name=preset, sun_dir=sun_dir)
-
-    # 5. Adiciona Luzes Pontuais / Spots / Fitas LED enviadas pelo usuário
     lights = job.get("lights") or []
     try:
         depsgraph = bpy.context.evaluated_depsgraph_get()
     except Exception:
         depsgraph = None
 
+    # 4b. Gera AreaLights suaves para materiais PBR emissivos (ex.: Painel Iluminado / TV Ligada)
+    emissive_lights = [] if clay_mode else create_emissive_material_lights(scene, depsgraph)
+
+    confinement = measure_room_confinement(scene, depsgraph, job["camera"], sun_dir=sun_dir)
+    say(
+        "confinement",
+        f"enclosed={confinement['enclosed']}",
+        f"ceiling={confinement['has_ceiling']}",
+        f"sky_open={confinement['sky_open_ratio']:.2f}",
+        f"sky_exp={confinement['sky_exposure']:.2f}",
+        f"sun_vis={confinement['sun_visibility']:.2f}",
+    )
+
+    probe_pts = _room_probe_points(scene, depsgraph, job["camera"])
+    interior_lights = []
+    for lt in list(lights) + emissive_lights:
+        if not lt.get("on", True):
+            continue
+        if lt.get("kind") == "led_strip" and "p1" in lt and "p2" in lt:
+            mid_pt = (Vector(lt["p1"]) + Vector(lt["p2"])) * 0.5 + Vector(lt.get("dir", (0.0, 0.0, -1.0))) * 0.03
+            pt_ref = mid_pt
+        else:
+            pt_ref = Vector(lt.get("pos", (0.0, 0.0, 1.0)))
+        if any(not _segment_blocked_by_opaque(scene, depsgraph, pt_ref, p_in) for p_in in probe_pts):
+            interior_lights.append(lt)
+
+    scene["sun_softness"] = float(job.get("sun_softness", 2.5))
+    apply_lighting_preset(
+        scene,
+        preset_name=preset,
+        sun_dir=sun_dir,
+        engine=engine_name,
+        confinement=confinement,
+        interior_lights=interior_lights,
+    )
+
+    # 5. Adiciona Luzes Pontuais / Spots / Fitas LED enviadas pelo usuário
     for i, lt in enumerate(lights):
         raw_kind = lt.get("kind", "point")
         color = tuple(lt.get("color", (1.0, 0.9, 0.8)))
@@ -891,6 +1743,12 @@ def main():
         ldata = bpy.data.lights.new(f"TrazoLight_{i+1}", type=kind)
         ldata.energy = power
         ldata.color = color
+        if hasattr(ldata, "use_shadow"):
+            ldata.use_shadow = True
+        if hasattr(ldata, "shadow_buffer_clip_start"):
+            ldata.shadow_buffer_clip_start = 0.005
+        if hasattr(ldata, "use_contact_shadows"):
+            ldata.use_contact_shadows = True
         if hasattr(ldata, "shadow_soft_size"):
             ldata.shadow_soft_size = 0.08  # Lâmpada física com sombra realista
         if kind == "SPOT":
@@ -971,7 +1829,17 @@ def main():
             pass
 
     say("rendering", f"{w}x{h}", engine_name, f"samples={samples}")
-    bpy.ops.render.render(write_still=True)
+
+    def on_render_stats(stats_str):
+        say("STATS", stats_str)
+
+    bpy.app.handlers.render_stats.append(on_render_stats)
+    try:
+        bpy.ops.render.render(write_still=True)
+    finally:
+        if on_render_stats in bpy.app.handlers.render_stats:
+            bpy.app.handlers.render_stats.remove(on_render_stats)
+
     say("done", job["output"])
 
 

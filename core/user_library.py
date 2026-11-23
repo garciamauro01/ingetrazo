@@ -56,7 +56,7 @@ _ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")
 _EDITABLE = {
     "nombre", "categoria", "tipo", "marca", "modelo", "tags", "fuente",
     "licencia", "autor", "notas", "cm", "matrix", "miniatura", "origen",
-    "escala", "y_up", "unidad",
+    "escala", "y_up", "unidad", "render_materials",
 }
 
 
@@ -317,7 +317,7 @@ def sidecars(path: Path) -> list[Path]:
 
 def _entry(ident: str, src: Path, *, nombre, categoria, tipo, marca, modelo,
            tags, fuente, licencia, autor, notas, cm, matrix,
-           escala, y_up, unidad) -> dict:
+           escala, y_up, unidad, render_materials=None) -> dict:
     return {
         "id": ident,
         "nombre": str(nombre or src.stem),
@@ -339,6 +339,8 @@ def _entry(ident: str, src: Path, *, nombre, categoria, tipo, marca, modelo,
         "licencia": str(licencia or ""),
         "autor": str(autor or ""),
         "notas": str(notas or ""),
+        "render_materials": (dict(render_materials)
+                             if isinstance(render_materials, dict) else {}),
     }
 
 
@@ -364,7 +366,8 @@ def register(source, *, nombre: str | None = None, categoria: str = "",
              tags=None, fuente: str = "", licencia: str = "",
              autor: str = "", notas: str = "", cm=None, matrix=None,
              escala: float = 1.0, y_up: bool = False,
-             unidad: str = "m") -> dict:
+             unidad: str = "m",
+             render_materials: dict | None = None) -> dict:
     """Copy one model file into the library and return its entry.
 
     The file and its sidecars always go to ``models/<id>/``; there is no
@@ -418,6 +421,10 @@ def register(source, *, nombre: str | None = None, categoria: str = "",
                                     else value))
             e["escala"] = float(escala)
             e["y_up"] = bool(y_up)
+            if isinstance(render_materials, dict):
+                e["render_materials"] = dict(render_materials)
+            else:
+                e.setdefault("render_materials", {})
             _write(data)
             _bake_decoration(e)
             return e
@@ -438,7 +445,8 @@ def register(source, *, nombre: str | None = None, categoria: str = "",
     entry = _entry(ident, src, nombre=nombre, categoria=categoria, tipo=tipo,
                    marca=marca, modelo=modelo, tags=tags, fuente=fuente,
                    licencia=licencia, autor=autor, notas=notas, cm=cm,
-                   matrix=matrix, escala=escala, y_up=y_up, unidad=unidad)
+                   matrix=matrix, escala=escala, y_up=y_up, unidad=unidad,
+                   render_materials=render_materials)
     entries.append(entry)
     _write(data)
     _bake_decoration(entry)
@@ -462,6 +470,8 @@ def update(ident: str, **fields) -> dict | None:
                 e[key] = bool(value)
             elif key == "escala":
                 e[key] = float(value)
+            elif key == "render_materials":
+                e[key] = dict(value) if isinstance(value, dict) else {}
             else:
                 e[key] = "" if value is None else value
         _write(data)
@@ -499,7 +509,34 @@ def remove(ident: str, delete_files: bool = True) -> bool:
     return True
 
 
-def replace_geometry(ident: str, group, *, thumb_size: int = 128) -> dict | None:
+def _collect_render_materials_from_group(group) -> dict:
+    """Collect ``trazomob_render_materials`` dicts across ``group`` and children."""
+    out: dict = {}
+
+    def _walk(item) -> None:
+        if item is None:
+            return
+        ext = getattr(item, "ext", None)
+        if isinstance(ext, dict):
+            mats = ext.get("trazomob_render_materials")
+            if isinstance(mats, dict):
+                for key, val in mats.items():
+                    if isinstance(val, dict):
+                        out[str(key)] = dict(val)
+        for child in getattr(item, "children", ()) or ():
+            _walk(child)
+
+    _walk(group)
+    return out
+
+
+def replace_geometry(
+    ident: str,
+    group,
+    *,
+    thumb_size: int = 128,
+    render_materials: dict | None = None,
+) -> dict | None:
     """Save the geometry of a scene group as the library component ``ident``.
 
     The group is flattened in local coordinates: its placement in the scene
@@ -515,7 +552,16 @@ def replace_geometry(ident: str, group, *, thumb_size: int = 128) -> dict | None
     mesh = getattr(group, "mesh", None)
     if mesh is None or not getattr(mesh, "faces", ()):
         raise ValueError("o grupo selecionado não tem geometria")
+    if getattr(mesh, "_is_link_placeholder", False) or all(
+        isinstance(getattr(f, "attrs", None), dict)
+        and bool(f.attrs.get("igz_link_placeholder"))
+        for f in mesh.faces
+    ):
+        raise ValueError(
+            "não é possível salvar o quadro de vínculo ausente como geometria"
+        )
 
+    from core.group import Group
     from core.scene import Scene
     from formats import igz
     from views import component_loader
@@ -528,12 +574,47 @@ def replace_geometry(ident: str, group, *, thumb_size: int = 128) -> dict | None
     finally:
         group.xform = saved_xform
 
+    if render_materials is not None:
+        merged_pbr = {
+            str(k): dict(v) for k, v in render_materials.items()
+            if isinstance(v, dict)
+        }
+    else:
+        from_group = _collect_render_materials_from_group(group)
+        if from_group:
+            merged_pbr = from_group
+        else:
+            merged_pbr = {
+                str(k): dict(v)
+                for k, v in (entry.get("render_materials") or {}).items()
+                if isinstance(v, dict)
+            }
+
+    save_group = Group(flat.mesh, name=getattr(flat, "name", None))
+    save_group.layer = getattr(flat, "layer", None)
+    save_group.material = (dict(flat.material)
+                           if getattr(flat, "material", None) else None)
+    save_group.children = list(getattr(flat, "children", ()) or ())
+    src_ext = getattr(flat, "ext", None)
+    if isinstance(src_ext, dict):
+        clean_ext = {k: v for k, v in src_ext.items() if k != "igz_link"}
+        if clean_ext:
+            save_group.ext = clean_ext
+    if merged_pbr:
+        if not isinstance(getattr(save_group, "ext", None), dict):
+            save_group.ext = {}
+        save_group.ext["trazomob_render_materials"] = dict(merged_pbr)
+    elif isinstance(getattr(save_group, "ext", None), dict):
+        save_group.ext.pop("trazomob_render_materials", None)
+
     folder = models_dir() / ident
     folder.mkdir(parents=True, exist_ok=True)
     target = folder / f"{ident}.igz"
     scene = Scene()
-    scene.groups.append(flat)
+    scene.groups.append(save_group)
     igz.save_scene(scene, target, binary=True)
+
+    new_cm = list(component_loader.size_cm(save_group))
 
     data = _read()
     updated = None
@@ -541,6 +622,13 @@ def replace_geometry(ident: str, group, *, thumb_size: int = 128) -> dict | None
         if item.get("id") == ident:
             item["modo"] = "gerenciado"
             item["archivo"] = target.relative_to(library_root()).as_posix()
+            item["render_materials"] = dict(merged_pbr)
+            if new_cm and any(v > 0.0 for v in new_cm):
+                item["cm"] = new_cm
+            item["matrix"] = None
+            item["y_up"] = False
+            item["unidad"] = "m"
+            item["escala"] = 1.0
             updated = dict(item)
             break
     if updated is None:
@@ -549,7 +637,7 @@ def replace_geometry(ident: str, group, *, thumb_size: int = 128) -> dict | None
 
     try:
         fitted = component_loader.fit(
-            flat, cm=updated.get("cm"), anchor="base")
+            save_group, cm=updated.get("cm"), anchor="base")
         component_loader.save_thumbnail(
             fitted, thumbnail_path(ident), thumb_size)
     except Exception as exc:  # noqa: BLE001 - a miniatura não é a geometria

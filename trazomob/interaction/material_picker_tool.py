@@ -46,16 +46,20 @@ class MaterialPickerTool(Tool):
     description = "Clique em qualquer face no modelo 3D para selecionar e editar seu material PBR."
     uses_snap = False
 
-    def __init__(self, on_material_picked_callback=None):
+    def __init__(self, on_material_picked_callback=None, prev_tool=None):
         super().__init__()
         self.callback = on_material_picked_callback
         self._hovered_face = None
         self._hovered_group = None
         self._overlay_installed = False
+        self._prev_tool = prev_tool
 
     def on_activate(self, viewport) -> None:
         self._hovered_face = None
         self._hovered_group = None
+        cur = getattr(viewport, "active_tool", None)
+        if self._prev_tool is None and cur is not None and cur is not self:
+            self._prev_tool = cur
 
         if hasattr(viewport, "setCursor"):
             viewport.setCursor(Qt.CrossCursor)
@@ -80,10 +84,11 @@ class MaterialPickerTool(Tool):
 
     def on_hover(self, ctx: ToolContext) -> None:
         vp = ctx.viewport
-        face, group = vp.pick_face_any(ctx.screen.x(), ctx.screen.y())
+        pick_place = getattr(vp, "pick_face_placement", None)
+        face, group = (pick_place or vp.pick_face_any)(ctx.screen.x(), ctx.screen.y())
         self._hovered_face = face
         self._hovered_group = group
-        vp.set_hover(face)
+        vp.set_hover(None)
         vp.update()
 
     def on_click(self, ctx: ToolContext) -> None:
@@ -107,6 +112,13 @@ class MaterialPickerTool(Tool):
         if callable(flash):
             flash(f"Material selecionado: {mat_name}")
 
+        prev = self._prev_tool
+        if hasattr(vp, "set_active_tool"):
+            if prev is not None and prev is not self:
+                vp.set_active_tool(prev)
+            else:
+                vp.set_active_tool(None)
+
         if self.callback:
             self.callback(mat_name)
         else:
@@ -119,9 +131,12 @@ class MaterialPickerTool(Tool):
         if self._hovered_face is None or not hasattr(self._hovered_face, "vertices"):
             return
 
+        xform = (getattr(self._hovered_group, "xform", None)
+                 if self._hovered_group is not None else None)
         pts_2d = []
         for v in self._hovered_face.vertices:
-            px = viewport.world_to_pixel(v)
+            pt = xform.map(v) if xform is not None else v
+            px = viewport.world_to_pixel(pt)
             if px is not None:
                 pts_2d.append(QPointF(px[0], px[1]))
             else:

@@ -247,29 +247,10 @@ def build_context_menu(menu, selection, app, sidebar_panel, tool_cls) -> None:
         act_render_mats = menu.addAction(tr("🎨 Materiais PBR (Render)…"))
 
         def _open_render_materials(_checked=False, grp=target_group):
-            from .ui.material_editor_dialog import MaterialEditorDialog
+            from .ui.material_editor_dialog import open_material_editor
             parent_win = getattr(app, "window", None)
             vp = getattr(app, "viewport", None)
-            scene = getattr(vp, "scene", None) if vp is not None else None
-            current = {}
-            if scene is not None and isinstance(getattr(scene, "plugin_data", None), dict):
-                tm = scene.plugin_data.get("trazomob")
-                if isinstance(tm, dict) and isinstance(tm.get("material_overrides"), dict):
-                    current.update(tm["material_overrides"])
-            grp_ext = getattr(grp, "ext", None)
-            if isinstance(grp_ext, dict) and isinstance(grp_ext.get("trazomob_render_materials"), dict):
-                for k, v in grp_ext["trazomob_render_materials"].items():
-                    if isinstance(v, dict):
-                        current[k] = v
-            dlg = MaterialEditorDialog(
-                scene=scene,
-                current_overrides=current,
-                viewport=vp,
-                parent=parent_win,
-                group=grp,
-            )
-            if dlg.exec() and vp is not None and hasattr(vp, "update"):
-                vp.update()
+            open_material_editor(viewport=vp, parent=parent_win, group=grp)
 
         act_render_mats.triggered.connect(_open_render_materials)
 

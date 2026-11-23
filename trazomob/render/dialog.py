@@ -5,10 +5,10 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from PySide6.QtCore import Qt, QPoint
+from PySide6.QtCore import Qt, QPoint, QEventLoop
 from PySide6.QtGui import QPixmap, QPainter, QWheelEvent, QMouseEvent
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, QFrame,
+    QApplication, QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, QFrame,
     QLabel, QPushButton, QComboBox, QCheckBox, QProgressBar,
     QFileDialog, QMessageBox, QGraphicsView, QGraphicsScene,
     QGraphicsPixmapItem, QDoubleSpinBox
@@ -105,6 +105,7 @@ class TrazoMobRenderDialog(QDialog):
 
         self._current_image_path: str | None = None
         self._material_overrides: dict = {}
+        self._wait_cursor_active: bool = False
         self._build_ui()
 
     def _build_ui(self):
@@ -353,11 +354,16 @@ class TrazoMobRenderDialog(QDialog):
         sun_soft = float(self.spin_sun_soft.value())
 
         self.btn_render.setEnabled(False)
+        self.btn_render_all.setEnabled(False)
         self.btn_cancel.setVisible(True)
+        self.btn_cancel.setCursor(Qt.ArrowCursor)
         self.btn_save.setEnabled(False)
-        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setRange(0, 0)
         self.progress_bar.setValue(0)
         self.progress_bar.setVisible(True)
+        self.lbl_status.setText("⏳ Preparando geometria e texturas para o Blender...")
+        self._set_busy_cursor(True)
+        QApplication.processEvents(QEventLoop.ExcludeUserInputEvents)
 
         ok = self._engine.start_render(
             scene=self.viewport.scene,
@@ -427,11 +433,14 @@ class TrazoMobRenderDialog(QDialog):
         self.btn_render.setEnabled(False)
         self.btn_render_all.setEnabled(False)
         self.btn_cancel.setVisible(True)
+        self.btn_cancel.setCursor(Qt.ArrowCursor)
         self.btn_save.setEnabled(False)
-        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setRange(0, 0)
         self.progress_bar.setValue(0)
         self.progress_bar.setVisible(True)
-        self.lbl_status.setText(f"📸 Renderizando cena {self._batch_index}/{self._batch_total}: '{view.name}'...")
+        self.lbl_status.setText(f"📸 Preparando cena {self._batch_index}/{self._batch_total}: '{view.name}'...")
+        self._set_busy_cursor(True)
+        QApplication.processEvents(QEventLoop.ExcludeUserInputEvents)
 
         ok = self._engine.start_render(
             scene=scene,
@@ -449,19 +458,33 @@ class TrazoMobRenderDialog(QDialog):
         if not ok:
             self._reset_buttons()
 
+    def _on_materials_updated(self, overrides: dict):
+        self._material_overrides = dict(overrides or {})
+        n_custom = len(self._material_overrides)
+        if n_custom > 0:
+            self.btn_materials.setText(f"🎨 Materiais PBR ({n_custom} customizados)")
+            self.btn_materials.setStyleSheet("QPushButton { font-weight: bold; padding: 6px; color: #0284C7; }")
+        else:
+            self.btn_materials.setText("🎨 Configurar Materiais PBR...")
+            self.btn_materials.setStyleSheet("QPushButton { font-weight: bold; padding: 6px; }")
+        self._save_preferences()
+
     def _open_material_editor(self):
         from ..ui.material_editor_dialog import MaterialEditorDialog
-        dlg = MaterialEditorDialog(self.viewport.scene, current_overrides=self._material_overrides, viewport=self.viewport, parent=self)
-        if dlg.exec():
-            self._material_overrides = dlg.get_overrides()
-            n_custom = len(self._material_overrides)
-            if n_custom > 0:
-                self.btn_materials.setText(f"🎨 Materiais PBR ({n_custom} customizados)")
-                self.btn_materials.setStyleSheet("QPushButton { font-weight: bold; padding: 6px; color: #0284C7; }")
-            else:
-                self.btn_materials.setText("🎨 Configurar Materiais PBR...")
-                self.btn_materials.setStyleSheet("QPushButton { font-weight: bold; padding: 6px; }")
-            self._save_preferences()
+        dlg = getattr(self, "_material_editor_dlg", None)
+        if dlg is None or not dlg.isVisible():
+            dlg = MaterialEditorDialog(
+                self.viewport.scene,
+                current_overrides=self._material_overrides,
+                viewport=self.viewport,
+                parent=self,
+            )
+            dlg.setModal(False)
+            dlg.materials_updated.connect(self._on_materials_updated)
+            self._material_editor_dlg = dlg
+            dlg.show()
+        dlg.raise_()
+        dlg.activateWindow()
 
     def _load_preferences(self):
         from PySide6.QtCore import QSettings
@@ -503,9 +526,14 @@ class TrazoMobRenderDialog(QDialog):
         except Exception:
             pass
 
-        # 2. Carrega preferências salvas no próprio projeto (.igz / scene.plugin_data)
         scene = getattr(self.viewport, "scene", None)
         if scene is not None:
+            from ..domain.render_materials import collect_group_render_overrides
+            combined_mats.update(
+                collect_group_render_overrides(getattr(scene, "groups", ()) or ())
+            )
+
+            # 2. Carrega preferências salvas no próprio projeto (.igz / scene.plugin_data)
             pdata = getattr(scene, "plugin_data", None) or {}
             proj_mats = pdata.get("trazomob", {}).get("material_overrides")
             if isinstance(proj_mats, dict):
@@ -542,11 +570,29 @@ class TrazoMobRenderDialog(QDialog):
 
 
 
+    def _set_busy_cursor(self, active: bool) -> None:
+        if active:
+            self.setCursor(Qt.WaitCursor)
+            if not self._wait_cursor_active:
+                QApplication.setOverrideCursor(Qt.WaitCursor)
+                self._wait_cursor_active = True
+        else:
+            self.unsetCursor()
+            if self._wait_cursor_active:
+                QApplication.restoreOverrideCursor()
+                self._wait_cursor_active = False
+
+    def closeEvent(self, event):
+        self._set_busy_cursor(False)
+        super().closeEvent(event)
+
     def _cancel_render(self):
         self._engine.cancel()
         self._reset_buttons()
+        self.lbl_status.setText("Renderização cancelada pelo usuário.")
 
     def _reset_buttons(self):
+        self._set_busy_cursor(False)
         self.btn_render.setEnabled(True)
         self.btn_render_all.setEnabled(True)
         self.btn_cancel.setVisible(False)

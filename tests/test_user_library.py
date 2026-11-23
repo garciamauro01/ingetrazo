@@ -261,3 +261,35 @@ def test_thumbnails_live_under_the_library(library, tmp_path):
     path.parent.mkdir(parents=True)
     path.write_bytes(b"\x89PNG\r\n\x1a\n")
     assert user_library.thumbnail(entry) == path
+
+
+def test_register_and_update_preserve_render_materials(library, tmp_path):
+    from views import component_loader
+
+    src = _obj(tmp_path / "pia.obj")
+    entry = user_library.register(
+        src,
+        nombre="Pia",
+        render_materials={"mat_10_10_10": {"type": "metal"}},
+    )
+
+    assert entry["render_materials"] == {"mat_10_10_10": {"type": "metal"}}
+    assert user_library.get(entry["id"])["render_materials"] == {
+        "mat_10_10_10": {"type": "metal"}
+    }
+
+    updated = user_library.update(
+        entry["id"],
+        render_materials={"mat_20_20_20": {"type": "vidro"}},
+    )
+    assert updated is not None
+    assert updated["render_materials"] == {"mat_20_20_20": {"type": "vidro"}}
+    assert user_library.get(entry["id"])["render_materials"] == {
+        "mat_20_20_20": {"type": "vidro"}
+    }
+
+    loaded = component_loader.load_component(updated, strict=True)
+    assert loaded is not None
+    assert loaded.group.ext["trazomob_render_materials"] == {
+        "mat_20_20_20": {"type": "vidro"}
+    }

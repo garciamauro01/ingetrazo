@@ -123,7 +123,7 @@ def window():
     from views.main_window import MainWindow
     saved = (PaintTool.recent, PaintTool.current_material,
              PaintTool.current_color, PaintTool.current_texture,
-             PaintTool.current_is_default)
+             PaintTool.current_opacity, PaintTool.current_is_default)
     PaintTool.recent = []
     w = MainWindow()
     try:
@@ -133,7 +133,7 @@ def window():
         w.close()
         (PaintTool.recent, PaintTool.current_material,
          PaintTool.current_color, PaintTool.current_texture,
-         PaintTool.current_is_default) = saved
+         PaintTool.current_opacity, PaintTool.current_is_default) = saved
 
 
 def _panel(w):
@@ -221,3 +221,49 @@ def test_rename_from_the_in_model_menu(window, monkeypatch):
                         staticmethod(lambda *a, **k: ("Techo", True)))
     panel._ask_rename("Azul")
     assert face.attrs["mat"] == "Techo"
+
+
+def test_editing_opacity_restamps_color_and_texture_and_undoes(window, tmp_path):
+    from core.history import SetFaceMaterialTagCommand
+    panel = _panel(window)
+    face = _paint_loose_face(window, panel, (0.1, 0.4, 0.9), "Azul")
+    assert panel._opacity_slider.value() == 100
+    assert panel._opacity_box.value() == 100
+
+    panel._opacity_box.setValue(45)
+    scene = window.viewport.scene
+    assert face.attrs["opacity"] == pytest.approx(0.45)
+    assert scene.materials["Azul"].opacity == pytest.approx(0.45)
+    assert panel._opacity_slider.value() == 45
+
+    panel._on_opacity_edited(100)
+    assert "opacity" not in face.attrs
+    assert scene.materials["Azul"].opacity is None
+
+    assert window.viewport.history.undo()
+    assert face.attrs["opacity"] == pytest.approx(0.45)
+
+    tex_file = tmp_path / "madeira.png"
+    tex_file.write_bytes(b"\x89PNG\r\n\x1a\n")
+    panel._apply_texture(str(tex_file), 1.0, name="Madeira")
+    tex_face = _quad(scene.mesh, z=2.0)
+    tex_face.attrs.update(PaintTool._current_as_material())
+    mat = PaintTool.current_material
+    window.viewport.history.execute(SetFaceMaterialTagCommand([], mat.name, mat))
+
+    panel._on_opacity_edited(60)
+    assert tex_face.attrs["opacity"] == pytest.approx(0.6)
+    assert scene.materials["Madeira"].opacity == pytest.approx(0.6)
+
+
+def test_opacity_from_in_model_menu(window, monkeypatch):
+    import views.tray as T
+    panel = _panel(window)
+    face = _paint_loose_face(window, panel, (0.1, 0.4, 0.9), "Azul")
+    monkeypatch.setattr(T.QInputDialog, "getInt",
+                        staticmethod(lambda *a, **k: (35, True)))
+    panel._ask_material_opacity("Azul")
+    assert face.attrs["opacity"] == pytest.approx(0.35)
+    assert panel._opacity_box.value() == 35
+    assert window.viewport.history.undo()
+    assert "opacity" not in face.attrs

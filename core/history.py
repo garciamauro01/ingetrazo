@@ -1306,6 +1306,7 @@ class RestampMaterialCommand(Command):
         # imported model. Sibling instances share one prototype mesh, hence
         # the identity dedupe.
         from core.group import iter_placements
+        from core.mesh import DeferredMesh, face_attrs
         seen: set = set()
         meshes = [scene.loose_mesh]
         for g in scene.groups:
@@ -1315,6 +1316,10 @@ class RestampMaterialCommand(Command):
                     meshes.append(pg.mesh)
         for mesh in meshes:
             if mesh is None:
+                continue
+            if (type(mesh) is DeferredMesh
+                    and not any(fa.get("mat") == self._name
+                                for fa in face_attrs(mesh))):
                 continue
             for f in mesh.faces:
                 if f.attrs.get("mat") == self._name:
@@ -1326,11 +1331,14 @@ class RestampMaterialCommand(Command):
         would keep drawing every closed component in the old recipe."""
         if self._meshes is None:
             from core.group import iter_placements
+            from core.mesh import DeferredMesh
             worn = {id(f) for f, _old in self._old_faces or []}
             found: dict = {}
             meshes = [scene.loose_mesh] + [pg.mesh for g in scene.groups
                                            for pg, _m in iter_placements(g)]
             for mesh in meshes:
+                if type(mesh) is DeferredMesh:
+                    continue
                 if (mesh is not None and id(mesh) not in found
                         and any(id(f) in worn for f in mesh.faces)):
                     found[id(mesh)] = mesh

@@ -408,3 +408,349 @@ def test_led_strip_resizes_when_physical_mesh_group_is_scaled_or_stretched():
     assert math.isclose(l_st["pos"][0], 0.75, abs_tol=1e-3)
     assert math.isclose(l_st["length"], 2.5, abs_tol=1e-3)
     assert math.isclose(scene.plugin_data["render_blender"]["lights"][0]["p2"][0], 2.0, abs_tol=1e-3)
+
+
+def test_eevee_room_confinement_blocks_sky_and_sun_unless_opening_or_glass(monkeypatch):
+    """EEVEE deve conter luz externa em ambiente fechado (como no Cycles) e permitir atravessar vidros."""
+    import importlib.util
+    import pytest
+
+    class _FakeVec:
+        def __init__(self, coords=(0.0, 0.0, 0.0)):
+            if isinstance(coords, _FakeVec):
+                self._c = list(coords._c)
+            else:
+                self._c = [float(coords[0]), float(coords[1]), float(coords[2])]
+
+        @property
+        def x(self):
+            return self._c[0]
+
+        @property
+        def y(self):
+            return self._c[1]
+
+        @property
+        def z(self):
+            return self._c[2]
+
+        def __len__(self):
+            return 3
+
+        def __getitem__(self, idx):
+            return self._c[idx]
+
+        def copy(self):
+            return _FakeVec(self._c)
+
+        def __add__(self, other):
+            o = _FakeVec(other)
+            return _FakeVec((self.x + o.x, self.y + o.y, self.z + o.z))
+
+        def __sub__(self, other):
+            o = _FakeVec(other)
+            return _FakeVec((self.x - o.x, self.y - o.y, self.z - o.z))
+
+        def __neg__(self):
+            return _FakeVec((-self.x, -self.y, -self.z))
+
+        def __mul__(self, scalar):
+            s = float(scalar)
+            return _FakeVec((self.x * s, self.y * s, self.z * s))
+
+        __rmul__ = __mul__
+
+        def __truediv__(self, scalar):
+            s = float(scalar)
+            return _FakeVec((self.x / s, self.y / s, self.z / s))
+
+        @property
+        def length(self):
+            return math.sqrt(self.x * self.x + self.y * self.y + self.z * self.z)
+
+        def normalized(self):
+            ln = self.length
+            return _FakeVec((self.x / ln, self.y / ln, self.z / ln)) if ln > 1e-12 else _FakeVec()
+
+        def normalize(self):
+            ln = self.length
+            if ln > 1e-12:
+                self._c = [self.x / ln, self.y / ln, self.z / ln]
+            return self
+
+        def dot(self, other):
+            o = _FakeVec(other)
+            return self.x * o.x + self.y * o.y + self.z * o.z
+
+        def cross(self, other):
+            o = _FakeVec(other)
+            return _FakeVec((
+                self.y * o.z - self.z * o.y,
+                self.z * o.x - self.x * o.z,
+                self.x * o.y - self.y * o.x,
+            ))
+
+        def lerp(self, other, t):
+            o = _FakeVec(other)
+            return _FakeVec((
+                self.x + (o.x - self.x) * t,
+                self.y + (o.y - self.y) * t,
+                self.z + (o.z - self.z) * t,
+            ))
+
+        def to_track_quat(self, *_args):
+            return SimpleNamespace(to_euler=lambda: (0.0, 0.0, 0.0))
+
+    class _FakeSocket:
+        def __init__(self, name, node):
+            self.name = name
+            self.node = node
+            self.id_data = node.id_data
+            self.default_value = (0.8, 0.8, 0.8, 1.0) if "Color" in str(name) else 0.0
+            self.links = []
+
+    class _FakeNodes(list):
+        def __init__(self, tree):
+            super().__init__()
+            self._tree = tree
+
+        def new(self, bl_idname):
+            node = _FakeNode(bl_idname, self._tree)
+            self.append(node)
+            return node
+
+    class _FakeLinks(list):
+        def new(self, out_sock, in_sock):
+            link = (out_sock, in_sock)
+            self.append(link)
+            in_sock.links.append(link)
+            return link
+
+        def remove(self, link):
+            if link in self:
+                super().remove(link)
+            if link in link[1].links:
+                link[1].links.remove(link)
+
+    class _FakeNode:
+        def __init__(self, bl_idname, tree):
+            self.bl_idname = bl_idname
+            self.type = "BSDF_PRINCIPLED" if bl_idname == "ShaderNodeBsdfPrincipled" else bl_idname
+            self.id_data = tree
+            self.inputs = {
+                name: _FakeSocket(name, self)
+                for name in (
+                    "Base Color", "Roughness", "Metallic", "Specular IOR Level",
+                    "Transmission Weight", "IOR", "Alpha", "Normal", "Radius",
+                    "Height", "Strength", "Scale", "Detail", "Color", "Surface",
+                    "Fac", 1, 2,
+                )
+            }
+            self.outputs = {
+                name: _FakeSocket(name, self)
+                for name in ("BSDF", "Normal", "Fac", "Distance", "Color", "Background", "Shader", "Is Camera Ray")
+            }
+
+    class _FakeMaterial:
+        def __init__(self, name, transmission=0.0):
+            self.name = name
+            self.use_nodes = True
+            self.use_backface_culling = True
+            self.shadow_method = "NONE"
+            self.node_tree = SimpleNamespace()
+            self.node_tree.nodes = _FakeNodes(self.node_tree)
+            self.node_tree.links = _FakeLinks()
+            bsdf = self.node_tree.nodes.new("ShaderNodeBsdfPrincipled")
+            bsdf.inputs["Transmission Weight"].default_value = transmission
+            bsdf.inputs["Alpha"].default_value = 1.0
+
+    def _make_world(name):
+        nt = SimpleNamespace()
+        nt.nodes = _FakeNodes(nt)
+        nt.links = _FakeLinks()
+        return SimpleNamespace(name=name, use_nodes=True, node_tree=nt)
+
+    created_lights = []
+
+    def _new_light(name, type="POINT"):
+        lt = SimpleNamespace(
+            name=name,
+            type=type,
+            energy=0.0,
+            angle=0.0,
+            color=(1.0, 1.0, 1.0),
+            use_shadow=False,
+            shadow_cascade_max_distance=200.0,
+        )
+        created_lights.append(lt)
+        return lt
+
+    def _new_obj(name, data):
+        return SimpleNamespace(name=name, data=data, rotation_euler=(0.0, 0.0, 0.0))
+
+    mat_wall = _FakeMaterial("Parede_Branca")
+    mat_glass = _FakeMaterial("Vidro_Incolor", transmission=1.0)
+
+    def _build_box_raycaster(boxes_with_mats):
+        def _ray_cast(_depsgraph, origin, direction, distance=1e5):
+            o_q = QVector3D(float(origin[0]), float(origin[1]), float(origin[2]))
+            d_v = _FakeVec(direction).normalized()
+            d_q = QVector3D(d_v.x, d_v.y, d_v.z)
+            best_t = None
+            best_mat = None
+            for box, mat in boxes_with_mats:
+                t = _ray_aabb_intersect(o_q, d_q, box)
+                if t is not None and 1e-5 < t <= distance:
+                    if best_t is None or t < best_t:
+                        best_t = t
+                        best_mat = mat
+            if best_t is None:
+                return False, _FakeVec(), _FakeVec(), -1, None, None
+            loc = _FakeVec(origin) + d_v * best_t
+            hit_obj = SimpleNamespace(
+                material_slots=[SimpleNamespace(material=best_mat)],
+                data=SimpleNamespace(polygons=[SimpleNamespace(material_index=0)]),
+            )
+            return True, loc, _FakeVec((0.0, 0.0, 1.0)), 0, hit_obj, None
+
+        return _ray_cast
+
+    fake_bpy = SimpleNamespace(
+        app=SimpleNamespace(binary_path=""),
+        utils=SimpleNamespace(resource_path=lambda _k: "Z:/nonexistent"),
+        data=SimpleNamespace(
+            materials=[mat_wall, mat_glass],
+            worlds=SimpleNamespace(new=_make_world),
+            lights=SimpleNamespace(new=_new_light),
+            objects=SimpleNamespace(new=_new_obj),
+        ),
+        context=SimpleNamespace(scene=SimpleNamespace(objects=[])),
+    )
+
+    monkeypatch.setitem(sys.modules, "bpy", fake_bpy)
+    monkeypatch.setitem(sys.modules, "bmesh", SimpleNamespace())
+    monkeypatch.setitem(sys.modules, "mathutils", SimpleNamespace(Matrix=object, Vector=_FakeVec))
+
+    script_path = ROOT / "blender_scripts" / "photoreal_render.py"
+    spec = importlib.util.spec_from_file_location("_test_photoreal_confinement", script_path)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec and spec.loader
+    spec.loader.exec_module(mod)
+
+    # 1. Materiais opacos devem receber sombra dupla-face; vidros permanecem intocados
+    mod.setup_photoreal_materials(
+        use_bevel=False,
+        material_overrides={"Parede_Branca": {"type": "parede"}},
+    )
+    assert mat_wall.use_backface_culling is False
+    assert mat_wall.shadow_method == "OPAQUE"
+    assert mat_glass.shadow_method == "NONE"
+
+    # Sala 4x4m, pe-direito 2.7m
+    closed_walls_and_floor = [
+        ((-2.0, 2.0, -2.0, 2.0, -0.1, 0.0), mat_wall),   # piso
+        ((-2.1, -2.0, -2.0, 2.0, 0.0, 2.7), mat_wall),   # parede -X
+        ((2.0, 2.1, -2.0, 2.0, 0.0, 2.7), mat_wall),     # parede +X
+        ((-2.0, 2.0, -2.1, -2.0, 0.0, 2.7), mat_wall),   # parede -Y
+        ((-2.0, 2.0, 2.0, 2.1, 0.0, 2.7), mat_wall),     # parede +Y
+    ]
+    ceiling_box = ((-2.1, 2.1, -2.1, 2.1, 2.7, 2.8), mat_wall)
+
+    cam_cfg = {"eye": [0.0, -1.2, 1.5], "target": [0.0, 1.2, 1.1], "up": [0.0, 0.0, 1.0]}
+    sun_dir = [0.4, 0.3, 0.85]
+
+    # Caso A: Comodo 100% fechado (com teto e 4 paredes opacas)
+    scene_closed = SimpleNamespace(
+        collection=SimpleNamespace(objects=SimpleNamespace(link=lambda _o: None)),
+        ray_cast=_build_box_raycaster(closed_walls_and_floor + [ceiling_box]),
+        eevee=SimpleNamespace(
+            taa_render_samples=16,
+            use_shadows=False,
+            use_raytracing=True,
+            use_fast_gi=True,
+            shadow_ray_count=1,
+            shadow_step_count=4,
+            gtao_distance=0.2,
+        ),
+        render=SimpleNamespace(engine="CYCLES"),
+    )
+    scene_closed.__setitem__ = lambda k, v: setattr(scene_closed, f"prop_{k}", v)
+    scene_closed.get = lambda k, default=None: getattr(scene_closed, f"prop_{k}", default)
+
+    conf_closed = mod.measure_room_confinement(scene_closed, object(), cam_cfg, sun_dir=sun_dir)
+    assert conf_closed["enclosed"] is True
+    assert conf_closed["has_ceiling"] is True
+    assert conf_closed["sky_open_ratio"] == pytest.approx(0.0)
+    assert conf_closed["sky_exposure"] == pytest.approx(0.0)
+    assert conf_closed["sun_visibility"] == pytest.approx(0.0)
+
+    # Sem luzes internas -> escuro total (World = 0.0) e Sol bloqueado (energy = 0.0) no EEVEE
+    created_lights.clear()
+    mod.apply_lighting_preset(
+        scene_closed, preset_name="dia", sun_dir=sun_dir, engine="eevee", confinement=conf_closed, interior_lights=[]
+    )
+    bg_closed = next(n for n in scene_closed.world.node_tree.nodes if n.bl_idname == "ShaderNodeBackground")
+    assert bg_closed.inputs["Strength"].default_value == pytest.approx(0.0)
+    sun_closed = next(lt for lt in created_lights if lt.type == "SUN")
+    assert sun_closed.energy == pytest.approx(0.0)
+    assert sun_closed.use_shadow is True
+
+    # Com luz interna ativa -> preenchimento sutil de rebote interno (<= 0.04), sem vazamento do ceu
+    mod.apply_lighting_preset(
+        scene_closed,
+        preset_name="dia",
+        sun_dir=sun_dir,
+        engine="eevee",
+        confinement=conf_closed,
+        interior_lights=[{"on": True, "power": 600.0, "color": (1.0, 0.85, 0.7)}],
+    )
+    bg_lit = next(n for n in scene_closed.world.node_tree.nodes if n.bl_idname == "ShaderNodeBackground")
+    assert 0.0 < bg_lit.inputs["Strength"].default_value <= 0.04
+    assert bg_lit.inputs["Color"].default_value[:3] == pytest.approx((1.0, 0.85, 0.7))
+
+    # No modo Cycles, o World/Sol permanecem inalterados pois o próprio Cycles traça as paredes/teto
+    created_lights.clear()
+    mod.apply_lighting_preset(
+        scene_closed, preset_name="dia", sun_dir=sun_dir, engine="cycles", confinement=conf_closed
+    )
+    sun_cycles = next(lt for lt in created_lights if lt.type == "SUN")
+    assert sun_cycles.energy == pytest.approx(3.5)
+
+    # EEVEE engine flags de sombra e protecao contra bug difuso
+    mod.setup_render_engine(scene_closed, engine="eevee", samples=32)
+    assert scene_closed.eevee.use_shadows is True
+    assert scene_closed.eevee.use_raytracing is False
+    assert scene_closed.eevee.use_fast_gi is False
+    assert scene_closed.eevee.shadow_ray_count == 4
+    assert scene_closed.eevee.shadow_step_count == 12
+    assert scene_closed.eevee.gtao_distance == pytest.approx(0.5)
+
+    # Caso B: Comodo fechado com janela envidracada (vidro em x=+2.0) -> raio atravessa vidro
+    wall_east_parts = [
+        ((2.0, 2.1, -2.0, -0.8, 0.0, 2.7), mat_wall),
+        ((2.0, 2.1, 0.8, 2.0, 0.0, 2.7), mat_wall),
+        ((2.0, 2.1, -0.8, 0.8, 0.0, 0.8), mat_wall),
+        ((2.0, 2.1, -0.8, 0.8, 2.2, 2.7), mat_wall),
+        ((2.02, 2.05, -0.8, 0.8, 0.8, 2.2), mat_glass),
+    ]
+    windowed_boxes = closed_walls_and_floor[:2] + wall_east_parts + closed_walls_and_floor[3:] + [ceiling_box]
+    scene_windowed = SimpleNamespace(
+        collection=scene_closed.collection,
+        ray_cast=_build_box_raycaster(windowed_boxes),
+    )
+    conf_windowed = mod.measure_room_confinement(scene_windowed, object(), cam_cfg, sun_dir=sun_dir)
+    assert conf_windowed["enclosed"] is True
+    assert conf_windowed["has_ceiling"] is True
+    assert 0.0 < conf_windowed["sky_open_ratio"] < 0.45
+    assert 0.0 < conf_windowed["sky_exposure"] < 1.0
+
+    # Caso C: Cena aberta (sem teto) -> iluminacao externa total preservada
+    scene_open = SimpleNamespace(
+        collection=scene_closed.collection,
+        ray_cast=_build_box_raycaster(closed_walls_and_floor),
+    )
+    conf_open = mod.measure_room_confinement(scene_open, object(), cam_cfg, sun_dir=sun_dir)
+    assert conf_open["has_ceiling"] is False
+    assert conf_open["enclosed"] is False
+    assert conf_open["sky_exposure"] == pytest.approx(1.0)
+    assert conf_open["sun_visibility"] == pytest.approx(1.0)

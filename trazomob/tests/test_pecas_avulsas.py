@@ -42,3 +42,43 @@ def test_prateleiras_avulsas_build_module_group():
     assert len(group.children) == 2
     assert all("Prateleira Avulsa" in c.name for c in group.children)
     assert all(c.ext["trazomob"]["material"] == "MDF Carvalho" for c in group.children)
+
+
+def test_gaveta_avulsa_canonica():
+    from trazomob.builders.parts import CustomPartsBuilder
+    from trazomob.builders.drawers import CanonicalDrawerBuilder
+
+    # 1. Teste via CanonicalDrawerBuilder direto
+    pecas = CanonicalDrawerBuilder.build_gaveta_completa(
+        prefixo="Gaveta Teste",
+        largura=0.60,
+        profundidade=0.50,
+        altura=0.20,
+        esp_caixa_mm=18.0,
+        material_caixa="MDF Branco TX 18mm",
+        esp_fundo_mm=6.0,
+        incluir_frente=True,
+    )
+    assert len(pecas) == 6  # 2 laterais + 2 contrafrentes + 1 fundo + 1 frente
+    nomes = [p.name for p in pecas]
+    assert any("Lat Esq" in n for n in nomes)
+    assert any("Lat Dir" in n for n in nomes)
+    assert any("Contra-frente Diant" in n for n in nomes)
+    assert any("Contra-frente Tras" in n for n in nomes)
+    assert any("Fundo 6mm" in n for n in nomes)
+    assert any("Frente" in n for n in nomes)
+
+    # 2. Teste via CustomPartsBuilder.build_peca_avulsa com subtipo 'gaveta_avulsa'
+    pecas_avulsas = CustomPartsBuilder.build_peca_avulsa(
+        subtipo="gaveta_avulsa",
+        largura_mm=500,
+        altura_mm=180,
+        prof_mm=450,
+        esp_mm=18.0,
+        material="MDF Grafite 18mm",
+        tipo_fundo="rasgo",
+        incluir_frente=False,
+    )
+    assert len(pecas_avulsas) == 5  # 2 laterais + 2 contrafrentes + 1 fundo
+    assert all(p.ext.get("trazomob", {}).get("material") in ("MDF Grafite 18mm", "MDF Fundo 6mm") for p in pecas_avulsas)
+

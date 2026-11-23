@@ -481,11 +481,15 @@ def _add_face(face, materials, prims, attrs=None, smoother=None) -> None:
     op = None if op is None or float(op) >= 0.999 else round(float(op), 3)
     tex = attrs.get("texture")
     key = material_key(attrs)
+    pbr_id = attrs.get("mat")
     if tex is not None and tex.get("path"):
         src = Path(tex["path"])
+        if not pbr_id:
+            pbr_id = src.stem
         materials.setdefault(key, {"color": (1.0, 1.0, 1.0),
                                    "map": src.name, "src": src,
-                                   "opacity": op})
+                                   "opacity": op,
+                                   "pbr_id": pbr_id})
         if attrs.get("mat") and "mat" not in materials[key]:
             materials[key]["mat"] = attrs["mat"]
         sw = tex.get("sw", 1.0) or 1.0
@@ -502,8 +506,15 @@ def _add_face(face, materials, prims, attrs=None, smoother=None) -> None:
         # RGB: the AI recipes paint (r, g, b, 1.0) and every writer reads
         # three channels (transparency is attrs["opacity"], above).
         col = tuple(attrs.get("color") or _DEFAULT_COLOR)[:3]
+        if not pbr_id:
+            if attrs.get("color") is not None:
+                r_i, g_i, b_i = [int(max(0.0, min(1.0, c)) * 255) for c in col]
+                pbr_id = f"Cor #{r_i:02X}{g_i:02X}{b_i:02X}"
+            else:
+                pbr_id = "Padrão (Sem Acabamento)"
         materials.setdefault(key, {"color": col, "map": None,
-                                   "opacity": op})
+                                   "opacity": op,
+                                   "pbr_id": pbr_id})
         if attrs.get("mat") and "mat" not in materials[key]:
             materials[key]["mat"] = attrs["mat"]
         for tri in export_triangles(face):

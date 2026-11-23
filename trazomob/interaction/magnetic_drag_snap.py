@@ -13,7 +13,7 @@ from PySide6.QtGui import QColor, QFont, QPainter, QPen, QVector3D
 
 from core.group import Group
 
-from ..domain.module_utils import is_esquadria
+from ..domain.module_utils import is_esquadria, is_library_decoration
 from ..domain.snap_contract import (
     SNAP_PAREDE_NENHUM,
     get_module_snap_parede,
@@ -486,7 +486,12 @@ class MagneticDragSnapMixin:
         # Seu arraste deve deslizar suavemente e com 100% de liberdade no comprimento da parede (eixo U),
         # mantendo a cota vertical Z estritamente no piso/peitoril e sem sofrer repulsão/penetração normal.
         is_esquadria = False
-        if self._target_module and hasattr(self._target_module, "ext") and isinstance(self._target_module.ext, dict):
+        if (
+            self._target_module
+            and not is_library_decoration(self._target_module)
+            and hasattr(self._target_module, "ext")
+            and isinstance(self._target_module.ext, dict)
+        ):
             name_l = self._target_module.name.lower()
             tm_kind = getattr(self._target_module, "ext", {}).get("trazomob", {}).get("kind", "")
             if "trazomob_esquadria" in self._target_module.ext or tm_kind == "esquadria":

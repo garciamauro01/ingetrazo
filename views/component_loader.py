@@ -217,8 +217,81 @@ def fit(group: Group, cm=None, anchor: str = "base") -> Group:
                  name=getattr(group, "name", ""))
 
 
+def render_viewport_thumbnail(group: Group, size: int = 128):
+    """Renderiza a miniatura usando o pipeline OpenGL do Viewport com mapeamento de texturas real."""
+    import math
+    from PySide6.QtWidgets import QApplication
+    from PySide6.QtGui import QVector3D, QPixmap
+
+    app = QApplication.instance()
+    if not app:
+        return None
+
+    # Procura um Viewport ativo na aplicação
+    vp = None
+    for widget in app.topLevelWidgets():
+        if hasattr(widget, "viewport") and getattr(widget.viewport, "scene", None) is not None:
+            vp = widget.viewport
+            break
+
+    if vp is None:
+        return None
+
+    try:
+        saved_camera_yaw = vp.camera.yaw
+        saved_camera_pitch = vp.camera.pitch
+        saved_camera_aspect = vp.camera.aspect
+        saved_style_override = getattr(vp, "style_override", None)
+
+        from core.style import Style
+        st = Style()
+        st.face_mode = "textures"
+        st.edges = True
+        st.profiles = True
+        vp.style_override = st
+
+        # Usa uma cena isolada para a miniatura (evita conflitos com outros objetos da cena aberta, ex: avatar Engineer)
+        from core.scene import Scene
+        temp_scene = Scene()
+        temp_scene.groups.append(group)
+        old_scene = vp.scene
+        vp.scene = temp_scene
+        vp.notify_scene_changed()
+        app.processEvents()
+
+        lo, hi = temp_scene.bounds()
+        cam = vp.camera
+        cam.yaw = math.radians(-50.0)
+        cam.pitch = math.radians(24.0)
+        cam.set_aspect(size, size)
+        cam.fit_box(lo, hi, margin=1.05)
+
+        app.processEvents()
+        img = vp.render_image(size, size, transparent=True)
+        if img and not img.isNull():
+            return QPixmap.fromImage(img)
+    except Exception:
+        pass
+    finally:
+        if vp is not None:
+            vp.scene = old_scene
+            vp.style_override = saved_style_override
+            vp.camera.yaw = saved_camera_yaw
+            vp.camera.pitch = saved_camera_pitch
+            vp.camera.aspect = saved_camera_aspect
+            vp.notify_scene_changed()
+            vp.update()
+
+    return None
+
+
 def thumbnail_pixmap(group: Group, size: int = 128):
     """The hand-drawn picture the tray uses, without touching the GL."""
+    # Tenta primeiro renderizar via Viewport real com todas as texturas UV
+    vp_pix = render_viewport_thumbnail(group, size)
+    if vp_pix is not None and not vp_pix.isNull():
+        return vp_pix
+
     from views.component_thumbs import thumbnail
     return thumbnail(group, size)
 
@@ -243,6 +316,31 @@ def save_thumbnail(group: Group, path, size: int = 128) -> Path | None:
     return p
 
 
+def _apply_entry_render_materials(
+    group: Group,
+    entry: dict,
+    *,
+    extra: dict | None = None,
+) -> None:
+    """Propagate saved PBR/render material overrides from ``entry`` to ``group.ext``."""
+    merged: dict = {}
+    if isinstance(extra, dict):
+        merged.update(extra)
+    grp_ext = getattr(group, "ext", None)
+    if isinstance(grp_ext, dict):
+        existing = grp_ext.get("trazomob_render_materials")
+        if isinstance(existing, dict):
+            merged.update(existing)
+    mats = entry.get("render_materials") if isinstance(entry, dict) else None
+    if isinstance(mats, dict) and mats:
+        merged.update(mats)
+    if not merged:
+        return
+    if grp_ext is None or not isinstance(grp_ext, dict):
+        group.ext = {}
+    group.ext["trazomob_render_materials"] = merged
+
+
 def load_component(entry: dict, *, anchor: str = "base",
                    thumbnail_size: int | None = None,
                    strict: bool = False) -> Loaded | None:
@@ -264,6 +362,7 @@ def load_component(entry: dict, *, anchor: str = "base",
         except Exception:  # noqa: BLE001 - fall back to the normal reader
             quick = None
         if quick is not None:
+            _apply_entry_render_materials(quick.group, entry)
             return quick
         matrix = entry.get("matrix")
         if matrix:
@@ -276,8 +375,14 @@ def load_component(entry: dict, *, anchor: str = "base",
                 m = tuple(v * factor for v in m)
         group = load_group(path, matrix=m,
                            name=entry.get("nombre") or path.stem)
+        raw_ext = getattr(group, "ext", None)
+        loaded_pbr = (dict(raw_ext["trazomob_render_materials"])
+                      if isinstance(raw_ext, dict)
+                      and isinstance(raw_ext.get("trazomob_render_materials"), dict)
+                      else None)
         group = fit(group, cm=entry.get("cm"), anchor=anchor)
         group = flatten(group)
+        _apply_entry_render_materials(group, entry, extra=loaded_pbr)
         loaded = Loaded(group, path)
         if thumbnail_size:
             save_thumbnail(group, user_library.thumbnail_path(entry),

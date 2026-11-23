@@ -476,9 +476,13 @@ def command(found: BlenderFound, job: Path) -> list:
     the AppImage's ``/tmp/.mount_…`` when Blender is the Flathub one, whose
     sandbox sees the home folder but not our /tmp."""
     import shutil
+    import os
     script = job.parent / render_script().name
     shutil.copyfile(render_script(), script)
+    cpu_total = os.cpu_count() or 4
+    render_threads = max(1, cpu_total - 1)
     return [*found.command, "-b", "--factory-startup",
+            "-t", str(render_threads),
             "--python", str(script), "--", str(job)]
 
 

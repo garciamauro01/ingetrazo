@@ -25,7 +25,31 @@ if TYPE_CHECKING:  # pragma: no cover - apenas para anotações
 
     from core.group import Group
 
-__all__ = ("is_esquadria", "resolve_igz_path", "shift_module_geometry")
+__all__ = (
+    "is_esquadria",
+    "is_library_decoration",
+    "resolve_igz_path",
+    "shift_module_geometry",
+)
+
+
+def is_library_decoration(value: Any) -> bool:
+    """True quando ``value`` é objeto/decoração de biblioteca (não módulo nem esquadria)."""
+    if value is None or isinstance(value, str):
+        return False
+    ext = getattr(value, "ext", None)
+    if not isinstance(ext, dict):
+        return False
+    if "trazomob_module" in ext or "trazomob_esquadria" in ext:
+        return False
+    tm = ext.get("trazomob")
+    if isinstance(tm, dict):
+        kind = str(tm.get("kind", ""))
+        if kind in ("module", "esquadria"):
+            return False
+        if kind == "decoration":
+            return True
+    return "igz_link" in ext or "trazomob_decoration" in ext
 
 
 def is_esquadria(value: Any) -> bool:
@@ -41,6 +65,8 @@ def is_esquadria(value: Any) -> bool:
                 or value.startswith("janela_")
                 or value.startswith("porta_"))
     if value is None:
+        return False
+    if is_library_decoration(value):
         return False
 
     ext = getattr(value, "ext", None)

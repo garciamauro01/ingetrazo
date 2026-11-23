@@ -134,3 +134,38 @@ def test_import_rejects_unknown_archive(library, tmp_path, monkeypatch):
         zf.writestr("ler.txt", "não é uma biblioteca")
     with pytest.raises(ValueError, match="não é um pacote"):
         user_library.import_bundle(random)
+
+
+def test_bundle_export_and_import_preserve_pbr_materials(
+    library, tmp_path, monkeypatch
+):
+    from views import component_loader
+
+    source = tmp_path / "cadeira.obj"
+    _obj(source)
+    pbr = {
+        "Madeira_Carvalho": {
+            "type": "madeira",
+            "sub_type": "MDF Madeirado",
+            "roughness": 0.35,
+            "specular": 0.5,
+            "bump": 0.03,
+        }
+    }
+    entry = user_library.register(source, nombre="Cadeira", render_materials=pbr)
+    bundle = tmp_path / "biblioteca_pbr.zip"
+    stats = user_library.export_bundle(bundle)
+    assert stats["entries"] == 1
+
+    other = tmp_path / "outra-maquina-pbr"
+    monkeypatch.setenv("INGETRAZO_COMPONENTS", str(other))
+    res = user_library.import_bundle(bundle, mode="merge")
+    assert res["added"] == 1
+
+    imported = user_library.get(entry["id"])
+    assert imported is not None
+    assert imported["render_materials"] == pbr
+
+    loaded = component_loader.load_component(imported, strict=True)
+    assert loaded is not None
+    assert loaded.group.ext["trazomob_render_materials"] == pbr

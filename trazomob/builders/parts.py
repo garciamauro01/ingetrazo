@@ -128,6 +128,12 @@ class CustomPartsBuilder:
         return CabinetBuilder.build_frente_gaveta(*args, **kwargs)
 
     @classmethod
+    def build_gaveta_avulsa(cls, *args, **kwargs):
+        """Gera a gaveta canônica avulsa através do CanonicalDrawerBuilder."""
+        from trazomob.builders.drawers import CanonicalDrawerBuilder
+        return CanonicalDrawerBuilder.build_gaveta_completa(*args, **kwargs)
+
+    @classmethod
     def build_peca_avulsa(
         cls,
         subtipo: str,
@@ -149,13 +155,15 @@ class CustomPartsBuilder:
         afastamento_cavilha_traseiro_mm: float = 50.0,
         fita_borda_modo: str = "4L",
         lado_abertura_porta: str = "esquerda",
+        **kwargs: Any,
     ) -> list[Group]:
         """Gera uma peça avulsa individual (lateral, base, travessa, fundo, porta, etc.)."""
         ox, oy, oz = offset
-        L = largura_mm / 1000.0
-        A = altura_mm / 1000.0
-        P = prof_mm / 1000.0
-        E = esp_mm / 1000.0
+        profundidade_mm = float(prof_mm if prof_mm is not None else kwargs.get("profundidade_mm", 0.0))
+        L = float(largura_mm) / 1000.0
+        A = float(altura_mm) / 1000.0
+        P = float(profundidade_mm) / 1000.0
+        E = float(esp_mm) / 1000.0
 
         cor = cls.get_material_color(material)
         cor_fita = cls.get_material_color(material_fita) if material_fita else None
@@ -369,6 +377,36 @@ class CustomPartsBuilder:
                 puxador_tipo=puxador_tipo, puxador_cor=puxador_cor, puxador_pos=puxador_pos,
                 desconto_perfil_mm=desconto_perfil_mm, perfil_modelo=perfil_modelo,
             ))
+        elif subtipo in ("gaveta", "gaveta_avulsa", "caixa_gaveta"):
+            # Gaveta Canônica Avulsa (caixa + fundo + frente opcional)
+            from trazomob.builders.drawers import CanonicalDrawerBuilder
+            esp_cx_mm = float(esp_mm) if esp_mm else 15.0
+            incluir_fr = bool(kwargs.get("incluir_frente", False))
+            mat_fr = kwargs.get("material_frente", material)
+            esp_fr = float(kwargs.get("esp_frente_mm", esp_cx_mm))
+            tipo_fd = str(kwargs.get("tipo_fundo_gaveta", kwargs.get("tipo_fundo", "rasgo")))
+            mat_fd = str(kwargs.get("material_fundo_gaveta", kwargs.get("material_fundo", "MDF Fundo 6mm")))
+            esp_fd = float(kwargs.get("esp_fundo_gaveta_mm", kwargs.get("esp_fundo_mm", 6.0)))
+            folga_corr = float(kwargs.get("folga_corredica_mm", 26.0))
+
+            gav_pieces = CanonicalDrawerBuilder.build_gaveta_completa(
+                prefixo="Gaveta Avulsa",
+                origem=(ox, oy, oz),
+                largura=L,
+                profundidade=P,
+                altura=A,
+                esp_caixa_mm=esp_cx_mm,
+                material_caixa=material,
+                material_fita_caixa=material_fita,
+                tipo_fundo=tipo_fd,
+                material_fundo=mat_fd,
+                esp_fundo_mm=esp_fd,
+                incluir_frente=incluir_fr,
+                material_frente=mat_fr,
+                esp_frente_mm=esp_fr,
+                folga_corredica_mm=folga_corr,
+            )
+            groups.extend(gav_pieces)
 
         else:
             groups.append(_chapa(

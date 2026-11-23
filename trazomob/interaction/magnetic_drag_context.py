@@ -69,12 +69,20 @@ class MagneticDragContextMixin:
         if getattr(group, "layer", "") in ("Parede", "Piso"):
             return None
 
+        from ..domain.module_utils import is_library_decoration
+
+        if is_library_decoration(group):
+            return None
+
         if self._is_module_group(group):
             return group
 
         owner = getattr(group, "owner", None)
-        if owner is not None and self._is_module_group(owner):
-            return owner
+        if owner is not None:
+            if is_library_decoration(owner):
+                return None
+            if self._is_module_group(owner):
+                return owner
 
         scene = getattr(self.viewport, "scene", None)
         if scene and hasattr(scene, "groups"):

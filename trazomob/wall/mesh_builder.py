@@ -753,9 +753,11 @@ class WallMeshBuilder:
             return False
 
         from ..domain.entity import get_trazomob
+        from ..domain.module_utils import is_library_decoration
         esquadrias = [
             g for g in getattr(scene, "groups", [])
-            if hasattr(g, "ext") and isinstance(g.ext, dict) and (
+            if not is_library_decoration(g)
+            and hasattr(g, "ext") and isinstance(g.ext, dict) and (
                 get_trazomob(g).get("kind") == "esquadria"
                 or "trazomob_esquadria" in g.ext
                 or getattr(g, "layer", "") == "ESQUADRIAS"

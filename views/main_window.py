@@ -8047,15 +8047,23 @@ class MainWindow(QMainWindow):
         """Hand one of the user's indexed models to the placement tool.
 
         The file is read the first time and shared thereafter; the source
-        key carries the size and orientation recorded in the entry, so an
-        edit to those becomes a new definition instead of silently reusing
-        the old one (a metadata-only edit keeps sharing).
+        key carries the size, orientation, file revision and PBR materials
+        recorded in the entry, so an edit to those becomes a new definition
+        instead of silently reusing the old one.
         """
+        from trazomob.integrations import library_links
+
         self.viewport.end_group_edit()
-        signature = (tuple(entry.get("cm") or ()),
+        pbr_sig = tuple(
+            (str(k), tuple(sorted(v.items())) if isinstance(v, dict) else v)
+            for k, v in sorted((entry.get("render_materials") or {}).items())
+        )
+        signature = (entry.get("archivo"),
+                     library_links._revision_of(entry),
+                     tuple(entry.get("cm") or ()),
                      tuple(entry.get("matrix") or ()),
                      entry.get("unidad"), entry.get("escala"),
-                     entry.get("y_up"))
+                     entry.get("y_up"), pbr_sig)
         source = "user:%s:%s" % (entry.get("id", ""), signature)
         self._start_place_shared(
             source, lambda: self._build_user_component(entry))
@@ -8076,6 +8084,24 @@ class MainWindow(QMainWindow):
         group = None if loaded is None else loaded.group
         if group is not None:
             library_links.mark_built_component(group, entry, library="user")
+            grp_ext = getattr(group, "ext", None)
+            pbr = (grp_ext.get("trazomob_render_materials")
+                   if isinstance(grp_ext, dict) else None)
+            if not pbr and isinstance(entry.get("render_materials"), dict):
+                pbr = entry.get("render_materials")
+            scene = getattr(self.viewport, "scene", None)
+            if scene is not None and isinstance(pbr, dict) and pbr:
+                if not isinstance(getattr(scene, "plugin_data", None), dict):
+                    scene.plugin_data = {}
+                tm = scene.plugin_data.get("trazomob")
+                if not isinstance(tm, dict):
+                    tm = scene.plugin_data["trazomob"] = {}
+                overrides = tm.get("material_overrides")
+                if not isinstance(overrides, dict):
+                    overrides = tm["material_overrides"] = {}
+                for k, v in pbr.items():
+                    if isinstance(v, dict):
+                        overrides.setdefault(str(k), dict(v))
         return group
 
     def import_user_component(self, path: str | None = None) -> dict | None:
@@ -8095,6 +8121,7 @@ class MainWindow(QMainWindow):
         """
         from core import user_library
         from trazomob.integrations import library_links
+        from trazomob.ui.material_editor_dialog import extract_group_materials
 
         scene = getattr(self.viewport, "scene", None)
         if scene is None:
@@ -8124,8 +8151,31 @@ class MainWindow(QMainWindow):
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if answer != QMessageBox.Yes:
             return
+
+        mat_names = {
+            m.get("name") for m in extract_group_materials(target)
+            if m.get("name")
+        }
+        collected_pbr: dict = {}
+        for k, v in (entry.get("render_materials") or {}).items():
+            if isinstance(v, dict) and (not mat_names or k in mat_names):
+                collected_pbr[str(k)] = dict(v)
+        pdata = getattr(scene, "plugin_data", None) or {}
+        proj_pbr = (pdata.get("trazomob") or {}).get("material_overrides")
+        if isinstance(proj_pbr, dict):
+            for k, v in proj_pbr.items():
+                if isinstance(v, dict) and (not mat_names or k in mat_names):
+                    collected_pbr[str(k)] = dict(v)
+        grp_ext = getattr(target, "ext", None)
+        if isinstance(grp_ext, dict) and isinstance(
+                grp_ext.get("trazomob_render_materials"), dict):
+            for k, v in grp_ext["trazomob_render_materials"].items():
+                if isinstance(v, dict):
+                    collected_pbr[str(k)] = dict(v)
+
         try:
-            updated = user_library.replace_geometry(ident, target)
+            updated = user_library.replace_geometry(
+                ident, target, render_materials=collected_pbr)
         except (OSError, ValueError) as exc:
             QMessageBox.warning(self, tr("Save geometry to library"), str(exc))
             return
@@ -8134,6 +8184,12 @@ class MainWindow(QMainWindow):
                 self, tr("Save geometry to library"),
                 tr("This component is no longer in your library."))
             return
+
+        shared = self.__dict__.get("_shared_components")
+        if isinstance(shared, dict):
+            prefix = f"user:{ident}:"
+            for key in [k for k in shared if str(k).startswith(prefix)]:
+                del shared[key]
 
         count = library_links.refresh_user_groups(scene, ident, updated)
         self.viewport.notify_scene_changed()

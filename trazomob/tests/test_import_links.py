@@ -154,7 +154,11 @@ def test_missing_cache_and_source_leaves_a_stub(library_root, tmp_path):
     igz.load_into(back, out)             # não pode explodir
     stub = back.groups[0]
     assert library_links.is_linked(stub)
-    assert not stub.mesh.faces
+    assert len(stub.mesh.edges) == 12
+    assert len(stub.mesh.faces) == 6
+    assert library_links.is_placeholder_mesh(stub.mesh) is True
+    assert library_links._has_geometry(stub) is False
+    assert payload["entry"]["cm"] == pytest.approx([100.0, 100.0, 0.0])
     assert stub.xform.column(3).x() == pytest.approx(3.0)
 
 

@@ -114,3 +114,25 @@ def set_group_render_materials(group: Any, mapping: Dict[str, str]) -> None:
         group.ext["trazomob_render_materials"] = cleaned
     else:
         group.ext.pop("trazomob_render_materials", None)
+
+
+def collect_group_render_overrides(groups: Any) -> Dict[str, Dict[str, Any]]:
+    """Collect ``trazomob_render_materials`` dict overrides across ``groups`` and children."""
+    collected: Dict[str, Dict[str, Any]] = {}
+
+    def _walk(item: Any) -> None:
+        if item is None:
+            return
+        ext = getattr(item, "ext", None)
+        if isinstance(ext, dict):
+            raw = ext.get("trazomob_render_materials")
+            if isinstance(raw, dict):
+                for key, value in raw.items():
+                    if isinstance(value, dict):
+                        collected[str(key)] = dict(value)
+        for child in getattr(item, "children", ()) or ():
+            _walk(child)
+
+    for g in groups or ():
+        _walk(g)
+    return collected

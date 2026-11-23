@@ -39,6 +39,10 @@ logger = logging.getLogger("trazomob.library_links")
 #: Chave em ``Group.ext`` que o host reconhece como referência externa.
 LINK_KEY = "igz_link"
 
+#: Estilo suave da caixa translúcida exibida no lugar de vínculos ausentes.
+_PLACEHOLDER_COLOR = (0.95, 0.56, 0.16)
+_PLACEHOLDER_OPACITY = 0.14
+
 #: ``library`` de um vínculo cuja origem é um arquivo importado direto
 #: (SKP, DAE, GLB, OBJ): não há ficha de biblioteca, só um caminho.
 IMPORT_LIBRARY = "file"
@@ -113,7 +117,7 @@ def _snapshot(entry: dict) -> dict:
     """
     keys = ("id", "nombre", "modo", "archivo", "origen", "cm", "matrix",
             "escala", "y_up", "unidad", "obj", "categoria", "tipo", "marca",
-            "modelo")
+            "modelo", "render_materials")
     out = {}
     for key in keys:
         if key not in entry:
@@ -124,6 +128,13 @@ def _snapshot(entry: dict) -> dict:
         elif isinstance(value, (list, tuple)):
             out[key] = [v for v in value
                         if isinstance(v, (str, int, float, bool))]
+        elif isinstance(value, dict) and key == "render_materials":
+            cleaned = {
+                str(k): dict(v) for k, v in value.items()
+                if isinstance(v, dict)
+            }
+            if cleaned:
+                out[key] = cleaned
         # qualquer outra coisa (Qt, Path…) fica de fora de propósito
     return out
 
@@ -196,17 +207,25 @@ def link_imported_group(group, source=None, *, digest: str | None = None,
     except Exception:  # noqa: BLE001 - um cache que falha não perde o grupo
         logger.exception("não foi possível gravar o cache de %r", key)
         return None
+    entry_payload = {
+        "path": str(src) if src is not None else None,
+        "cache": str(cache),
+        "cache_rel": cache.relative_to(cache_root()).as_posix(),
+        "name": getattr(flat, "name", "") or "",
+        "index": int(index),
+    }
+    try:
+        from views.component_loader import size_cm
+        cm = size_cm(flat)
+        if cm and any(v > 0.0 for v in cm):
+            entry_payload["cm"] = [float(v) for v in cm]
+    except Exception:  # noqa: BLE001 - dimensões são extra para o frame
+        pass
     payload = {
         "library": IMPORT_LIBRARY,
         "id": "%s:%d" % (key, int(index)),
         "rev": _file_revision(src) if src is not None else None,
-        "entry": {
-            "path": str(src) if src is not None else None,
-            "cache": str(cache),
-            "cache_rel": cache.relative_to(cache_root()).as_posix(),
-            "name": getattr(flat, "name", "") or "",
-            "index": int(index),
-        },
+        "entry": entry_payload,
     }
     set_link(flat, payload)
     return payload
@@ -328,14 +347,100 @@ def _rebuild(group) -> str:
     return "rebuilt"
 
 
+def is_placeholder_mesh(mesh) -> bool:
+    """True quando ``mesh`` é o quadro translúcido de um vínculo ausente."""
+    if mesh is None:
+        return False
+    if getattr(mesh, "_is_link_placeholder", False):
+        return True
+    faces = getattr(mesh, "faces", None)
+    if not faces:
+        return False
+    return all(
+        isinstance(getattr(f, "attrs", None), dict)
+        and bool(f.attrs.get("igz_link_placeholder"))
+        for f in faces
+    )
+
+
+def _placeholder_mesh(link: dict):
+    """Caixa translúcida com contorno no lugar da geometria que a biblioteca não devolveu.
+
+    Tem 6 faces semitransparentes (para dar destaque visual suave e permitir
+    selecionar pelo interior via raycast, mesmo diante de paredes/piso) e 12
+    arestas; marcada com ``igz_link_placeholder`` para que ``_has_geometry``
+    continue vendo o grupo como não materializado.
+    """
+    from PySide6.QtGui import QVector3D
+
+    from core.mesh import Mesh
+
+    entry = link.get("entry") if isinstance(link, dict) else None
+    cm = entry.get("cm") if isinstance(entry, dict) else None
+    dims = []
+    if isinstance(cm, (list, tuple)):
+        for value in cm[:3]:
+            try:
+                metres = abs(float(value)) / 100.0
+            except (TypeError, ValueError):
+                metres = 0.0
+            dims.append(metres if metres > 1e-4 else 0.25)
+    while len(dims) < 3:
+        dims.append(0.25)
+    dx, dy, dz = dims[:3]
+
+    mesh = Mesh()
+    hx, hy = dx / 2.0, dy / 2.0
+    b0 = QVector3D(-hx, -hy, 0.0)
+    b1 = QVector3D(hx, -hy, 0.0)
+    b2 = QVector3D(hx, hy, 0.0)
+    b3 = QVector3D(-hx, hy, 0.0)
+    t0 = QVector3D(-hx, -hy, dz)
+    t1 = QVector3D(hx, -hy, dz)
+    t2 = QVector3D(hx, hy, dz)
+    t3 = QVector3D(-hx, hy, dz)
+
+    back_style = {
+        "color": _PLACEHOLDER_COLOR,
+        "opacity": _PLACEHOLDER_OPACITY,
+    }
+    for loop in (
+        (b0, b3, b2, b1),
+        (t0, t1, t2, t3),
+        (b0, b1, t1, t0),
+        (b1, b2, t2, t1),
+        (b2, b3, t3, t2),
+        (b3, b0, t0, t3),
+    ):
+        face = mesh.add_face(loop)
+        face.attrs["color"] = _PLACEHOLDER_COLOR
+        face.attrs["opacity"] = _PLACEHOLDER_OPACITY
+        face.attrs["back"] = dict(back_style)
+        face.attrs["igz_link_placeholder"] = True
+    mesh._is_link_placeholder = True
+    return mesh
+
+
+def _show_placeholder(group, link) -> None:
+    """Deixa um frame visível onde estava o item não encontrado."""
+    if link is None:
+        return
+    try:
+        group.mesh = _placeholder_mesh(link)
+    except Exception:  # noqa: BLE001 - o aviso nunca derruba a abertura
+        logger.debug("não foi possível desenhar o frame do vínculo %r",
+                     link, exc_info=True)
+
+
 def rebuild_scene_links(scene, *, on_missing=None) -> dict:
     """Reconstrói todos os vínculos de ``scene``; devolve as contagens.
 
     ``on_missing(group, link)`` é chamado para cada vínculo que não devolveu
     geometria — o grupo continua na cena como stub, para o usuário
-    relocalizar. ``stats`` separa ``missing`` (arquivo de origem
-    inacessível) de ``empty`` (definição sem geometria): um documento que
-    abre «vazio» precisa dizer por quê.
+    relocalizar. Um quadro translúcido com contorno marca o lugar do item
+    ausente sem impedir a reconstrução futura. ``stats`` separa ``missing``
+    (arquivo de origem inacessível) de ``empty`` (definição sem geometria):
+    um documento que abre «vazio» precisa dizer por quê.
     """
     stats = {"rebuilt": 0, "missing": 0, "empty": 0, "linked": 0}
     if _REBUILDING[0]:
@@ -354,6 +459,7 @@ def rebuild_scene_links(scene, *, on_missing=None) -> dict:
             logger.warning("vínculo de biblioteca %s: %r",
                            "sem geometria" if outcome == "empty"
                            else "não resolvido", link_of(group))
+            _show_placeholder(group, link_of(group))
             if on_missing is not None:
                 try:
                     on_missing(group, link_of(group))
@@ -373,13 +479,20 @@ def user_definition(entry: dict):
 def refresh_user_groups(scene, ident: str, entry: dict) -> int:
     """Atualiza todas as instâncias de um componente após salvar a geometria.
 
-    Cada grupo mantém seu ``xform`` (posição na cena); só a malha/children e
-    o payload do vínculo são trocados pela nova definição da biblioteca.
+    Cada grupo mantém seu ``xform`` (posição na cena); só a malha/children,
+    materiais PBR e o payload do vínculo são trocados pela nova definição.
     """
+    for k in [k for k in _DEF_CACHE if k[0] == "user" and str(k[1]) == str(ident)]:
+        _DEF_CACHE.pop(k, None)
     proto = user_definition(entry)
     if proto is None or not _has_geometry(proto):
         return 0
     payload = link_from_entry(entry, library="user")
+    proto_ext = getattr(proto, "ext", None)
+    pbr = (proto_ext.get("trazomob_render_materials")
+           if isinstance(proto_ext, dict) else None)
+    if not pbr and isinstance(entry.get("render_materials"), dict):
+        pbr = entry.get("render_materials")
     count = 0
     for group in _iter_groups(getattr(scene, "groups", ()) or ()):
         link = link_of(group)
@@ -390,6 +503,14 @@ def refresh_user_groups(scene, ident: str, entry: dict) -> int:
         group.mesh = proto.mesh
         group.children = list(getattr(proto, "children", ()) or ())
         group.component = True
+        if isinstance(pbr, dict) and pbr:
+            if not isinstance(getattr(group, "ext", None), dict):
+                group.ext = {}
+            group.ext["trazomob_render_materials"] = {
+                str(k): dict(v) for k, v in pbr.items() if isinstance(v, dict)
+            }
+        elif isinstance(getattr(group, "ext", None), dict):
+            group.ext.pop("trazomob_render_materials", None)
         count += 1
     return count
 
@@ -432,7 +553,7 @@ def _iter_groups(groups):
 
 def _has_geometry(group) -> bool:
     mesh = getattr(group, "mesh", None)
-    if mesh is not None and getattr(mesh, "faces", None):
+    if mesh is not None and getattr(mesh, "faces", None) and not is_placeholder_mesh(mesh):
         return True
     return any(_has_geometry(c)
                for c in getattr(group, "children", ()) or ())
@@ -675,7 +796,7 @@ def mark_imported_groups(groups, source=None) -> None:
 __all__ = [
     "LINK_KEY", "IMPORT_LIBRARY", "link_of", "is_linked", "set_link",
     "clear_link", "materialize", "link_from_entry", "link_imported_group",
-    "cache_root", "rebuild_group", "rebuild_scene_links", "user_definition",
-    "refresh_user_groups", "set_host_window",
-    "mark_built_component", "mark_imported_groups",
+    "cache_root", "is_placeholder_mesh", "rebuild_group",
+    "rebuild_scene_links", "user_definition", "refresh_user_groups",
+    "set_host_window", "mark_built_component", "mark_imported_groups",
 ]
