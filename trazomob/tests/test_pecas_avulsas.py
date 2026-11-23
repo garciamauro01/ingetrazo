@@ -146,5 +146,18 @@ def test_gaveta_furacao_e_fixacao():
     # Deve conter os tambores Minifix Ø15mm na face interna da contrafrente
     assert any("Tambor Minifix" in op["descricao"] for op in cf_m.ext["trazomob"]["operacoes"])
 
+    # 3. Teste das 3 opções de montagem de fundo da gaveta (rasgo, por_baixo, sem_fundo)
+    mod_sem_fundo = CabinetBuilder.build_module_group({
+        "tipo": "peca_gaveta_avulsa",
+        "largura": 500,
+        "altura": 180,
+        "profundidade": 450,
+        "tipo_fundo_gaveta": "sem_fundo",
+        "tem_frente": True,
+    })
+    assert not any("Fundo" in p.name for p in mod_sem_fundo.children)
+    assert len(mod_sem_fundo.children) == 5  # 2 lat + 2 cf + 1 frente
+
+
 
 

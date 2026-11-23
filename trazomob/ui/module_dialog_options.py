@@ -156,6 +156,7 @@ class ModuleDialogOptionsMixin:
         self.cb_tipo_fundo_gaveta.addItems([
             "Canal / Rasgo Lateral",
             "Por Baixo (Sobreposto)",
+            "Sem Fundo",
         ])
         self.lbl_tipo_fundo_gaveta = QLabel("Montagem Fundo Gav.:")
         form_layout.addRow(self.lbl_tipo_fundo_gaveta, self.cb_tipo_fundo_gaveta)

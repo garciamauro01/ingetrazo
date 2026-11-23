@@ -1141,7 +1141,10 @@ class CaixaMixin:
 
         # 3. Fundo da Gaveta
         modo_fundo = (tipo_fundo_gaveta or "rasgo").lower()
-        if modo_fundo in ("por_baixo", "baixo", "pregado", "aparafusado"):
+        if modo_fundo in ("sem_fundo", "sem", "none", "nenhum"):
+            return pieces
+
+        if modo_fundo in ("por_baixo", "baixo", "pregado", "aparafusado", "sobreposto"):
             # Fundo por baixo: cobre toda a base da caixa de gaveta
             fundo_orig = (x_caixa, y_caixa, z_caixa)
             fundo_size = (larg_caixa, prof_caixa, E_fg)

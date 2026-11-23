@@ -227,7 +227,8 @@ class SidebarApplyMixin:
         if has_gav and hasattr(self, "cb_tipo_fundo_gaveta"):
             if hasattr(self, "chk_gaveta_tem_frente") and tipo in ("peca_gaveta_avulsa", "gaveta_avulsa", "peca_gaveta"):
                 new_params["tem_frente"] = bool(self.chk_gaveta_tem_frente.isChecked())
-            new_params["tipo_fundo_gaveta"] = "por_baixo" if self.cb_tipo_fundo_gaveta.currentIndex() == 1 else "rasgo"
+            idx_tfg = self.cb_tipo_fundo_gaveta.currentIndex()
+            new_params["tipo_fundo_gaveta"] = "sem_fundo" if idx_tfg == 2 else ("por_baixo" if idx_tfg == 1 else "rasgo")
             new_params["folga_corredica_mm"] = float(self.sp_folga_corredica.value())
 
             mat_g_txt = self.cb_material_gaveta.currentText()

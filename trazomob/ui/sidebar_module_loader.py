@@ -479,7 +479,13 @@ class SidebarModuleLoaderMixin:
 
                     # Tipo de fundo da gaveta
                     m_fg = str(params.get("tipo_fundo_gaveta", "rasgo")).lower()
-                    self.cb_tipo_fundo_gaveta.setCurrentIndex(1 if m_fg in ("por_baixo", "baixo") else 0)
+                    if m_fg in ("sem_fundo", "sem", "none", "nenhum"):
+                        idx_fundo_g = 2
+                    elif m_fg in ("por_baixo", "baixo", "sobreposto"):
+                        idx_fundo_g = 1
+                    else:
+                        idx_fundo_g = 0
+                    self.cb_tipo_fundo_gaveta.setCurrentIndex(idx_fundo_g)
 
                     # Folga da corrediça
                     self.sp_folga_corredica.setValue(int(round(float(params.get("folga_corredica_mm", 26.0)))))
