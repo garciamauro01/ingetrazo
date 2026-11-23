@@ -920,6 +920,7 @@ def make_vertical_divider_joint_holes(
 def make_drawer_box_joint_holes(
     prof_caixa_mm: float,
     alt_caixa_mm: float,
+    larg_caixa_mm: float = 0.0,
     esp_gaveta_mm: float = 15.0,
     dispositivo_fixacao: str = "parafuso",
     afastamento_topo_base_mm: float = 30.0,
@@ -1007,6 +1008,21 @@ def make_drawer_box_joint_holes(
                         diametro=7.0, profundidade=34.0,
                         descricao=f"Passagem Haste Minifix Topo Dir {desc_ext} (Ø7mm x 34mm)",
                     ))
+                    # Tambor de Minifix Ø15mm na face interna da contrafrente a 34mm da borda
+                    # Para a contrafrente dianteira, a face interna é 'traseira' (+Y).
+                    # Para a contrafrente traseira, a face interna é 'frontal' (-Y).
+                    face_tambor_cf = "traseira" if extremidade == "diant" else "frontal"
+                    ops_cf.append(MachiningOp(
+                        tipo="furo", face=face_tambor_cf, x=34.0, y=z_pos,
+                        diametro=15.0, profundidade=12.5,
+                        descricao=f"Tambor Minifix Gaveta Esq {desc_ext} (Ø15mm)",
+                    ))
+                    if larg_caixa_mm > 68.0:
+                        ops_cf.append(MachiningOp(
+                            tipo="furo", face=face_tambor_cf, x=larg_caixa_mm - 34.0, y=z_pos,
+                            diametro=15.0, profundidade=12.5,
+                            descricao=f"Tambor Minifix Gaveta Dir {desc_ext} (Ø15mm)",
+                        ))
             elif eh_somente_cavilha:
                 ops_lateral.append(MachiningOp(
                     tipo="furo", face="traseira", x=y_pos, y=z_pos,

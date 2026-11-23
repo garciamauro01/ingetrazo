@@ -179,15 +179,30 @@ class CanonicalDrawerBuilder:
         ox, oy, oz = origem
         folga_corr_m = folga_corredica_mm / 1000.0
         larg_caixa = max(0.10, largura - folga_corr_m)
-        prof_caixa = max(0.15, profundidade)
         alt_caixa = max(0.08, altura)
         x_caixa = ox + (folga_corr_m / 2.0)
+
+        # Se houver frente externa aparente, a frente fica na linha frontal (oy)
+        # e a caixa interna é recuada na profundidade para encostar na face de trás da frente
+        # (além de uma folga construtiva de segurança de ~5mm a 10mm na profundidade da caixa).
+        if incluir_frente:
+            E_frente_m = (esp_frente_mm / 1000.0) if (esp_frente_mm and esp_frente_mm > 0) else 0.018
+            y_frente = oy
+            y_caixa = oy + E_frente_m
+            prof_caixa = max(0.15, profundidade - E_frente_m)
+            z_caixa = oz + 0.015  # Folga inferior típica da caixa em relação à frente
+            alt_caixa = max(0.06, altura - 0.030)  # Altura útil da caixa ligeiramente menor que a frente
+        else:
+            y_frente = oy
+            y_caixa = oy
+            prof_caixa = max(0.15, profundidade)
+            z_caixa = oz
 
         pieces = cls.build_caixa_gaveta(
             prefixo=prefixo,
             x_caixa=x_caixa,
-            y_caixa=oy,
-            z_caixa=oz,
+            y_caixa=y_caixa,
+            z_caixa=z_caixa,
             larg_caixa=larg_caixa,
             prof_caixa=prof_caixa,
             alt_caixa=alt_caixa,
@@ -204,8 +219,8 @@ class CanonicalDrawerBuilder:
             cor_frente = cls.get_material_color(material_frente or material_caixa)
             frente = CabinetBuilder.build_frente_gaveta(
                 name=f"{prefixo} - Frente",
-                origin=(ox, oy, oz),
-                size=(largura, esp_frente_mm / 1000.0, altura),
+                origin=(ox, y_frente, oz),
+                size=(largura, E_frente_m, altura),
                 color=cor_frente,
                 material=material_frente or material_caixa,
                 material_fita=material_fita_caixa,

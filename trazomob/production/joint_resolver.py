@@ -679,12 +679,21 @@ class JointResolver:
             else:
                 alt_cf_mm = alt_caixa_mm
 
+            # Largura das contrafrentes
+            if b_cfd:
+                larg_cf_mm = (b_cfd[1].x() - b_cfd[0].x()) * 1000.0
+            elif b_cft:
+                larg_cf_mm = (b_cft[1].x() - b_cft[0].x()) * 1000.0
+            else:
+                larg_cf_mm = 0.0
+
             # Altura de referência para furação é a menor entre lateral e contrafrente
             alt_ref_mm = min(alt_caixa_mm, alt_cf_mm)
 
             ops_lat, ops_cf = make_drawer_box_joint_holes(
                 prof_caixa_mm=prof_caixa_mm,
                 alt_caixa_mm=alt_ref_mm,
+                larg_caixa_mm=larg_cf_mm,
                 esp_gaveta_mm=esp_gav_mm,
                 dispositivo_fixacao=dispositivo_fixacao,
             )

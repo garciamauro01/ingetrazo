@@ -143,5 +143,8 @@ def test_gaveta_furacao_e_fixacao():
     cf_m = next(p for p in mod_minifix.children if "Contra-frente Diant" in p.name)
     assert any("Minifix" in op["descricao"] for op in le_m.ext["trazomob"]["operacoes"])
     assert any("Minifix" in op["descricao"] for op in cf_m.ext["trazomob"]["operacoes"])
+    # Deve conter os tambores Minifix Ø15mm na face interna da contrafrente
+    assert any("Tambor Minifix" in op["descricao"] for op in cf_m.ext["trazomob"]["operacoes"])
+
 
 

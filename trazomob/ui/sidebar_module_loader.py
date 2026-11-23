@@ -469,6 +469,14 @@ class SidebarModuleLoaderMixin:
                 for w in self._gaveta_sidebar_widgets:
                     w.setVisible(has_gav)
                 if has_gav:
+                    # Incluir frente externa (exibido apenas para peça gaveta avulsa)
+                    is_gav_avulsa = tipo in ("peca_gaveta_avulsa", "gaveta_avulsa", "peca_gaveta")
+                    if hasattr(self, "lbl_gaveta_tem_frente") and hasattr(self, "chk_gaveta_tem_frente"):
+                        self.lbl_gaveta_tem_frente.setVisible(is_gav_avulsa)
+                        self.chk_gaveta_tem_frente.setVisible(is_gav_avulsa)
+                        if is_gav_avulsa:
+                            self.chk_gaveta_tem_frente.setChecked(bool(params.get("tem_frente", True)))
+
                     # Tipo de fundo da gaveta
                     m_fg = str(params.get("tipo_fundo_gaveta", "rasgo")).lower()
                     self.cb_tipo_fundo_gaveta.setCurrentIndex(1 if m_fg in ("por_baixo", "baixo") else 0)
@@ -567,7 +575,7 @@ class SidebarModuleLoaderMixin:
                 self.sec_ajustes.set_tab_visible(
                     (not is_cama or tipo == "cama_colmeia")
                     and tipo != "bancada_tampao_engrossado"
-                    and not (is_peca_avulsa and tipo not in ("peca_tampo_engrossado", "peca_divisoria_vertical", "peca_prateleiras_avulsas"))
+                    and not (is_peca_avulsa and tipo not in ("peca_tampo_engrossado", "peca_divisoria_vertical", "peca_prateleiras_avulsas", "peca_gaveta_avulsa", "gaveta_avulsa"))
                 )
             if hasattr(self, "_pedra_sidebar_widgets"):
                 for w in self._pedra_sidebar_widgets:

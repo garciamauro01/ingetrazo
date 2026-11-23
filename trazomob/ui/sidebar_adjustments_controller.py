@@ -83,6 +83,11 @@ class SidebarAjustesMixin:
         self.lbl_gaveta_section = QLabel("<b>⚙️ Caixa de Gaveta:</b>")
         self.sec_ajustes.form_layout.addRow(self.lbl_gaveta_section)
 
+        self.chk_gaveta_tem_frente = QCheckBox("Incluir Frente Externa")
+        self.chk_gaveta_tem_frente.setChecked(True)
+        self.lbl_gaveta_tem_frente = QLabel("Frente Externa:")
+        self.sec_ajustes.form_layout.addRow(self.lbl_gaveta_tem_frente, self.chk_gaveta_tem_frente)
+
         self.cb_tipo_fundo_gaveta = QComboBox()
         self.cb_tipo_fundo_gaveta.addItems([
             "Canal / Rasgo Lateral",
@@ -133,6 +138,7 @@ class SidebarAjustesMixin:
 
         self._gaveta_sidebar_widgets = [
             self.lbl_gaveta_section,
+            self.lbl_gaveta_tem_frente, self.chk_gaveta_tem_frente,
             self.lbl_tipo_fundo_gaveta, self.cb_tipo_fundo_gaveta,
             self.lbl_folga_corredica, self.sp_folga_corredica,
             self.lbl_material_gaveta, self.cb_material_gaveta,
