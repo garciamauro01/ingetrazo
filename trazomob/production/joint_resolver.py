@@ -24,6 +24,7 @@ from .machining import (
     make_cabinet_joint_holes,
     make_horizontal_board_edge_holes,
     make_stretcher_joint_holes,
+    make_drawer_box_joint_holes,
 )
 
 
@@ -140,6 +141,7 @@ class JointResolver:
             afastamento_cavilha_traseiro_mm=afastamento_cavilha_traseiro_mm,
         )
         cls._resolve_travessas_contato(travessas, suportes_verticais, tol, dispositivo_fixacao)
+        cls._resolve_caixas_gaveta(pieces, dispositivo_fixacao, espessura_chapa_mm=espessura_chapa_mm)
 
         # Atualiza a malha 3D de peças cujas operações foram adicionadas ou enriquecidas
         # pelo JointResolver (evita dupla perfuração checando _rendered_ops_count).
@@ -604,3 +606,132 @@ class JointResolver:
                             tipo_fixacao="parafuso",
                         )
                         sup_ops.extend([o.to_dict() for o in novos_calcos])
+
+    @classmethod
+    def _resolve_caixas_gaveta(
+        cls,
+        pieces: list[Group],
+        dispositivo_fixacao: str,
+        espessura_chapa_mm: float = 15.0,
+    ) -> None:
+        """Sincroniza furações entre as laterais e as contrafrentes das caixas de gaveta."""
+        # Agrupa peças de gaveta por prefixo / gaveta
+        # Exemplos de nomes:
+        # "Gaveta Avulsa - Lat Esq", "Gaveta Avulsa - Lat Dir", "Gaveta Avulsa - Contra-frente Diant", "Gaveta Avulsa - Contra-frente Tras"
+        # "Gaveta 1 - Lat Esq", "Gaveta 1 - Contra-frente Diant", etc.
+        gavetas_map: dict[str, dict[str, Group]] = {}
+
+        for p in pieces:
+            nome = getattr(p, "name", "") or ""
+            nome_low = nome.lower()
+            if "gaveta" not in nome_low:
+                continue
+
+            # Identifica papel da peça
+            papel = None
+            if "lat esq" in nome_low:
+                papel = "lat_esq"
+            elif "lat dir" in nome_low:
+                papel = "lat_dir"
+            elif "contra-frente diant" in nome_low or "contrafrente diant" in nome_low:
+                papel = "cf_diant"
+            elif "contra-frente tras" in nome_low or "contrafrente tras" in nome_low:
+                papel = "cf_tras"
+            elif "frente" in nome_low:
+                papel = "frente"
+
+            if not papel:
+                continue
+
+            # Prefixo da gaveta (antes do ' - ')
+            prefixo = nome.split(" - ")[0].strip() if " - " in nome else "gaveta"
+            gavetas_map.setdefault(prefixo, {})[papel] = p
+
+        for prefixo, g_dict in gavetas_map.items():
+            lat_esq = g_dict.get("lat_esq")
+            lat_dir = g_dict.get("lat_dir")
+            cf_diant = g_dict.get("cf_diant")
+            cf_tras = g_dict.get("cf_tras")
+            frente = g_dict.get("frente")
+
+            if not (lat_esq and lat_dir and (cf_diant or cf_tras)):
+                continue
+
+            b_le = get_piece_bounds(lat_esq)
+            b_cfd = get_piece_bounds(cf_diant) if cf_diant else None
+            b_cft = get_piece_bounds(cf_tras) if cf_tras else None
+            if not b_le:
+                continue
+
+            # Dimensões da lateral da gaveta
+            le_min, le_max = b_le
+            prof_caixa_mm = (le_max.y() - le_min.y()) * 1000.0
+            alt_caixa_mm = (le_max.z() - le_min.z()) * 1000.0
+            esp_gav_mm = (le_max.x() - le_min.x()) * 1000.0
+            if esp_gav_mm <= 0:
+                esp_gav_mm = espessura_chapa_mm
+
+            # Altura das contrafrentes
+            if b_cfd:
+                alt_cf_mm = (b_cfd[1].z() - b_cfd[0].z()) * 1000.0
+            elif b_cft:
+                alt_cf_mm = (b_cft[1].z() - b_cft[0].z()) * 1000.0
+            else:
+                alt_cf_mm = alt_caixa_mm
+
+            # Altura de referência para furação é a menor entre lateral e contrafrente
+            alt_ref_mm = min(alt_caixa_mm, alt_cf_mm)
+
+            ops_lat, ops_cf = make_drawer_box_joint_holes(
+                prof_caixa_mm=prof_caixa_mm,
+                alt_caixa_mm=alt_ref_mm,
+                esp_gaveta_mm=esp_gav_mm,
+                dispositivo_fixacao=dispositivo_fixacao,
+            )
+
+            # 1. Aplica na Lateral Esquerda
+            ops_le = get_piece_operations(lat_esq)
+            if not any("Gaveta Caixa" in str(op.get("descricao", "")) for op in ops_le):
+                # Face interna da Lat Esq é a face interna virada para +X (face="traseira" na convenção da lateral)
+                ops_le.extend([o.to_dict() for o in ops_lat])
+
+            # 2. Aplica na Lateral Direita
+            ops_ld = get_piece_operations(lat_dir)
+            if not any("Gaveta Caixa" in str(op.get("descricao", "")) for op in ops_ld):
+                ops_ld.extend([o.to_dict() for o in ops_lat])
+
+            # 3. Aplica nas Contra-frentes (topos esquerdo e direito)
+            if cf_diant:
+                ops_cfd = get_piece_operations(cf_diant)
+                if not any("Gaveta Topo" in str(op.get("descricao", "")) for op in ops_cfd):
+                    ops_cfd.extend([o.to_dict() for o in ops_cf if "Dianteira" in o.descricao])
+
+            if cf_tras:
+                ops_cft = get_piece_operations(cf_tras)
+                if not any("Gaveta Topo" in str(op.get("descricao", "")) for op in ops_cft):
+                    ops_cft.extend([o.to_dict() for o in ops_cf if "Traseira" in o.descricao])
+
+            # 4. Furos passantes na Contrafrente dianteira para fixar a Frente externa
+            if cf_diant and frente:
+                ops_cfd = get_piece_operations(cf_diant)
+                if not any("Fixação Frente" in str(op.get("descricao", "")) for op in ops_cfd):
+                    b_cf = get_piece_bounds(cf_diant)
+                    if b_cf:
+                        larg_cf_mm = (b_cf[1].x() - b_cf[0].x()) * 1000.0
+                        # 2 a 4 furos passantes de dentro para fora (face="traseira" da contrafrente, normal -Y furando em direção à frente)
+                        recuo_x = min(50.0, larg_cf_mm / 4.0)
+                        xs_furos = [recuo_x, larg_cf_mm - recuo_x]
+                        if larg_cf_mm > 600.0:
+                            xs_furos.insert(1, larg_cf_mm / 2.0)
+                        z_furo = alt_ref_mm / 2.0
+                        for idx_f, fx in enumerate(xs_furos, 1):
+                            ops_cfd.append(MachiningOp(
+                                tipo="furo",
+                                face="traseira",
+                                x=fx,
+                                y=z_furo,
+                                diametro=4.0,
+                                profundidade=esp_gav_mm,
+                                descricao=f"Furo Fixação Frente Gaveta {idx_f} (Ø4mm)",
+                            ).to_dict())
+

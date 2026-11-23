@@ -381,7 +381,7 @@ class CustomPartsBuilder:
             # Gaveta Canônica Avulsa (caixa + fundo + frente opcional)
             from trazomob.builders.drawers import CanonicalDrawerBuilder
             esp_cx_mm = float(esp_mm) if esp_mm else 15.0
-            incluir_fr = bool(kwargs.get("incluir_frente", False))
+            incluir_fr = bool(kwargs.get("incluir_frente", kwargs.get("tem_frente", False)))
             mat_fr = kwargs.get("material_frente", material)
             esp_fr = float(kwargs.get("esp_frente_mm", esp_cx_mm))
             tipo_fd = str(kwargs.get("tipo_fundo_gaveta", kwargs.get("tipo_fundo", "rasgo")))

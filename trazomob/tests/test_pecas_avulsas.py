@@ -82,3 +82,66 @@ def test_gaveta_avulsa_canonica():
     assert len(pecas_avulsas) == 5  # 2 laterais + 2 contrafrentes + 1 fundo
     assert all(p.ext.get("trazomob", {}).get("material") in ("MDF Grafite 18mm", "MDF Fundo 6mm") for p in pecas_avulsas)
 
+
+def test_gaveta_furacao_e_fixacao():
+    from trazomob.builders.cabinet import CabinetBuilder
+
+    # 1. Gaveta avulsa com furação parafuso e frente
+    mod_parafuso = CabinetBuilder.build_module_group({
+        "tipo": "peca_gaveta_avulsa",
+        "largura": 500,
+        "altura": 180,
+        "profundidade": 450,
+        "esp_chapa": 15,
+        "tem_frente": True,
+        "gerar_furacao": True,
+        "dispositivo_fixacao": "parafuso",
+    })
+    assert mod_parafuso is not None
+    pecas = mod_parafuso.children
+    by_name = {p.name: p for p in pecas}
+
+    lat_esq = by_name["Gaveta Avulsa - Lat Esq"]
+    lat_dir = by_name["Gaveta Avulsa - Lat Dir"]
+    cf_diant = by_name["Gaveta Avulsa - Contra-frente Diant"]
+    cf_tras = by_name["Gaveta Avulsa - Contra-frente Tras"]
+
+    ops_le = lat_esq.ext["trazomob"]["operacoes"]
+    ops_ld = lat_dir.ext["trazomob"]["operacoes"]
+    ops_cfd = cf_diant.ext["trazomob"]["operacoes"]
+    ops_cft = cf_tras.ext["trazomob"]["operacoes"]
+
+    # Furações nas laterais da gaveta
+    assert len(ops_le) == 4
+    assert len(ops_ld) == 4
+    assert any("Cavilha Gaveta Caixa" in op["descricao"] for op in ops_le)
+    assert any("Furo Parafuso Gaveta Caixa" in op["descricao"] for op in ops_le)
+
+    # Furações nas contrafrentes (topos e fixação da frente externa)
+    assert len(ops_cfd) == 6  # 2 topos esq/dir + 2 topos esq/dir + 2 furos fixação frente
+    assert len(ops_cft) == 4  # 2 topos esq/dir + 2 topos esq/dir
+    assert any("Fixação Frente" in op["descricao"] for op in ops_cfd)
+
+    # Malhas 3D devem ter os furos perfurados (mais vértices que o paralelepípedo de 8 vértices)
+    assert len(lat_esq.mesh.vertices) > 8
+    assert len(lat_dir.mesh.vertices) > 8
+    assert len(cf_diant.mesh.vertices) > 8
+    assert len(cf_tras.mesh.vertices) > 8
+
+    # 2. Gaveta avulsa com minifix + cavilha
+    mod_minifix = CabinetBuilder.build_module_group({
+        "tipo": "peca_gaveta_avulsa",
+        "largura": 500,
+        "altura": 180,
+        "profundidade": 450,
+        "esp_chapa": 15,
+        "tem_frente": False,
+        "gerar_furacao": True,
+        "dispositivo_fixacao": "minifix_cavilha",
+    })
+    le_m = next(p for p in mod_minifix.children if "Lat Esq" in p.name)
+    cf_m = next(p for p in mod_minifix.children if "Contra-frente Diant" in p.name)
+    assert any("Minifix" in op["descricao"] for op in le_m.ext["trazomob"]["operacoes"])
+    assert any("Minifix" in op["descricao"] for op in cf_m.ext["trazomob"]["operacoes"])
+
+

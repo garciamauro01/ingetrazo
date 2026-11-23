@@ -797,7 +797,7 @@ class SidebarModuleLoaderMixin:
                     for w in self._fundo_sidebar_widgets:
                         w.setVisible(show_fundo)
 
-                show_furacao = not (is_peca_avulsa and tipo not in ("peca_divisoria_vertical",)) and (not is_cama or tipo == "cama_colmeia")
+                show_furacao = not (is_peca_avulsa and tipo not in ("peca_divisoria_vertical", "peca_gaveta_avulsa", "gaveta_avulsa")) and (not is_cama or tipo == "cama_colmeia")
                 if hasattr(self, "lbl_furacao"):
                     self.lbl_furacao.setVisible(show_furacao)
                 if hasattr(self, "chk_gerar_furacao"):

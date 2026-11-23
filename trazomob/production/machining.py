@@ -915,3 +915,149 @@ def make_vertical_divider_joint_holes(
             ))
 
     return ops
+
+
+def make_drawer_box_joint_holes(
+    prof_caixa_mm: float,
+    alt_caixa_mm: float,
+    esp_gaveta_mm: float = 15.0,
+    dispositivo_fixacao: str = "parafuso",
+    afastamento_topo_base_mm: float = 30.0,
+) -> tuple[list[MachiningOp], list[MachiningOp]]:
+    """Gera furações da caixa de gaveta entre as Laterais e as Contra-frentes (dianteira e traseira).
+
+    As Laterais passam inteiras na profundidade (Y) com espessura em X.
+    As Contra-frentes ficam embutidas entre as laterais com espessura em Y e topos em X (-X e +X).
+
+    Furações geradas:
+    1. Nas Laterais (face interna: 'direita' para Lat Esq ou 'esquerda' para Lat Dir):
+       - 2 furos na extremidade frontal (alinhados com a contra-frente dianteira: Y = esp_gaveta_mm / 2)
+       - 2 furos na extremidade traseira (alinhados com a contra-frente traseira: Y = prof_caixa_mm - esp_gaveta_mm / 2)
+       - Se Parafuso / Cavilha+Parafuso: furos passantes de Ø4.0mm (ou Ø5.0mm) nas laterais.
+       - Se Minifix: pino de minifix Ø5.0mm x 11mm + cavilha Ø8.0mm x 11mm.
+       - Se Cavilhas: furos de cavilha Ø8.0mm x 11mm.
+
+    2. Nas Contra-frentes (topos laterais 'esquerda' e 'direita'):
+       - Furos correspondentes alinhados com a furação da lateral.
+       - Se Parafuso: furo piloto Ø3.5mm x 35mm nos topos.
+       - Se Minifix: haste Ø7.0mm x 34mm no topo + tambor Ø15mm na face interna.
+       - Se Cavilhas: cavilha Ø8.0mm x 20mm nos topos.
+
+    Retorna: (ops_lateral, ops_contrafrente)
+    onde:
+      - ops_lateral tem operações para a face interna da lateral (com coordenadas x=Y ao longo da prof, y=Z em altura)
+      - ops_contrafrente tem operações para os topos esquerdo e direito (com coordenadas x=Z em altura, y=espessura/2)
+    """
+    disp = str(dispositivo_fixacao or "").lower()
+    eh_somente_cavilha = disp in ("cavilha", "apenas_cavilha", "apenas_cavilhas", "somente_cavilha")
+    eh_somente_parafuso = disp in ("soberba", "apenas_parafuso", "somente_parafuso", "somente_parafusos", "apenas_parafusos")
+    eh_minifix = "minifix" in disp and not eh_somente_cavilha and not eh_somente_parafuso
+
+    # Alturas dos 2 furos (inferior e superior)
+    af_z = min(afastamento_topo_base_mm, alt_caixa_mm / 3.0)
+    z_baixo = max(18.0, af_z)
+    z_cima = max(z_baixo + 32.0, alt_caixa_mm - af_z)
+    pontos_z = [z_baixo, z_cima]
+    if alt_caixa_mm >= 250.0:
+        pontos_z.insert(1, (z_baixo + z_cima) / 2.0)
+
+    # Posições Y nas laterais
+    y_diant = esp_gaveta_mm / 2.0
+    y_tras = prof_caixa_mm - (esp_gaveta_mm / 2.0)
+
+    ops_lateral: list[MachiningOp] = []
+    ops_cf: list[MachiningOp] = []
+
+    for extremidade, y_pos, desc_ext in [("diant", y_diant, "Dianteira"), ("tras", y_tras, "Traseira")]:
+        for idx_z, z_pos in enumerate(pontos_z, 1):
+            if eh_minifix:
+                # 1 Minifix (no furo superior) + 1 Cavilha (no furo inferior)
+                if idx_z == 1:
+                    # Cavilha
+                    ops_lateral.append(MachiningOp(
+                        tipo="furo", face="traseira", x=y_pos, y=z_pos,
+                        diametro=8.0, profundidade=11.0,
+                        descricao=f"Cavilha Gaveta Caixa {desc_ext} (Ø8mm x 11mm)",
+                    ))
+                    # Topo esquerdo e direito da contrafrente
+                    ops_cf.append(MachiningOp(
+                        tipo="furo", face="esquerda", x=z_pos, y=esp_gaveta_mm / 2.0,
+                        diametro=8.0, profundidade=20.0,
+                        descricao=f"Cavilha Gaveta Topo Esq {desc_ext} (Ø8mm x 20mm)",
+                    ))
+                    ops_cf.append(MachiningOp(
+                        tipo="furo", face="direita", x=z_pos, y=esp_gaveta_mm / 2.0,
+                        diametro=8.0, profundidade=20.0,
+                        descricao=f"Cavilha Gaveta Topo Dir {desc_ext} (Ø8mm x 20mm)",
+                    ))
+                else:
+                    # Minifix
+                    ops_lateral.append(MachiningOp(
+                        tipo="furo", face="traseira", x=y_pos, y=z_pos,
+                        diametro=5.0, profundidade=11.0,
+                        descricao=f"Pino Minifix Gaveta Caixa {desc_ext} (Ø5mm x 11mm)",
+                    ))
+                    ops_cf.append(MachiningOp(
+                        tipo="furo", face="esquerda", x=z_pos, y=esp_gaveta_mm / 2.0,
+                        diametro=7.0, profundidade=34.0,
+                        descricao=f"Passagem Haste Minifix Topo Esq {desc_ext} (Ø7mm x 34mm)",
+                    ))
+                    ops_cf.append(MachiningOp(
+                        tipo="furo", face="direita", x=z_pos, y=esp_gaveta_mm / 2.0,
+                        diametro=7.0, profundidade=34.0,
+                        descricao=f"Passagem Haste Minifix Topo Dir {desc_ext} (Ø7mm x 34mm)",
+                    ))
+            elif eh_somente_cavilha:
+                ops_lateral.append(MachiningOp(
+                    tipo="furo", face="traseira", x=y_pos, y=z_pos,
+                    diametro=8.0, profundidade=11.0,
+                    descricao=f"Cavilha Gaveta Caixa {desc_ext} {idx_z} (Ø8mm x 11mm)",
+                ))
+                ops_cf.append(MachiningOp(
+                    tipo="furo", face="esquerda", x=z_pos, y=esp_gaveta_mm / 2.0,
+                    diametro=8.0, profundidade=20.0,
+                    descricao=f"Cavilha Gaveta Topo Esq {desc_ext} {idx_z} (Ø8mm x 20mm)",
+                ))
+                ops_cf.append(MachiningOp(
+                    tipo="furo", face="direita", x=z_pos, y=esp_gaveta_mm / 2.0,
+                    diametro=8.0, profundidade=20.0,
+                    descricao=f"Cavilha Gaveta Topo Dir {desc_ext} {idx_z} (Ø8mm x 20mm)",
+                ))
+            else:
+                # Padrão ou Apenas Parafuso / Cavilha+Parafuso
+                is_cav = (not eh_somente_parafuso) and (idx_z == 1)
+                if is_cav:
+                    ops_lateral.append(MachiningOp(
+                        tipo="furo", face="traseira", x=y_pos, y=z_pos,
+                        diametro=8.0, profundidade=11.0,
+                        descricao=f"Cavilha Gaveta Caixa {desc_ext} (Ø8mm x 11mm)",
+                    ))
+                    ops_cf.append(MachiningOp(
+                        tipo="furo", face="esquerda", x=z_pos, y=esp_gaveta_mm / 2.0,
+                        diametro=8.0, profundidade=20.0,
+                        descricao=f"Cavilha Gaveta Topo Esq {desc_ext} (Ø8mm x 20mm)",
+                    ))
+                    ops_cf.append(MachiningOp(
+                        tipo="furo", face="direita", x=z_pos, y=esp_gaveta_mm / 2.0,
+                        diametro=8.0, profundidade=20.0,
+                        descricao=f"Cavilha Gaveta Topo Dir {desc_ext} (Ø8mm x 20mm)",
+                    ))
+                else:
+                    ops_lateral.append(MachiningOp(
+                        tipo="furo", face="traseira", x=y_pos, y=z_pos,
+                        diametro=4.0, profundidade=esp_gaveta_mm,
+                        descricao=f"Furo Parafuso Gaveta Caixa {desc_ext} {idx_z} (Ø4mm)",
+                    ))
+                    ops_cf.append(MachiningOp(
+                        tipo="furo", face="esquerda", x=z_pos, y=esp_gaveta_mm / 2.0,
+                        diametro=3.5, profundidade=35.0,
+                        descricao=f"Furo Guia Parafuso Gaveta Topo Esq {desc_ext} {idx_z} (Ø3.5mm)",
+                    ))
+                    ops_cf.append(MachiningOp(
+                        tipo="furo", face="direita", x=z_pos, y=esp_gaveta_mm / 2.0,
+                        diametro=3.5, profundidade=35.0,
+                        descricao=f"Furo Guia Parafuso Gaveta Topo Dir {desc_ext} {idx_z} (Ø3.5mm)",
+                    ))
+
+    return ops_lateral, ops_cf
+
