@@ -840,39 +840,39 @@ class BalcaoAereoBuilder:
         mat_gav = material_gaveta or material
         mat_fg = material_fundo_gaveta or f"MDF Fundo {int(esp_fundo_gaveta_mm)}mm"
 
-        for i in range(num_gav):
-            z_frente = oz + R + folga_f + (i * (alt_frente + folga_f))
-            groups.append(cls.build_frente_gaveta(
-                name=f"Gaveteiro - Frente {i+1}",
-                origin=(ox + folga_f, oy - E_frente, z_frente),
-                size=(larg_frente, E_frente, alt_frente),
-                material=mat_frente,
-                color=cor_frente,
-                puxador_tipo=puxador_tipo, puxador_cor=puxador_cor, puxador_pos=puxador_pos,
-                desconto_perfil_mm=desconto_perfil_mm, perfil_modelo=perfil_modelo,
-                ctx=mat_ctx,
-            ))
-
-            z_caixa = z_frente + 0.015
-            x_caixa = ox + E + (larg_corredica / 2.0)
-            y_caixa = oy + 0.010
-
-            gav_pieces = cls.build_caixa_gaveta(
-                prefixo=f"Gaveta {i+1}",
-                x_caixa=x_caixa,
-                y_caixa=y_caixa,
-                z_caixa=z_caixa,
-                larg_caixa=larg_caixa_gav,
-                prof_caixa=prof_gaveta,
-                alt_caixa=alt_caixa_gav,
-                material_gaveta=mat_gav,
-                esp_gaveta_mm=esp_gaveta_mm,
-                material_fita_gaveta=material_fita_gaveta,
-                tipo_fundo_gaveta=tipo_fundo_gaveta,
-                material_fundo_gaveta=mat_fg,
-                esp_fundo_gaveta_mm=esp_fundo_gaveta_mm,
-            )
-            groups.extend(gav_pieces)
+        # Gaveteiro: Frentes externas e Caixas de gaveta internas via CanonicalDrawerBuilder
+        from trazomob.builders.drawers import CanonicalDrawerBuilder
+        gav_groups = CanonicalDrawerBuilder.build_stack_gaveteiro(
+            prefixo="Gaveteiro",
+            num_gavetas=num_gav,
+            x_vao=ox + E,
+            y_vao=oy,
+            z_vao=oz + R,
+            larg_vao=largura_interna,
+            prof_vao=prof_gaveta,
+            alt_vao=alt_disponivel_frentes,
+            larg_frente=larg_frente,
+            folga_frente_m=folga_f,
+            esp_frente_m=E_frente,
+            material_frente=mat_frente,
+            cor_frente=cor_frente,
+            material_gaveta=mat_gav,
+            esp_gaveta_mm=esp_gaveta_mm,
+            material_fita_gaveta=material_fita_gaveta,
+            tipo_fundo_gaveta=tipo_fundo_gaveta,
+            material_fundo_gaveta=mat_fg,
+            esp_fundo_gaveta_mm=esp_fundo_gaveta_mm,
+            folga_corredica_mm=folga_corredica_mm,
+            recuo_frontal_caixa_m=0.010,
+            puxador_tipo=puxador_tipo,
+            puxador_cor=puxador_cor,
+            puxador_pos=puxador_pos,
+            desconto_perfil_mm=desconto_perfil_mm,
+            perfil_modelo=perfil_modelo,
+            mat_ctx=mat_ctx,
+            x_frente=ox + folga_f,
+        )
+        groups.extend(gav_groups)
 
         return groups
 
@@ -1233,39 +1233,39 @@ class BalcaoAereoBuilder:
         mat_gav = material_gaveta or material
         mat_fg = material_fundo_gaveta or f"MDF Fundo {int(esp_fundo_gaveta_mm)}mm"
 
-        for i in range(num_gav):
-            z_frente = oz + R + folga_f + (i * (alt_frente + folga_f))
-            groups.append(cls.build_frente_gaveta(
-                name=f"Gaveteiro - Frente {i+1}",
-                origin=(x_frente, oy - E_frente, z_frente),
-                size=(larg_frente, E_frente, alt_frente),
-                material=mat_frente,
-                color=cor_frente,
-                puxador_tipo=puxador_tipo, puxador_cor=puxador_cor, puxador_pos=puxador_pos,
-                desconto_perfil_mm=desconto_perfil_mm, perfil_modelo=perfil_modelo,
-                ctx=mat_ctx,
-            ))
-
-            z_caixa = z_frente + 0.015
-            x_caixa = x_gav_interno + (larg_corredica / 2.0)
-            y_caixa = oy + 0.010
-
-            gav_pieces = cls.build_caixa_gaveta(
-                prefixo=f"Gaveta {i+1}",
-                x_caixa=x_caixa,
-                y_caixa=y_caixa,
-                z_caixa=z_caixa,
-                larg_caixa=larg_caixa_gav,
-                prof_caixa=prof_gaveta,
-                alt_caixa=alt_caixa_gav,
-                material_gaveta=mat_gav,
-                esp_gaveta_mm=esp_gaveta_mm,
-                material_fita_gaveta=material_fita_gaveta,
-                tipo_fundo_gaveta=tipo_fundo_gaveta,
-                material_fundo_gaveta=mat_fg,
-                esp_fundo_gaveta_mm=esp_fundo_gaveta_mm,
-            )
-            groups.extend(gav_pieces)
+        # Gaveteiro do balcão misto via CanonicalDrawerBuilder
+        from trazomob.builders.drawers import CanonicalDrawerBuilder
+        gav_groups = CanonicalDrawerBuilder.build_stack_gaveteiro(
+            prefixo="Gaveteiro",
+            num_gavetas=num_gav,
+            x_vao=x_gav_interno,
+            y_vao=oy,
+            z_vao=oz + R,
+            larg_vao=larg_gav_interna,
+            prof_vao=prof_gaveta,
+            alt_vao=alt_disponivel_frentes,
+            larg_frente=larg_frente,
+            folga_frente_m=folga_f,
+            esp_frente_m=E_frente,
+            material_frente=mat_frente,
+            cor_frente=cor_frente,
+            material_gaveta=mat_gav,
+            esp_gaveta_mm=esp_gaveta_mm,
+            material_fita_gaveta=material_fita_gaveta,
+            tipo_fundo_gaveta=tipo_fundo_gaveta,
+            material_fundo_gaveta=mat_fg,
+            esp_fundo_gaveta_mm=esp_fundo_gaveta_mm,
+            folga_corredica_mm=folga_corredica_mm,
+            recuo_frontal_caixa_m=0.010,
+            puxador_tipo=puxador_tipo,
+            puxador_cor=puxador_cor,
+            puxador_pos=puxador_pos,
+            desconto_perfil_mm=desconto_perfil_mm,
+            perfil_modelo=perfil_modelo,
+            mat_ctx=mat_ctx,
+            x_frente=x_frente,
+        )
+        groups.extend(gav_groups)
 
         # Portas (lado oposto ao gaveteiro)
         alt_porta = max(0.05, altura_caixa - recuo_topo - (2.0 * folga_f))
@@ -2160,38 +2160,39 @@ class BalcaoAereoBuilder:
         mat_gav = material_gaveta or material
         mat_fg = material_fundo_gaveta or f"MDF Fundo {int(esp_fundo_gaveta_mm)}mm"
 
-        for i in range(num_gav):
-            z_fg = oz + folga_f + (i * (alt_fg + folga_f))
-            groups.append(cls.build_frente_gaveta(
-                name=f"Banheiro - Gaveta {i+1} Frente",
-                origin=(ox + folga_f, oy - E_frente, z_fg),
-                size=(larg_frente, E_frente, alt_fg),
-                material=mat_frente,
-                color=cor_frente,
-                puxador_tipo=puxador_tipo, puxador_cor=puxador_cor, puxador_pos=puxador_pos,
-                desconto_perfil_mm=desconto_perfil_mm, perfil_modelo=perfil_modelo,
-                ctx=mat_ctx,
-            ))
-            z_cg = z_fg + 0.015
-            x_cg = ox + E + (larg_corredica / 2.0)
-            y_cg = oy + 0.010
-
-            gav_pieces = cls.build_caixa_gaveta(
-                prefixo=f"Banheiro - Gaveta {i+1}",
-                x_caixa=x_cg,
-                y_caixa=y_cg,
-                z_caixa=z_cg,
-                larg_caixa=larg_cg,
-                prof_caixa=prof_gav,
-                alt_caixa=alt_cg,
-                material_gaveta=mat_gav,
-                esp_gaveta_mm=esp_gaveta_mm,
-                material_fita_gaveta=material_fita_gaveta,
-                tipo_fundo_gaveta=tipo_fundo_gaveta,
-                material_fundo_gaveta=mat_fg,
-                esp_fundo_gaveta_mm=esp_fundo_gaveta_mm,
-            )
-            groups.extend(gav_pieces)
+        # Gavetas do banheiro via CanonicalDrawerBuilder
+        from trazomob.builders.drawers import CanonicalDrawerBuilder
+        gav_groups = CanonicalDrawerBuilder.build_stack_gaveteiro(
+            prefixo="Banheiro - Gaveta",
+            num_gavetas=num_gav,
+            x_vao=ox + E,
+            y_vao=oy,
+            z_vao=oz,
+            larg_vao=larg_cg + larg_corredica,
+            prof_vao=prof_gav,
+            alt_vao=altura_misto,
+            larg_frente=larg_frente,
+            folga_frente_m=folga_f,
+            esp_frente_m=E_frente,
+            material_frente=mat_frente,
+            cor_frente=cor_frente,
+            material_gaveta=mat_gav,
+            esp_gaveta_mm=esp_gaveta_mm,
+            material_fita_gaveta=material_fita_gaveta,
+            tipo_fundo_gaveta=tipo_fundo_gaveta,
+            material_fundo_gaveta=mat_fg,
+            esp_fundo_gaveta_mm=esp_fundo_gaveta_mm,
+            folga_corredica_mm=folga_corredica_mm,
+            recuo_frontal_caixa_m=0.010,
+            puxador_tipo=puxador_tipo,
+            puxador_cor=puxador_cor,
+            puxador_pos=puxador_pos,
+            desconto_perfil_mm=desconto_perfil_mm,
+            perfil_modelo=perfil_modelo,
+            mat_ctx=mat_ctx,
+            x_frente=ox + folga_f,
+        )
+        groups.extend(gav_groups)
 
         return groups
 

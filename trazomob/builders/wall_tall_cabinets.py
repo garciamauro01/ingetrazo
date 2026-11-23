@@ -510,38 +510,39 @@ class AereoTorreBuilder:
         mat_gav = material_gaveta or material
         mat_fg = material_fundo_gaveta or f"MDF Fundo {int(esp_fundo_gaveta_mm)}mm"
 
-        for i in range(num_gav):
-            z_fg = oz + R + folga_f + (i * (alt_frente_gav + folga_f))
-            groups.append(cls.build_frente_gaveta(
-                name=f"Torre - Gaveta {i+1} Frente",
-                origin=(ox + folga_f, oy - E_frente, z_fg),
-                size=(larg_frente, E_frente, alt_frente_gav),
-                material=mat_frente,
-                color=cor_frente,
-                puxador_tipo=puxador_tipo, puxador_cor=puxador_cor, puxador_pos=puxador_pos,
-                desconto_perfil_mm=desconto_perfil_mm, perfil_modelo=perfil_modelo,
-                ctx=mat_ctx,
-            ))
-            z_cg = z_fg + 0.015
-            x_cg = ox + E + (larg_corredica / 2.0)
-            y_cg = oy + 0.010
-
-            gav_pieces = cls.build_caixa_gaveta(
-                prefixo=f"Torre - Gaveta {i+1}",
-                x_caixa=x_cg,
-                y_caixa=y_cg,
-                z_caixa=z_cg,
-                larg_caixa=larg_caixa_gav,
-                prof_caixa=prof_gav,
-                alt_caixa=alt_caixa_gav,
-                material_gaveta=mat_gav,
-                esp_gaveta_mm=esp_gaveta_mm,
-                material_fita_gaveta=material_fita_gaveta,
-                tipo_fundo_gaveta=tipo_fundo_gaveta,
-                material_fundo_gaveta=mat_fg,
-                esp_fundo_gaveta_mm=esp_fundo_gaveta_mm,
-            )
-            groups.extend(gav_pieces)
+        # Gavetas inferiores da torre quente via CanonicalDrawerBuilder
+        from trazomob.builders.drawers import CanonicalDrawerBuilder
+        gav_groups = CanonicalDrawerBuilder.build_stack_gaveteiro(
+            prefixo="Torre - Gaveta",
+            num_gavetas=num_gav,
+            x_vao=ox + E,
+            y_vao=oy,
+            z_vao=oz + R,
+            larg_vao=largura_interna,
+            prof_vao=prof_gav,
+            alt_vao=alt_vao_gavetas,
+            larg_frente=larg_frente,
+            folga_frente_m=folga_f,
+            esp_frente_m=E_frente,
+            material_frente=mat_frente,
+            cor_frente=cor_frente,
+            material_gaveta=mat_gav,
+            esp_gaveta_mm=esp_gaveta_mm,
+            material_fita_gaveta=material_fita_gaveta,
+            tipo_fundo_gaveta=tipo_fundo_gaveta,
+            material_fundo_gaveta=mat_fg,
+            esp_fundo_gaveta_mm=esp_fundo_gaveta_mm,
+            folga_corredica_mm=folga_corredica_mm,
+            recuo_frontal_caixa_m=0.010,
+            puxador_tipo=puxador_tipo,
+            puxador_cor=puxador_cor,
+            puxador_pos=puxador_pos,
+            desconto_perfil_mm=desconto_perfil_mm,
+            perfil_modelo=perfil_modelo,
+            mat_ctx=mat_ctx,
+            x_frente=ox + folga_f,
+        )
+        groups.extend(gav_groups)
 
         z_div1 = oz + R + E + alt_vao_gavetas
         groups.append(cls.build_divisoria_horizontal(

@@ -231,3 +231,100 @@ class CanonicalDrawerBuilder:
             pieces.append(frente)
 
         return pieces
+
+    @classmethod
+    def build_stack_gaveteiro(
+        cls,
+        prefixo: str,
+        num_gavetas: int,
+        x_vao: float,
+        y_vao: float,
+        z_vao: float,
+        larg_vao: float,
+        prof_vao: float,
+        alt_vao: float,
+        larg_frente: float,
+        folga_frente_m: float = 0.003,
+        esp_frente_m: float = 0.018,
+        material_frente: str = "MDF Branco TX 15mm",
+        cor_frente: tuple[float, float, float] | None = None,
+        material_gaveta: str = "MDF Branco TX 15mm",
+        esp_gaveta_mm: float = 15.0,
+        material_fita_gaveta: str | None = None,
+        tipo_fundo_gaveta: str = "rasgo",
+        material_fundo_gaveta: str = "MDF Fundo 6mm",
+        esp_fundo_gaveta_mm: float = 6.0,
+        folga_corredica_mm: float = 26.0,
+        recuo_frontal_caixa_m: float = 0.010,
+        puxador_tipo: str = "alca",
+        puxador_cor: str = "preto",
+        puxador_pos: str = "padrao",
+        desconto_perfil_mm: float = 35.0,
+        perfil_modelo: str = "gola",
+        mat_ctx: ModuloMaterialContext | None = None,
+        x_frente: float | None = None,
+    ) -> list[Group]:
+        """Constrói uma pilha vertical padronizada de gavetas (frentes e caixas internas).
+
+        Centraliza as regras geométricas de:
+        - Distribuição uniforme de alturas das frentes considerando folgas entre elas;
+        - Largura e altura da caixa com base na corrediça telescópica (padrão 26mm somada das 2 corrediças laterais);
+        - Recuos e folgas verticais entre a caixa interna e a frente externa.
+        """
+        from trazomob.builders.cabinet import CabinetBuilder
+
+        n_gav = max(1, num_gavetas)
+        alt_frente = (alt_vao - ((n_gav + 1) * folga_frente_m)) / n_gav
+        larg_corredica_m = max(0.010, float(folga_corredica_mm) / 1000.0)
+        larg_caixa_gav = max(0.08, larg_vao - larg_corredica_m)
+        alt_caixa_gav = max(0.06, alt_frente - 0.040)
+        prof_caixa_gav = max(0.15, prof_vao)
+
+        eff_x_frente = x_frente if x_frente is not None else (x_vao + folga_frente_m)
+        cor_frente_res = cor_frente or cls.get_material_color(material_frente)
+
+        mat_gav = material_gaveta or material_frente
+        mat_fg = material_fundo_gaveta or f"MDF Fundo {int(esp_fundo_gaveta_mm)}mm"
+
+        groups: list[Group] = []
+
+        for i in range(n_gav):
+            z_frente = z_vao + folga_frente_m + (i * (alt_frente + folga_frente_m))
+            frente = CabinetBuilder.build_frente_gaveta(
+                name=f"{prefixo} - Frente {i+1}",
+                origin=(eff_x_frente, y_vao - esp_frente_m, z_frente),
+                size=(larg_frente, esp_frente_m, alt_frente),
+                material=material_frente,
+                color=cor_frente_res,
+                puxador_tipo=puxador_tipo,
+                puxador_cor=puxador_cor,
+                puxador_pos=puxador_pos,
+                desconto_perfil_mm=desconto_perfil_mm,
+                perfil_modelo=perfil_modelo,
+                ctx=mat_ctx,
+            )
+            groups.append(frente)
+
+            z_caixa = z_frente + 0.015
+            x_caixa = x_vao + (larg_corredica_m / 2.0)
+            y_caixa = y_vao + recuo_frontal_caixa_m
+
+            gav_pieces = cls.build_caixa_gaveta(
+                prefixo=f"{prefixo} - Gaveta {i+1}",
+                x_caixa=x_caixa,
+                y_caixa=y_caixa,
+                z_caixa=z_caixa,
+                larg_caixa=larg_caixa_gav,
+                prof_caixa=prof_caixa_gav,
+                alt_caixa=alt_caixa_gav,
+                material_gaveta=mat_gav,
+                esp_gaveta_mm=esp_gaveta_mm,
+                material_fita_gaveta=material_fita_gaveta,
+                tipo_fundo_gaveta=tipo_fundo_gaveta,
+                material_fundo_gaveta=mat_fg,
+                esp_fundo_gaveta_mm=esp_fundo_gaveta_mm,
+            )
+            groups.extend(gav_pieces)
+
+        return groups
+
