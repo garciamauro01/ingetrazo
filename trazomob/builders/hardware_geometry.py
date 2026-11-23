@@ -175,13 +175,16 @@ def _hinge_positions(altura_m: float, n: int) -> List[float]:
 def _drawer_index_from_name(name: str | None) -> int | None:
     """Extrai o índice 1-based da gaveta a partir do nome da peça."""
     import re
-    m = re.search(r"(?:gaveta|frente)\s*(\d+)", (name or "").lower())
-    if not m:
-        return None
-    try:
-        return int(m.group(1))
-    except ValueError:
-        return None
+    low = (name or "").lower()
+    m = re.search(r"(?:gaveta|frente)\s*(\d+)", low)
+    if m:
+        try:
+            return int(m.group(1))
+        except ValueError:
+            pass
+    if "gaveta" in low or "frente gaveta" in low:
+        return 1
+    return None
 
 
 def _add_telescopic_slide_outer(
