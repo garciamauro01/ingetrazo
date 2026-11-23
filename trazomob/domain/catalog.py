@@ -477,6 +477,16 @@ MODULE_CATALOG = {
             "default_z": 0.003,
         },
         {
+            "id": "peca_gaveta_avulsa",
+            "nome": "Gaveta Canônica Avulsa",
+            "desc": "Gaveta completa avulsa de marcenaria (laterais passantes, contrafrente embutida, fundo e frente externa opcional).",
+            "largura": 450, "altura": 150, "profundidade": 450, "rodape": 0,
+            "has_portas": False, "num_portas": 0, "has_gavetas": True, "num_gavetas": 1,
+            "has_prateleiras": False, "num_prateleiras": 0, "has_fundo": False, "has_rodape": False,
+            "tem_frente": True, "tipo_fundo_gaveta": "rasgo", "esp_fundo_gaveta_mm": 6.0,
+            "default_z": 0.0,
+        },
+        {
             "id": "peca_frente_gaveta",
             "nome": "Frente de Gaveta",
             "desc": "Frente de gaveta externa aparente com fita 4L (plano XZ, espessura em Y).",

@@ -880,6 +880,26 @@ def _build_peca_porta_basculante(cls, params: Dict[str, Any], ctx: Dict[str, Any
     return pieces, name
 
 
+@register_module_builder(("peca_gaveta_avulsa", "gaveta_avulsa", "peca_gaveta"))
+def _build_peca_gaveta_avulsa(cls, params: Dict[str, Any], ctx: Dict[str, Any]) -> Tuple[List[Group], str]:
+    L, A, P = ctx["L_mm"], ctx["A_mm"], ctx["P_mm"]
+    name = f"Gaveta Avulsa {int(L)}x{int(A)}x{int(P)}"
+    pieces = cls.build_peca_avulsa(
+        "gaveta_avulsa", L, A, P,
+        esp_mm=float(params.get("esp_gaveta_mm", ctx["esp_mm"])),
+        material=params.get("material_gaveta") or ctx["material"],
+        material_frente=ctx["material_frentes"] or ctx["material"],
+        material_fita=params.get("material_fita_gaveta") or ctx["mat_fita_cx_p"],
+        material_fundo_gaveta=params.get("material_fundo_gaveta") or "MDF Fundo 6mm",
+        esp_fundo_gaveta_mm=float(params.get("esp_fundo_gaveta_mm", 6.0)),
+        tipo_fundo_gaveta=str(params.get("tipo_fundo_gaveta", "rasgo")),
+        tem_frente=bool(params.get("tem_frente", True)),
+        offset=ctx["offset"],
+        **ctx["pux_kw"],
+    )
+    return pieces, name
+
+
 @register_module_builder("peca_frente_gaveta")
 def _build_peca_frente_gaveta(cls, params: Dict[str, Any], ctx: Dict[str, Any]) -> Tuple[List[Group], str]:
     L, A, P = ctx["L_mm"], ctx["A_mm"], ctx["P_mm"]

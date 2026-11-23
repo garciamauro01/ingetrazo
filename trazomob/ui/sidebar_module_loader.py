@@ -464,7 +464,7 @@ class SidebarModuleLoaderMixin:
                     self.cb_micro_tipo_porta.setCurrentIndex(0 if is_b_micro else 1)
 
             # Caixa de Gaveta — visíveis apenas para módulos com gavetas reais (nunca para camas ou peças sem gaveta)
-            has_gav = not is_cama and (("num_gavetas" in params) or (tipo in ("gaveteiro", "balcao_misto", "torre_quente", "gabinete_banheiro")) or (is_forno and bool(params.get("tem_gaveta", True))))
+            has_gav = not is_cama and (("num_gavetas" in params) or (tipo in ("gaveteiro", "balcao_misto", "torre_quente", "gabinete_banheiro", "peca_gaveta_avulsa", "gaveta_avulsa")) or (is_forno and bool(params.get("tem_gaveta", True))))
             if hasattr(self, "_gaveta_sidebar_widgets"):
                 for w in self._gaveta_sidebar_widgets:
                     w.setVisible(has_gav)

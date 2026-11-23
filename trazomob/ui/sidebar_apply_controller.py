@@ -223,7 +223,7 @@ class SidebarApplyMixin:
             new_params["num_portas"] = 1 if is_basc_m else 2
 
         # Parâmetros de Caixa de Gaveta
-        has_gav = ("num_gavetas" in new_params) or (tipo in ("gaveteiro", "balcao_misto", "torre_quente", "gabinete_banheiro")) or (tipo == "balcao_forno" and new_params.get("tem_gaveta", True))
+        has_gav = ("num_gavetas" in new_params) or (tipo in ("gaveteiro", "balcao_misto", "torre_quente", "gabinete_banheiro", "peca_gaveta_avulsa", "gaveta_avulsa")) or (tipo == "balcao_forno" and new_params.get("tem_gaveta", True))
         if has_gav and hasattr(self, "cb_tipo_fundo_gaveta"):
             new_params["tipo_fundo_gaveta"] = "por_baixo" if self.cb_tipo_fundo_gaveta.currentIndex() == 1 else "rasgo"
             new_params["folga_corredica_mm"] = float(self.sp_folga_corredica.value())
