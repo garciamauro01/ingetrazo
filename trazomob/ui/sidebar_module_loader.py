@@ -326,7 +326,7 @@ class SidebarModuleLoaderMixin:
                     val_d = float(params.get("dist_regua_fechamento_mm", 0.0))
                     self.sp_dist_regua_canto.setValue(int(round(val_d)))
 
-            is_canto_l_mod = tipo in ("balcao_canto_l", "bancada_canto_l", "bancada_canto")
+            is_canto_l_mod = tipo in ("balcao_canto_l", "balcao_canto_chanfrado", "bancada_canto_l", "bancada_canto")
             if hasattr(self, "lbl_larg_asa_esq"):
                 self.lbl_larg_asa_esq.setVisible(is_canto_l_mod)
                 self.sp_larg_asa_esq.setVisible(is_canto_l_mod)
@@ -349,7 +349,7 @@ class SidebarModuleLoaderMixin:
             # Travessas Superiores — visíveis só para módulos de cozinha inferiores
             _IDS_COZINHA_INFERIORES = {
                 "balcao", "balcao_duplo", "balcao_ilha", "gaveteiro", "balcao_misto", "balcao_pia",
-                "balcao_canto", "balcao_canto_l", "porta_tempero", "balcao_forno"
+                "balcao_canto", "balcao_canto_l", "balcao_canto_chanfrado", "porta_tempero", "balcao_forno"
             }
             has_travessa = tipo in _IDS_COZINHA_INFERIORES
             self._current_has_travessa = has_travessa
@@ -552,7 +552,7 @@ class SidebarModuleLoaderMixin:
 
             # ── Troca Dinâmica do Contexto da Barra Lateral (Móvel vs Pedra vs Cama vs Peça Avulsa) ──
             is_pedra = "bancada" in str(tipo)
-            is_canto_l_asa = tipo in ("balcao_canto_l", "bancada_canto_l", "bancada_canto")
+            is_canto_l_asa = tipo in ("balcao_canto_l", "balcao_canto_chanfrado", "bancada_canto_l", "bancada_canto")
 
             # Avaliação de abas
             tem_puxadores_reais = (

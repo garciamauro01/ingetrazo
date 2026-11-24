@@ -71,6 +71,10 @@ class DelegatesMixin:
         return CantoEspecialBuilder.build_balcao_forno(*args, **kwargs)
 
     @classmethod
+    def build_canto_chanfrado(cls, *args, **kwargs) -> list[Group]:
+        return CantoEspecialBuilder.build_canto_chanfrado(*args, **kwargs)
+
+    @classmethod
     def build_aereo_basculante(cls, *args, **kwargs) -> list[Group]:
         """Gera aéreo basculante (delegado para AereoTorreBuilder)."""
         return AereoTorreBuilder.build_aereo_basculante(*args, **kwargs)

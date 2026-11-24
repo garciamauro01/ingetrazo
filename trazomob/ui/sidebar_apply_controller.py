@@ -94,9 +94,12 @@ class SidebarApplyMixin:
                 new_params["lado_gaveteiro"] = ["esquerda", "direita", "ambos", "nenhum"][self.cb_lado_gaveteiro.currentIndex()] if 0 <= self.cb_lado_gaveteiro.currentIndex() < 4 else "esquerda"
             else:
                 new_params["lado_gaveteiro"] = str(old_params.get("lado_gaveteiro", "esquerda"))
-        elif tipo == "balcao_canto_l":
+        elif tipo in ("balcao_canto_l", "balcao_canto_chanfrado"):
             new_params["larg_asa_esq"] = float(self.sp_larg_asa_esq.value()) if hasattr(self, "sp_larg_asa_esq") else float(old_params.get("larg_asa_esq", old_params.get("larg_asa", 550.0)))
             new_params["larg_asa_dir"] = float(self.sp_larg_asa_dir.value()) if hasattr(self, "sp_larg_asa_dir") else float(old_params.get("larg_asa_dir", old_params.get("larg_asa", 550.0)))
+            if tipo == "balcao_canto_chanfrado":
+                new_params["prof_lateral_esq"] = new_params["larg_asa_esq"]
+                new_params["prof_lateral_dir"] = new_params["larg_asa_dir"]
             new_params["tem_batente_canto"] = bool(self.chk_batente_canto.isChecked()) if hasattr(self, "chk_batente_canto") else bool(old_params.get("tem_batente_canto", False))
 
         # IDs com portas estruturalmente fixas não devem ter num_portas sobrescrito pelo spinbox
@@ -162,7 +165,7 @@ class SidebarApplyMixin:
         # Parâmetros de travessas (apenas para módulos de cozinha inferiores)
         _IDS_COZINHA_INFERIORES = {
             "balcao", "balcao_duplo", "balcao_ilha", "gaveteiro", "balcao_misto", "balcao_pia",
-            "balcao_canto", "balcao_canto_l", "porta_tempero", "balcao_forno"
+            "balcao_canto", "balcao_canto_l", "balcao_canto_chanfrado", "porta_tempero", "balcao_forno"
         }
         if tipo in _IDS_COZINHA_INFERIORES and hasattr(self, "chk_travessa_frontal_em_pe"):
             tf_em_pe = self.chk_travessa_frontal_em_pe.isChecked()

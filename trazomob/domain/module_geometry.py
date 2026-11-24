@@ -295,9 +295,9 @@ def build_default_module_params(mod_data: dict[str, Any]) -> dict[str, Any]:
             tipo, "profundidade",
             prefs.get_module_default(cat, "profundidade",
                                      mod_data.get("profundidade", 550.0))))
-        if tipo == "balcao_canto_l":
-            # O balcão de canto em L é quadrado por definição (1000 × 1000 mm):
-            # não herda a profundidade padrão da categoria de balcões retos.
+        if tipo in ("balcao_canto_l", "balcao_canto_chanfrado"):
+            # O balcão de canto em L e o chanfrado são módulos de quina (1000 × 1000 mm):
+            # não herdam a profundidade padrão da categoria de balcões retos.
             L_mm = float(prefs.get_module_default(
                 tipo, "largura", mod_data.get("largura", 1000.0)))
             P_mm = float(prefs.get_module_default(
@@ -405,7 +405,7 @@ def build_default_module_params(mod_data: dict[str, Any]) -> dict[str, Any]:
     # Travessas de cozinhas inferiores
     ids_coz_inf = {
         "balcao", "balcao_duplo", "balcao_ilha", "gaveteiro", "balcao_misto", "balcao_pia",
-        "balcao_canto", "balcao_canto_l", "porta_tempero", "balcao_forno",
+        "balcao_canto", "balcao_canto_l", "balcao_canto_chanfrado", "porta_tempero", "balcao_forno",
     }
     if tipo in ids_coz_inf:
         params["travessa_frontal_em_pe"] = bool(prefs.get_global(

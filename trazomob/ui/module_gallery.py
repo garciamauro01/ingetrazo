@@ -263,7 +263,7 @@ class DialogGalleryMixin:
 
         _IDS_COZINHA_INFERIORES = {
             "balcao", "gaveteiro", "balcao_misto", "balcao_pia",
-            "balcao_canto", "balcao_canto_l", "porta_tempero", "balcao_forno"
+            "balcao_canto", "balcao_canto_l", "balcao_canto_chanfrado", "porta_tempero", "balcao_forno"
         }
         has_travessa = mod_id in _IDS_COZINHA_INFERIORES
 
@@ -347,7 +347,7 @@ class DialogGalleryMixin:
 
         # ── Troca Dinâmica do Contexto da Janela (Marmoraria vs Marcenaria) ────
         is_pedra = "bancada" in str(mod_id)
-        is_canto_l_asa = mod_id in ("balcao_canto_l", "bancada_canto_l", "bancada_canto")
+        is_canto_l_asa = mod_id in ("balcao_canto_l", "balcao_canto_chanfrado", "bancada_canto_l", "bancada_canto")
         if hasattr(self, "_pedra_widgets"):
             for w in self._pedra_widgets:
                 w.setVisible(is_pedra or is_canto_l_asa)
@@ -549,7 +549,7 @@ class DialogGalleryMixin:
                     w.setVisible(True)
 
             # Fields that were shown by the stone-visibility loop are now restored
-            is_canto_l_asa = mod_id in ("balcao_canto_l", "bancada_canto_l", "bancada_canto")
+            is_canto_l_asa = mod_id in ("balcao_canto_l", "balcao_canto_chanfrado", "bancada_canto_l", "bancada_canto")
             if is_canto_l_asa and hasattr(self, "lbl_larg_asa_esq"):
                 self.lbl_larg_asa_esq.setVisible(True)
                 self.sp_larg_asa_esq.setVisible(True)

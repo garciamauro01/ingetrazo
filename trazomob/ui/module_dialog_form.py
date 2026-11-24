@@ -86,7 +86,7 @@ class ModuleDialogFormMixin:
                     lado_p = str(params.get("lado_abertura_porta", "esquerda")).lower()
                     self.cb_lado_porta_armario.setCurrentIndex(1 if lado_p.startswith(("dir", "right")) else 0)
 
-            is_canto_l_mod = tipo in ("balcao_canto_l", "bancada_canto_l", "bancada_canto")
+            is_canto_l_mod = tipo in ("balcao_canto_l", "balcao_canto_chanfrado", "bancada_canto_l", "bancada_canto")
             if hasattr(self, "lbl_larg_asa_esq"):
                 self.lbl_larg_asa_esq.setVisible(is_canto_l_mod)
                 self.sp_larg_asa_esq.setVisible(is_canto_l_mod)
@@ -112,7 +112,7 @@ class ModuleDialogFormMixin:
             # Restaura configurações de travessas (se relevante)
             _IDS_COZINHA_INFERIORES = {
                 "balcao", "gaveteiro", "balcao_misto", "balcao_pia",
-                "balcao_canto", "balcao_canto_l", "porta_tempero", "balcao_forno"
+                "balcao_canto", "balcao_canto_l", "balcao_canto_chanfrado", "porta_tempero", "balcao_forno"
             }
             if hasattr(self, "sp_larg_travessa_frontal") and tipo in _IDS_COZINHA_INFERIORES:
                 em_pe = bool(params.get("travessa_frontal_em_pe", (tipo == "balcao_pia")))

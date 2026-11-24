@@ -968,6 +968,336 @@ class CantoEspecialBuilder:
 
         return groups
 
+    @classmethod
+    def build_canto_chanfrado(
+        cls,
+        largura_mm: float,
+        altura_mm: float,
+        prof_mm: float,
+        prof_lateral_esq_mm: float = 550.0,
+        prof_lateral_dir_mm: float = 550.0,
+        num_portas: int = 1,
+        esp_mm: float = 15.0,
+        rodape_mm: float = 100.0,
+        num_prateleiras: int = 1,
+        material: str = "MDF Branco TX 15mm",
+        material_frentes: str | None = None,
+        esp_frentes_mm: float | None = None,
+        tipo_fundo: str = "sobreposto",
+        esp_fundo_mm: float = 6.0,
+        recuo_fundo_mm: float = 10.0,
+        prof_rasgo_mm: float = 5.0,
+        folga_fundo_mm: float = 2.0,
+        offset: tuple[float, float, float] = (0.0, 0.0, 0.0),
+        puxador_tipo: str = "alca",
+        puxador_cor: str = "preto",
+        puxador_pos: str = "padrao",
+        desconto_perfil_mm: float = 35.0,
+        perfil_modelo: str = "gola",
+        larg_travessa_topo_mm: float = 70.0,
+        esp_travessas_mm: float | None = None,
+        material_travessas: str | None = None,
+        material_fita_caixa: str | None = None,
+        gerar_furacao: bool = True,
+        dispositivo_fixacao: str = "minifix_cavilha",
+        mat_ctx: ModuloMaterialContext | None = None,
+        lado_abertura_porta: str = "esquerda",
+    ) -> list[Group]:
+        """Gera um Balcão de Canto Chanfrado (Oblíquo/Pentagonal).
+
+        Estrutura:
+        - 2 Traseiras em 90° encostando nas paredes (X=ox e Y=oy+Ly);
+        - 2 Laterais retas com profundidades prof_lateral_esq_mm e prof_lateral_dir_mm;
+        - Base inferior pentagonal com corte a 45° na frente;
+        - Prateleira(s) intermediária(s) pentagonal(is);
+        - 2 Montantes/batentes frontais chanfrados a 45° para fixação das dobradiças;
+        - Travessas superiores de amarração para apoio de tampo/pedra;
+        - 1 ou 2 Portas a 45° no vão chanfrado.
+        """
+        import math
+        from ..builders.mesh_utils import create_polygon_board_group
+        from ..builders.cabinet_transform import CabinetTransformMixin
+
+        if mat_ctx is None:
+            mat_ctx = ModuloMaterialContext(
+                material_caixa=material,
+                material_frentes=material_frentes or material,
+            )
+
+        ox, oy, oz = offset
+        Lx = largura_mm / 1000.0
+        Ly = prof_mm / 1000.0
+        A = altura_mm / 1000.0
+        E = esp_mm / 1000.0
+        R = rodape_mm / 1000.0
+        altura_caixa = A - R
+
+        # Profundidade das laterais retas de encontro com os balcões vizinhos
+        Pesq = min(Lx - 0.20, max(0.30, prof_lateral_esq_mm / 1000.0))
+        Pdir = min(Ly - 0.20, max(0.30, prof_lateral_dir_mm / 1000.0))
+
+        E_trav = (esp_travessas_mm / 1000.0) if esp_travessas_mm else E
+        mat_trav = material_travessas or material
+        E_frente = (esp_frentes_mm or esp_mm) / 1000.0
+        mat_frente = material_frentes or material
+
+        cor = cls.get_material_color(material)
+        cor_frente = cls.get_material_color(mat_frente)
+        cor_trav = cls.get_material_color(mat_trav)
+        mat_fita_cx = material_fita_caixa or material
+        cor_fita_cx = cls.get_material_color(mat_fita_cx) if material_fita_caixa else None
+
+        folga_f = FrentesKitBuilder.resolve_folga_mm(mat_ctx=mat_ctx) / 1000.0
+
+        groups: list[Group] = []
+
+        # ── 1. TRASEIRAS EM 90° (Encosto na parede) ───────────────────────────
+        # Traseira X: corre ao longo da parede traseira (Y = oy + Ly - E): de X = ox + E até ox + Lx
+        groups.append(_chapa(
+            "Canto Chanfrado - Traseira Parede X",
+            (ox + E, oy + Ly - E, oz + R),
+            (Lx - E, E, altura_caixa),
+            material, fita_c1=True, color=cor,
+            material_fita=mat_fita_cx, cor_fita=cor_fita_cx,
+        ))
+        # Traseira Y: corre ao longo da parede lateral esquerda (X = ox): de Y = oy até oy + Ly
+        groups.append(_chapa(
+            "Canto Chanfrado - Traseira Parede Y",
+            (ox, oy, oz + R),
+            (E, Ly, altura_caixa),
+            material, fita_c1=True, color=cor,
+            material_fita=mat_fita_cx, cor_fita=cor_fita_cx,
+        ))
+
+        # ── 2. LATERAIS RETAS DE ALINHAMENTO COM MÓDULOS VIZINHOS ────────────
+        # Lateral Direita: em X = ox + Lx - E, de Y = oy + Ly - Pdir até oy + Ly - E
+        prof_lat_dir = max(0.10, Pdir - E)
+        groups.append(_chapa(
+            "Canto Chanfrado - Lateral Direita",
+            (ox + Lx - E, oy + Ly - Pdir, oz + R),
+            (E, prof_lat_dir, altura_caixa),
+            material, fita_c1=True, color=cor,
+            material_fita=mat_fita_cx, cor_fita=cor_fita_cx,
+        ))
+
+        # Lateral Esquerda: em Y = oy, de X = ox + E até ox + Pesq
+        larg_lat_esq = max(0.10, Pesq - E)
+        groups.append(_chapa(
+            "Canto Chanfrado - Lateral Esquerda",
+            (ox + E, oy, oz + R),
+            (larg_lat_esq, E, altura_caixa),
+            material, fita_c1=True, color=cor,
+            material_fita=mat_fita_cx, cor_fita=cor_fita_cx,
+        ))
+
+        # ── 3. BASE INFERIOR PENTAGONAL (Recorte frontal a 45°) ───────────────
+        # Vértices da base pentagonal (anti-horário no plano XY):
+        # V1: (ox + E, oy + E) -> quina interna perto da lateral esquerda
+        # V2: (ox + Pesq, oy + E) -> início da frente chanfrada
+        # V3: (ox + Lx - E, oy + Ly - Pdir) -> fim da frente chanfrada
+        # V4: (ox + Lx - E, oy + Ly - E) -> quina direita da parede de fundo
+        # V5: (ox + E, oy + Ly - E) -> quina de 90° de encontro das paredes
+        poly_base = [
+            (ox + E, oy + E),
+            (ox + Pesq, oy + E),
+            (ox + Lx - E, oy + Ly - Pdir),
+            (ox + Lx - E, oy + Ly - E),
+            (ox + E, oy + Ly - E),
+        ]
+        groups.append(create_polygon_board_group(
+            name="Canto Chanfrado - Base Inferior",
+            polygon_xy=poly_base,
+            z0=oz + R,
+            espessura=E,
+            material=material,
+            color=cor,
+            material_fita=mat_fita_cx,
+            cor_fita=cor_fita_cx,
+        ))
+
+        # ── 4. PRATELEIRAS PENTAGONAIS INTERMEDIÁRIAS ─────────────────────────
+        num_prat = max(0, int(num_prateleiras))
+        if num_prat > 0:
+            recuo_prat = 0.020  # 20mm de folga da porta chanfrada
+            poly_prat = [
+                (ox + E, oy + E),
+                (ox + Pesq - recuo_prat * 0.7, oy + E + recuo_prat * 0.7),
+                (ox + Lx - E - recuo_prat * 0.7, oy + Ly - Pdir + recuo_prat * 0.7),
+                (ox + Lx - E, oy + Ly - E),
+                (ox + E, oy + Ly - E),
+            ]
+            espaco_util = altura_caixa - (2.0 * E)
+            passo = espaco_util / (num_prat + 1)
+            for i in range(1, num_prat + 1):
+                zp = oz + R + E + (i * passo)
+                groups.append(create_polygon_board_group(
+                    name=f"Canto Chanfrado - Prateleira {i}" if num_prat > 1 else "Canto Chanfrado - Prateleira",
+                    polygon_xy=poly_prat,
+                    z0=zp,
+                    espessura=E,
+                    material=material,
+                    color=cor,
+                    material_fita=mat_fita_cx,
+                    cor_fita=cor_fita_cx,
+                ))
+
+        # ── 5. TRAVESSAS SUPERIORES ESTRUTURAIS (Apoio de Tampo) ─────────────
+        LT = max(0.050, larg_travessa_topo_mm / 1000.0)
+        z_trav = oz + A - E_trav
+        # Travessa Parede X (fundo):
+        groups.append(_chapa(
+            "Canto Chanfrado - Travessa Topo Parede X",
+            (ox + E, oy + Ly - E - LT, z_trav),
+            (Lx - 2 * E, LT, E_trav),
+            mat_trav, fita_c1=True, color=cor_trav,
+        ))
+        # Travessa Parede Y (lateral esquerda):
+        groups.append(_chapa(
+            "Canto Chanfrado - Travessa Topo Parede Y",
+            (ox + E, oy + E, z_trav),
+            (LT, Ly - 2 * E - LT, E_trav),
+            mat_trav, fita_c1=True, color=cor_trav,
+        ))
+        # Travessa frontal chanfrada de amarração:
+        # Liga o topo das extremidades das laterais (ox+Pesq, oy) até (ox+Lx, oy+Ly-Pdir)
+        dx_chanfro = (ox + Lx - E) - (ox + Pesq)
+        dy_chanfro = (oy + Ly - Pdir) - (oy + E)
+        comp_chanfro = math.hypot(dx_chanfro, dy_chanfro)
+        ang_rad = math.atan2(dy_chanfro, dx_chanfro)
+        ang_deg = math.degrees(ang_rad)
+
+        g_trav_f = _chapa(
+            "Canto Chanfrado - Travessa Topo Frontal",
+            (0.0, 0.0, 0.0),
+            (comp_chanfro, LT, E_trav),
+            mat_trav, fita_c1=True, color=cor_trav,
+        )
+        # Rotaciona para o alinhamento chanfrado e posiciona no topo
+        CabinetTransformMixin.rotate_module(g_trav_f, ang_deg, center=(0.0, 0.0, 0.0), update_param=False)
+        for v in g_trav_f.mesh.vertices:
+            v.position.setX(v.position.x() + ox + Pesq)
+            v.position.setY(v.position.y() + oy + E)
+            v.position.setZ(v.position.z() + z_trav)
+        groups.append(g_trav_f)
+
+        # ── 6. MONTANTES/BATENTES FRONTAIS CHANFRADOS (45°) ──────────────────
+        # Largura de batente padrão para dobradiça caneco de 45°
+        larg_montante = 0.070
+        # Batente Esquerdo:
+        g_mont_esq = _chapa(
+            "Canto Chanfrado - Montante Batente Esq",
+            (0.0, 0.0, 0.0),
+            (larg_montante, E, altura_caixa),
+            material, fita_c1=True, color=cor,
+        )
+        CabinetTransformMixin.rotate_module(g_mont_esq, ang_deg, center=(0.0, 0.0, 0.0), update_param=False)
+        for v in g_mont_esq.mesh.vertices:
+            v.position.setX(v.position.x() + ox + Pesq)
+            v.position.setY(v.position.y() + oy + E)
+            v.position.setZ(v.position.z() + oz + R)
+        groups.append(g_mont_esq)
+
+        # Batente Direito:
+        g_mont_dir = _chapa(
+            "Canto Chanfrado - Montante Batente Dir",
+            (0.0, 0.0, 0.0),
+            (larg_montante, E, altura_caixa),
+            material, fita_c1=True, color=cor,
+        )
+        CabinetTransformMixin.rotate_module(g_mont_dir, ang_deg, center=(0.0, 0.0, 0.0), update_param=False)
+        x_mont_dir_0 = (ox + Lx - E) - (larg_montante * math.cos(ang_rad))
+        y_mont_dir_0 = (oy + Ly - Pdir) - (larg_montante * math.sin(ang_rad))
+        for v in g_mont_dir.mesh.vertices:
+            v.position.setX(v.position.x() + x_mont_dir_0)
+            v.position.setY(v.position.y() + y_mont_dir_0)
+            v.position.setZ(v.position.z() + oz + R)
+        groups.append(g_mont_dir)
+
+        # ── 7. PORTAS A 45° NO VÃO CHANFRADO (1 OU 2 PORTAS) ─────────────────
+        alt_porta = max(0.05, altura_caixa - (2.0 * folga_f))
+        n_portas = max(1, min(2, int(num_portas)))
+
+        # Vão total de cobertura das portas ao longo da face chanfrada externa:
+        # A face externa fica recuada de -E_frente normal à face chanfrada.
+        # Vetor normal apontando para fora do balcão (em direção ao usuário):
+        # Como o vetor tangencial aponta de Esq para Dir (+cos, +sin),
+        # o normal exterior aponta para (+sin, -cos)
+        nx = math.sin(ang_rad)
+        ny = -math.cos(ang_rad)
+
+        larg_vao_portas = comp_chanfro - (2.0 * folga_f)
+        z_porta = oz + R + folga_f
+
+        if n_portas == 1:
+            larg_porta = max(0.10, larg_vao_portas)
+            side_porta = "left" if not str(lado_abertura_porta).lower().startswith(("dir", "right")) else "right"
+            g_p = _chapa_frente(
+                "Canto Chanfrado - Porta",
+                (0.0, 0.0, 0.0),
+                (larg_porta, E_frente, alt_porta),
+                mat_ctx,
+                color=cor_frente,
+                puxador_tipo=puxador_tipo, puxador_cor=puxador_cor, puxador_pos=puxador_pos,
+                desconto_perfil_mm=desconto_perfil_mm, perfil_modelo=perfil_modelo,
+                door_side=side_porta, is_upper=False,
+            )
+            CabinetTransformMixin.rotate_module(g_p, ang_deg, center=(0.0, 0.0, 0.0), update_param=False)
+            x_p0 = (ox + Pesq) + (folga_f * math.cos(ang_rad)) + (nx * E_frente)
+            y_p0 = (oy + E) + (folga_f * math.sin(ang_rad)) + (ny * E_frente)
+            for v in g_p.mesh.vertices:
+                v.position.setX(v.position.x() + x_p0)
+                v.position.setY(v.position.y() + y_p0)
+                v.position.setZ(v.position.z() + z_porta)
+            groups.append(g_p)
+
+        else:
+            # 2 Portas conjugadas dividindo o vão chanfrado
+            folga_entre_portas = folga_f
+            larg_porta = max(0.10, (larg_vao_portas - folga_entre_portas) / 2.0)
+
+            # Porta 1 (Esquerda)
+            g_p1 = _chapa_frente(
+                "Canto Chanfrado - Porta Esq",
+                (0.0, 0.0, 0.0),
+                (larg_porta, E_frente, alt_porta),
+                mat_ctx,
+                color=cor_frente,
+                puxador_tipo=puxador_tipo, puxador_cor=puxador_cor, puxador_pos=puxador_pos,
+                desconto_perfil_mm=desconto_perfil_mm, perfil_modelo=perfil_modelo,
+                door_side="left", is_upper=False,
+            )
+            CabinetTransformMixin.rotate_module(g_p1, ang_deg, center=(0.0, 0.0, 0.0), update_param=False)
+            x_p1_0 = (ox + Pesq) + (folga_f * math.cos(ang_rad)) + (nx * E_frente)
+            y_p1_0 = (oy + E) + (folga_f * math.sin(ang_rad)) + (ny * E_frente)
+            for v in g_p1.mesh.vertices:
+                v.position.setX(v.position.x() + x_p1_0)
+                v.position.setY(v.position.y() + y_p1_0)
+                v.position.setZ(v.position.z() + z_porta)
+            groups.append(g_p1)
+
+            # Porta 2 (Direita)
+            g_p2 = _chapa_frente(
+                "Canto Chanfrado - Porta Dir",
+                (0.0, 0.0, 0.0),
+                (larg_porta, E_frente, alt_porta),
+                mat_ctx,
+                color=cor_frente,
+                puxador_tipo=puxador_tipo, puxador_cor=puxador_cor, puxador_pos=puxador_pos,
+                desconto_perfil_mm=desconto_perfil_mm, perfil_modelo=perfil_modelo,
+                door_side="right", is_upper=False,
+            )
+            CabinetTransformMixin.rotate_module(g_p2, ang_deg, center=(0.0, 0.0, 0.0), update_param=False)
+            offset_p2 = folga_f + larg_porta + folga_entre_portas
+            x_p2_0 = (ox + Pesq) + (offset_p2 * math.cos(ang_rad)) + (nx * E_frente)
+            y_p2_0 = (oy + E) + (offset_p2 * math.sin(ang_rad)) + (ny * E_frente)
+            for v in g_p2.mesh.vertices:
+                v.position.setX(v.position.x() + x_p2_0)
+                v.position.setY(v.position.y() + y_p2_0)
+                v.position.setZ(v.position.z() + z_porta)
+            groups.append(g_p2)
+
+        return groups
+
 
 # Aliases
 CornerCabinetBuilder = CantoEspecialBuilder

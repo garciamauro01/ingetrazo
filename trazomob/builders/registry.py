@@ -220,6 +220,32 @@ def _build_canto_l(cls, params: Dict[str, Any], ctx: Dict[str, Any]) -> Tuple[Li
     return pieces, name
 
 
+@register_module_builder(("balcao_canto_chanfrado", "canto_chanfrado", "canto_obliquo"))
+def _build_canto_chanfrado(cls, params: Dict[str, Any], ctx: Dict[str, Any]) -> Tuple[List[Group], str]:
+    L, A, P = ctx["L_mm"], ctx["A_mm"], ctx["P_mm"]
+    n_portas = int(params.get("num_portas", 1))
+    name = f"Canto Chanfrado {int(L)}x{int(A)}x{int(P)} ({n_portas}P)"
+    pieces = cls.build_canto_chanfrado(
+        L, A, P,
+        prof_lateral_esq_mm=float(params.get("prof_lateral_esq", params.get("larg_asa_esq", 550.0))),
+        prof_lateral_dir_mm=float(params.get("prof_lateral_dir", params.get("larg_asa_dir", 550.0))),
+        num_portas=n_portas,
+        esp_mm=ctx["esp_mm"],
+        rodape_mm=ctx["rodape_mm"],
+        num_prateleiras=params.get("num_prateleiras", 1),
+        material=ctx["material"],
+        material_frentes=ctx["material_frentes"],
+        esp_frentes_mm=ctx["esp_frentes_mm"],
+        offset=ctx["offset"],
+        lado_abertura_porta=params.get("lado_abertura_porta", "esquerda"),
+        **ctx["fundo_kwargs"],
+        **ctx["pux_kw"],
+        mat_ctx=ctx.get("mat_ctx"),
+    )
+    return pieces, name
+
+
+
 @register_module_builder("porta_tempero")
 def _build_porta_tempero(cls, params: Dict[str, Any], ctx: Dict[str, Any]) -> Tuple[List[Group], str]:
     L, A, P = ctx["L_mm"], ctx["A_mm"], ctx["P_mm"]

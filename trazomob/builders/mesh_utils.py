@@ -2081,3 +2081,83 @@ def create_board_group(
 
     return g
 
+
+def create_polygon_board_group(
+    name: str,
+    polygon_xy: list[tuple[float, float]],
+    z0: float,
+    espessura: float,
+    material: str,
+    color: tuple[float, float, float] = (0.94, 0.94, 0.92),
+    material_fita: str | None = None,
+    cor_fita: tuple[float, float, float] | None = None,
+    espessura_fita: float = 0.45,
+    spec: Any | None = None,
+) -> Group:
+    """Cria uma chapa poligonal (prisma extrudado em Z, ex: base pentagonal de canto chanfrado)."""
+    mesh = Mesh()
+    z1 = z0 + espessura
+    cor_borda = cor_fita or tuple(max(0.0, c * 0.94) for c in color)
+    tex_mat = _get_material_texture(material)
+
+    # Face superior (+Z): sentido anti-horário
+    f_top = mesh.add_face([QVector3D(x, y, z1) for x, y in polygon_xy])
+    f_top.attrs["color"] = color
+    if tex_mat:
+        f_top.attrs["texture"] = dict(tex_mat)
+
+    # Face inferior (-Z): sentido horário (normal apontando para baixo)
+    f_bot = mesh.add_face([QVector3D(x, y, z0) for x, y in reversed(polygon_xy)])
+    f_bot.attrs["color"] = color
+    if tex_mat:
+        f_bot.attrs["texture"] = dict(tex_mat)
+
+    # Paredes laterais (cada aresta do polígono)
+    n = len(polygon_xy)
+    for i in range(n):
+        ax, ay = polygon_xy[i]
+        bx, by = polygon_xy[(i + 1) % n]
+        f_side = mesh.add_face([
+            QVector3D(ax, ay, z0),
+            QVector3D(bx, by, z0),
+            QVector3D(bx, by, z1),
+            QVector3D(ax, ay, z1),
+        ])
+        f_side.attrs["color"] = cor_borda
+        if tex_mat:
+            f_side.attrs["texture"] = dict(tex_mat)
+
+    g = Group(mesh, name=name)
+
+    xs = [p[0] for p in polygon_xy]
+    ys = [p[1] for p in polygon_xy]
+    bb_w = (max(xs) - min(xs)) * 1000.0
+    bb_d = (max(ys) - min(ys)) * 1000.0
+    esp_mm = round(espessura * 1000.0, 1)
+
+    meta = {
+        "nome": name,
+        "material": material,
+        "comprimento": round(max(bb_w, bb_d), 1),
+        "largura": round(min(bb_w, bb_d), 1),
+        "espessura": esp_mm,
+        "fita_c1": True,
+        "fita_c2": False,
+        "fita_l1": False,
+        "fita_l2": False,
+        "espessura_fita": float(espessura_fita or 0.45),
+        "ignorar_veio": True,
+        "operacoes": [],
+        "_rendered_ops_count": 0,
+    }
+    if material_fita:
+        meta["material_fita"] = material_fita
+
+    if hasattr(g, "ext"):
+        if getattr(g, "ext", None) is None:
+            g.ext = {}
+        g.ext["trazomob"] = meta
+
+    return g
+
+
