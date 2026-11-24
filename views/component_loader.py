@@ -274,13 +274,16 @@ def render_viewport_thumbnail(group: Group, size: int = 128):
         pass
     finally:
         if vp is not None:
-            vp.scene = old_scene
-            vp.style_override = saved_style_override
-            vp.camera.yaw = saved_camera_yaw
-            vp.camera.pitch = saved_camera_pitch
-            vp.camera.aspect = saved_camera_aspect
-            vp.notify_scene_changed()
-            vp.update()
+            try:
+                vp.scene = old_scene
+                vp.style_override = saved_style_override
+                vp.camera.yaw = saved_camera_yaw
+                vp.camera.pitch = saved_camera_pitch
+                vp.camera.aspect = saved_camera_aspect
+                vp.notify_scene_changed()
+                vp.update()
+            except Exception:
+                pass
 
     return None
 

@@ -6795,7 +6795,11 @@ class Viewport(QOpenGLWidget):
         scene and wants subscribers (title-bar dirty flag, etc.) to react
         without waiting for the next paint.
         """
-        self.sceneVersionChanged.emit(self.scene.version)
+        try:
+            self.sceneVersionChanged.emit(self.scene.version)
+        except RuntimeError:
+            # Emissor ou receptor C++ pode já ter sido destruído
+            pass
         self.update()
 
     def begin_groups_preview(self, groups=(), external: bool = False) -> None:
