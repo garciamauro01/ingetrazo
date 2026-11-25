@@ -1043,8 +1043,7 @@ class WallSelectionManager:
             painter.drawLine(qt_top, qt_floor)
             mid_y = int((qt_top.y() + qt_floor.y()) * 0.5)
             mid_x = int((qt_top.x() + qt_floor.x()) * 0.5)
-            painter.setPen(QPen(QColor(255, 255, 255), 1))
-            painter.drawText(mid_x + 8, mid_y, f"Alt: {h_m:.2f}m")
+            self._draw_mep_badge(painter, mid_x + 8, mid_y, f"Alt: {h_m:.2f}m", QColor(255, 215, 0))
 
             # 2. Cota horizontal (Distância até o canto mais próximo da parede)
             corner_pt = self._find_mep_nearest_corner_3d(scene, mep_data, cx, cy, cz)
@@ -1056,9 +1055,20 @@ class WallSelectionManager:
                     painter.drawLine(qt_top, qt_corner)
                     hx = int((qt_top.x() + qt_corner.x()) * 0.5)
                     hy = int((qt_top.y() + qt_corner.y()) * 0.5) - 6
-                    painter.setPen(QPen(QColor(255, 255, 255), 1))
-                    painter.drawText(hx, hy, f"Dist: {off_m:.2f}m")
+                    self._draw_mep_badge(painter, hx, hy, f"Dist: {off_m:.2f}m", QColor(0, 210, 255))
         painter.restore()
+
+    @staticmethod
+    def _draw_mep_badge(painter: QPainter, x: int, y: int, text: str, border_color: QColor) -> None:
+        from PySide6.QtCore import QRectF
+        rect = QRectF(x - 4, y - 13, len(text) * 7 + 10, 18)
+        if hasattr(painter, "setBrush"):
+            painter.setBrush(QBrush(QColor(20, 24, 32, 215)))
+        painter.setPen(QPen(border_color, 1.2))
+        if hasattr(painter, "drawRoundedRect"):
+            painter.drawRoundedRect(rect, 4, 4)
+        painter.setPen(QPen(QColor(255, 255, 255), 1))
+        painter.drawText(x, y, text)
 
     @staticmethod
     def _find_mep_nearest_corner_3d(scene, mep_data: dict, cx: float, cy: float, cz: float) -> QVector3D | None:
