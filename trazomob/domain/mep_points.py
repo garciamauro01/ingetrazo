@@ -98,3 +98,38 @@ def check_mep_interferences(
                     "reason": f"Ponto '{pt.kind}' ({pt.height_m:.2f}m) coberto por '{mod_name}'",
                 })
     return alerts
+
+
+def compute_mep_wall_distances(point: MEPPoint, seg_length_m: float) -> dict[str, Any]:
+    """Calcula a altura do piso e as distâncias do ponto MEP até os cantos da parede."""
+    dist_start = max(0.0, min(seg_length_m, float(point.offset_m)))
+    dist_end = max(0.0, seg_length_m - dist_start)
+    nearest_corner = "start" if dist_start <= dist_end else "end"
+    nearest_dist = dist_start if nearest_corner == "start" else dist_end
+    return {
+        "height_m": float(point.height_m),
+        "dist_start_m": dist_start,
+        "dist_end_m": dist_end,
+        "nearest_corner": nearest_corner,
+        "nearest_dist_m": nearest_dist,
+    }
+
+
+def update_mep_point_position(
+    point: MEPPoint,
+    seg_length_m: float,
+    *,
+    height_m: float | None = None,
+    dist_from_nearest_m: float | None = None,
+) -> MEPPoint:
+    """Atualiza altura e/ou distância do ponto MEP a partir da cota editada."""
+    if height_m is not None:
+        point.height_m = max(0.0, float(height_m))
+    if dist_from_nearest_m is not None:
+        d = max(0.0, min(seg_length_m, float(dist_from_nearest_m)))
+        info = compute_mep_wall_distances(point, seg_length_m)
+        if info["nearest_corner"] == "start":
+            point.offset_m = d
+        else:
+            point.offset_m = max(0.0, seg_length_m - d)
+    return point

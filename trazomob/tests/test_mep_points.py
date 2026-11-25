@@ -68,3 +68,22 @@ def test_wall_graph_mep_points_persist_in_to_dict_and_from_dict():
     assert g2.mep_points[pid].kind == "agua_quente"
     assert g2.mep_points[pid].offset_m == 1.5
     assert g2.mep_points[pid].label == "Aquecedor"
+
+
+def test_compute_mep_wall_distances_and_update_from_nearest_corner():
+    from trazomob.domain.mep_points import (
+        MEPPoint,
+        compute_mep_wall_distances,
+        update_mep_point_position,
+    )
+
+    # Parede de 3.0m, ponto em 2.4m -> canto mais próximo é o final (0.6m)
+    pt = MEPPoint(id=5, seg_id=1, kind="tomada_110v", offset_m=2.40, height_m=0.30)
+    info = compute_mep_wall_distances(pt, 3.0)
+    assert info["nearest_corner"] == "end"
+    assert abs(info["nearest_dist_m"] - 0.60) < 1e-6
+
+    # Usuário clica na cota do canto mais próximo e corrige para 0.45m, e altura para 1.15m
+    update_mep_point_position(pt, 3.0, height_m=1.15, dist_from_nearest_m=0.45)
+    assert abs(pt.height_m - 1.15) < 1e-6
+    assert abs(pt.offset_m - 2.55) < 1e-6
