@@ -1283,6 +1283,13 @@ class SidebarModuleLoaderMixin:
                         vlen = math.hypot(vx, vy)
                         if vlen > 1e-6:
                             dx, dy = (vx / vlen) * d_off, (vy / vlen) * d_off
+                        # Sincroniza também no graph_2d da parede para persistir ao salvar/reabrir
+                        mep_id = mep_data.get("id")
+                        for mp in g2d.get("mep_points", []):
+                            if mp.get("id") == mep_id:
+                                mp["height_m"] = new_h
+                                mp["offset_m"] = new_off
+                                break
                         break
 
         if abs(dx) > 1e-5 or abs(dy) > 1e-5 or abs(dz) > 1e-5:
@@ -1296,6 +1303,7 @@ class SidebarModuleLoaderMixin:
         if vp is not None:
             if getattr(vp, "scene", None) is not None:
                 vp.scene.version = getattr(vp.scene, "version", 0) + 1
+                vp.scene.modified = True
                 if hasattr(host, "dirty_group_chunks"):
                     host.dirty_group_chunks(vp.scene)
             if hasattr(host, "invalidate_viewport_caches"):
