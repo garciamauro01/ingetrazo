@@ -87,3 +87,33 @@ def test_compute_mep_wall_distances_and_update_from_nearest_corner():
     update_mep_point_position(pt, 3.0, height_m=1.15, dist_from_nearest_m=0.45)
     assert abs(pt.height_m - 1.15) < 1e-6
     assert abs(pt.offset_m - 2.55) < 1e-6
+
+
+def test_draw_mep_selection_overlay_handles_tuple_world_to_pixel():
+    from types import SimpleNamespace
+    from trazomob.domain.mep_points import MEPPoint, build_mep_point_group
+    from trazomob.wall.selection import WallSelectionManager
+
+    pt = MEPPoint(id=7, seg_id=1, kind="tomada_110v", offset_m=1.20, height_m=0.30)
+    grp = build_mep_point_group(pt, world_pos=(1.20, 0.0, 0.30))
+
+    drawn_lines = []
+    drawn_texts = []
+
+    class DummyPainter:
+        def save(self): pass
+        def restore(self): pass
+        def setPen(self, _): pass
+        def drawLine(self, a, b): drawn_lines.append((a, b))
+        def drawText(self, x, y, txt): drawn_texts.append((x, y, txt))
+
+    vp = SimpleNamespace(
+        scene=SimpleNamespace(selection=[grp]),
+        world_to_pixel=lambda v: (100.0 + v.x() * 10.0, 200.0 - v.z() * 10.0),
+    )
+    mgr = WallSelectionManager.__new__(WallSelectionManager)
+    mgr._draw_mep_selection_overlay(vp, DummyPainter())
+
+    assert len(drawn_lines) == 1
+    assert len(drawn_texts) == 1
+    assert "Alt: 0.30m | Dist: 1.20m" in drawn_texts[0][2]

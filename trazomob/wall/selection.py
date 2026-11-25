@@ -1028,7 +1028,7 @@ class WallSelectionManager:
             if not verts:
                 continue
             xf = getattr(g, "xform", None)
-            w_pts = [xf.map(v) if xf is not None else v for v in verts]
+            w_pts = [xf.map(getattr(v, "position", v)) if xf is not None else getattr(v, "position", v) for v in verts]
             cx = sum(p.x() for p in w_pts) / len(w_pts)
             cy = sum(p.y() for p in w_pts) / len(w_pts)
             cz = sum(p.z() for p in w_pts) / len(w_pts)
@@ -1036,10 +1036,12 @@ class WallSelectionManager:
             p_floor = proj_fn(QVector3D(cx, cy, max(0.0, cz - h_m)))
             if p_top is None or p_floor is None:
                 continue
+            qt_top = QPointF(p_top[0], p_top[1]) if isinstance(p_top, (tuple, list)) else QPointF(p_top)
+            qt_floor = QPointF(p_floor[0], p_floor[1]) if isinstance(p_floor, (tuple, list)) else QPointF(p_floor)
             painter.setPen(QPen(QColor(255, 215, 0), 2.0, Qt.DashLine))
-            painter.drawLine(p_top, p_floor)
-            mid_y = int((p_top.y() + p_floor.y()) * 0.5)
-            mid_x = int((p_top.x() + p_floor.x()) * 0.5)
+            painter.drawLine(qt_top, qt_floor)
+            mid_y = int((qt_top.y() + qt_floor.y()) * 0.5)
+            mid_x = int((qt_top.x() + qt_floor.x()) * 0.5)
             painter.setPen(QPen(QColor(255, 255, 255), 1))
             painter.drawText(mid_x + 8, mid_y, f"Alt: {h_m:.2f}m | Dist: {off_m:.2f}m")
         painter.restore()
