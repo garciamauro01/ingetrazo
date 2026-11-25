@@ -1061,6 +1061,7 @@ class WallSelectionManager:
     @staticmethod
     def _draw_mep_badge(painter: QPainter, x: int, y: int, text: str, border_color: QColor) -> None:
         from PySide6.QtCore import QRectF
+        from PySide6.QtGui import QBrush
         rect = QRectF(x - 4, y - 13, len(text) * 7 + 10, 18)
         if hasattr(painter, "setBrush"):
             painter.setBrush(QBrush(QColor(20, 24, 32, 215)))
