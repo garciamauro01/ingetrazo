@@ -342,10 +342,8 @@ def prateleiras_bounds(scale_tool: Any, viewport: Any):
     def absorb(point: QVector3D) -> None:
         point = scale_tool._to_local(point)
         for i, coord in enumerate((point.x(), point.y(), point.z())):
-            if coord < lo[i]:
-                lo[i] = coord
-            if coord > hi[i]:
-                hi[i] = coord
+            lo[i] = min(lo[i], coord)
+            hi[i] = max(hi[i], coord)
 
     for mod in prat_mods:
         params = _module_params(mod)
@@ -470,10 +468,8 @@ def prateleiras_obb(group: Any):
         ry = corner.x() * sin_a + corner.y() * cos_a
         point = QVector3D(rx, ry, corner.z()) + off
         for i, value in enumerate((point.x(), point.y(), point.z())):
-            if value < lo[i]:
-                lo[i] = value
-            if value > hi[i]:
-                hi[i] = value
+            lo[i] = min(lo[i], value)
+            hi[i] = max(hi[i], value)
     frame = (QVector3D(1.0, 0.0, 0.0),
              QVector3D(0.0, 1.0, 0.0),
              QVector3D(0.0, 0.0, 1.0))

@@ -1162,16 +1162,10 @@ class AimLightTool(Tool):
 
 
 
-from .lighting_visualizer import (  # noqa: E402
-    _build_light_occluder_context,
-    _ray_blocked,
-)
-
-
 from .lighting_ui import LightManagerDialog, LightQuickPopupHUD  # noqa: E402, F401
-from .lighting_visualizer import (  # noqa: E402, F401
-    _is_opaque_light_occluder,
-    _build_light_occluder_context,
-    _ray_blocked,
+from .lighting_visualizer import (  # noqa: E402  # noqa: E402, F401
     TrazoMobLightVisualizer,
+    _build_light_occluder_context,
+    _is_opaque_light_occluder,
+    _ray_blocked,
 )

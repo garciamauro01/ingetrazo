@@ -65,18 +65,12 @@ def _mesh_local_bounds(mesh) -> tuple[float, float, float, float, float, float] 
         for v in verts:
             p = getattr(v, "position", v)
             x, y, z = p.x(), p.y(), p.z()
-            if x < min_x:
-                min_x = x
-            if x > max_x:
-                max_x = x
-            if y < min_y:
-                min_y = y
-            if y > max_y:
-                max_y = y
-            if z < min_z:
-                min_z = z
-            if z > max_z:
-                max_z = z
+            min_x = min(min_x, x)
+            max_x = max(max_x, x)
+            min_y = min(min_y, y)
+            max_y = max(max_y, y)
+            min_z = min(min_z, z)
+            max_z = max(max_z, z)
         bounds = (min_x, max_x, min_y, max_y, min_z, max_z)
 
     if len(_MESH_LOCAL_BOUNDS_CACHE) >= _MAX_MESH_BOUNDS_CACHE:
@@ -103,18 +97,12 @@ def get_entity_world_bounds(entity) -> tuple[float, float, float, float, float, 
                 continue
             lx0, lx1, ly0, ly1, lz0, lz1 = lb
             if xf is None or (hasattr(xf, "isIdentity") and xf.isIdentity()):
-                if lx0 < min_x:
-                    min_x = lx0
-                if lx1 > max_x:
-                    max_x = lx1
-                if ly0 < min_y:
-                    min_y = ly0
-                if ly1 > max_y:
-                    max_y = ly1
-                if lz0 < min_z:
-                    min_z = lz0
-                if lz1 > max_z:
-                    max_z = lz1
+                min_x = min(min_x, lx0)
+                max_x = max(max_x, lx1)
+                min_y = min(min_y, ly0)
+                max_y = max(max_y, ly1)
+                min_z = min(min_z, lz0)
+                max_z = max(max_z, lz1)
                 found = True
             else:
                 for cx in (lx0, lx1):
@@ -122,18 +110,12 @@ def get_entity_world_bounds(entity) -> tuple[float, float, float, float, float, 
                         for cz in (lz0, lz1):
                             p = xf.map(QVector3D(cx, cy, cz))
                             px, py, pz = p.x(), p.y(), p.z()
-                            if px < min_x:
-                                min_x = px
-                            if px > max_x:
-                                max_x = px
-                            if py < min_y:
-                                min_y = py
-                            if py > max_y:
-                                max_y = py
-                            if pz < min_z:
-                                min_z = pz
-                            if pz > max_z:
-                                max_z = pz
+                            min_x = min(min_x, px)
+                            max_x = max(max_x, px)
+                            min_y = min(min_y, py)
+                            max_y = max(max_y, py)
+                            min_z = min(min_z, pz)
+                            max_z = max(max_z, pz)
                             found = True
 
         if found:

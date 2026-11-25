@@ -906,8 +906,7 @@ class CabinetInteract:
                 frac = 1.0
             if frac > 0.0:
                 state["has_open"] = True
-                if frac > state["max_frac"]:
-                    state["max_frac"] = frac
+                state["max_frac"] = max(state["max_frac"], frac)
             state["pieces"][c_name] = frac
             itype = cls.get_piece_interaction_type(c_name)
             if itype:

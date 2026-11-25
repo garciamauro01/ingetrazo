@@ -14,14 +14,21 @@ from PySide6.QtGui import (
     QPixmap,
 )
 
-
 # Reexporta??o de compatibilidade retroativa para miniaturas de m?dulos
-from ..ui.thumbnails import get_module_thumbnail, _THUMBNAIL_CACHE
+from ..ui.thumbnails import _THUMBNAIL_CACHE, get_module_thumbnail
 
 
 def make_trazomob_icon():
-    from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QBrush, QPen, QPainterPath
-    from PySide6.QtCore import Qt, QRectF
+    from PySide6.QtCore import QRectF, Qt
+    from PySide6.QtGui import (
+        QBrush,
+        QColor,
+        QIcon,
+        QPainter,
+        QPainterPath,
+        QPen,
+        QPixmap,
+    )
     pm = QPixmap(48, 48)
     pm.fill(Qt.transparent)
     p = QPainter(pm)
@@ -49,8 +56,8 @@ def make_trazomob_icon():
 
 def make_align_tool_icon():
     """Ícone vetorial para a ferramenta Alinhar & Apoiar (snap magnético 3D)."""
-    from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QBrush, QPen
-    from PySide6.QtCore import Qt, QRectF
+    from PySide6.QtCore import QRectF, Qt
+    from PySide6.QtGui import QBrush, QColor, QIcon, QPainter, QPen, QPixmap
     pm = QPixmap(48, 48)
     pm.fill(Qt.transparent)
     p = QPainter(pm)
@@ -84,8 +91,8 @@ def make_align_tool_icon():
 
 
 def make_cabinet_icon():
-    from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QBrush, QPen
-    from PySide6.QtCore import Qt, QRectF
+    from PySide6.QtCore import QRectF, Qt
+    from PySide6.QtGui import QBrush, QColor, QIcon, QPainter, QPen, QPixmap
     pm = QPixmap(48, 48)
     pm.fill(Qt.transparent)
     p = QPainter(pm)
@@ -113,8 +120,8 @@ def make_cabinet_icon():
 
 
 def make_cutlist_icon():
-    from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QBrush, QPen
-    from PySide6.QtCore import Qt, QRectF
+    from PySide6.QtCore import QRectF, Qt
+    from PySide6.QtGui import QBrush, QColor, QIcon, QPainter, QPen, QPixmap
     pm = QPixmap(48, 48)
     pm.fill(Qt.transparent)
     p = QPainter(pm)
@@ -137,8 +144,8 @@ def make_cutlist_icon():
 
 
 def make_interact_icon():
-    from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QBrush, QPen
-    from PySide6.QtCore import Qt, QRectF
+    from PySide6.QtCore import QRectF, Qt
+    from PySide6.QtGui import QBrush, QColor, QIcon, QPainter, QPen, QPixmap
     pm = QPixmap(48, 48)
     pm.fill(Qt.transparent)
     p = QPainter(pm)
@@ -169,8 +176,16 @@ def make_interact_icon():
 
 def make_rotate_ccw_icon():
     """Ícone vetorial de alta definição para rotação de 90° anti-horário (Esq)."""
-    from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QBrush, QPen, QPainterPath
-    from PySide6.QtCore import Qt, QRectF
+    from PySide6.QtCore import QRectF, Qt
+    from PySide6.QtGui import (
+        QBrush,
+        QColor,
+        QIcon,
+        QPainter,
+        QPainterPath,
+        QPen,
+        QPixmap,
+    )
     pm = QPixmap(48, 48)
     pm.fill(Qt.transparent)
     p = QPainter(pm)
@@ -208,8 +223,16 @@ def make_rotate_ccw_icon():
 
 def make_rotate_cw_icon():
     """Ícone vetorial de alta definição para rotação de 90° horário (Dir)."""
-    from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QBrush, QPen, QPainterPath
-    from PySide6.QtCore import Qt, QRectF
+    from PySide6.QtCore import QRectF, Qt
+    from PySide6.QtGui import (
+        QBrush,
+        QColor,
+        QIcon,
+        QPainter,
+        QPainterPath,
+        QPen,
+        QPixmap,
+    )
     pm = QPixmap(48, 48)
     pm.fill(Qt.transparent)
     p = QPainter(pm)
@@ -247,8 +270,8 @@ def make_rotate_cw_icon():
 
 def make_style_palette_icon() -> QIcon:
     """Ícone vetorial de alta definição para Estilos de Visualização (Faces, Arestas, Raio-X)."""
-    from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QBrush, QPen, QPolygonF
-    from PySide6.QtCore import Qt, QRectF, QPointF
+    from PySide6.QtCore import QPointF, QRectF, Qt
+    from PySide6.QtGui import QBrush, QColor, QIcon, QPainter, QPen, QPixmap, QPolygonF
     pm = QPixmap(48, 48)
     pm.fill(Qt.transparent)
     p = QPainter(pm)
@@ -290,8 +313,16 @@ def make_style_palette_icon() -> QIcon:
 
 def make_perfil_diagram_pixmap(width: int = 140, height: int = 95, modelo: str = "gola") -> QPixmap:
     """Gera o diagrama técnico vetorial do puxador perfil de alumínio estilizado no padrão TrazoMob/Rometal."""
-    from PySide6.QtGui import QPixmap, QPainter, QColor, QBrush, QPen, QPainterPath, QPolygonF
-    from PySide6.QtCore import Qt, QPointF, QRectF
+    from PySide6.QtCore import QPointF, QRectF, Qt
+    from PySide6.QtGui import (
+        QBrush,
+        QColor,
+        QPainter,
+        QPainterPath,
+        QPen,
+        QPixmap,
+        QPolygonF,
+    )
 
     pm = QPixmap(width, height)
     pm.fill(QColor("#E2E8F0"))  # Fundo suave cinza neutro
@@ -526,8 +557,8 @@ def make_perfil_diagram_pixmap(width: int = 140, height: int = 95, modelo: str =
 
 def make_cut_plan_icon():
     """Ícone vetorial representando uma chapa de corte com peças e linhas de corte."""
-    from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QBrush, QPen
-    from PySide6.QtCore import Qt, QRectF
+    from PySide6.QtCore import QRectF, Qt
+    from PySide6.QtGui import QBrush, QColor, QIcon, QPainter, QPen, QPixmap
     pm = QPixmap(48, 48)
     pm.fill(Qt.transparent)
     p = QPainter(pm)
@@ -571,8 +602,8 @@ def make_cut_plan_icon():
 
 def make_wall_icon() -> QIcon:
     """Ícone vetorial de alta definição representando uma parede sólida / tijolos com colunas."""
-    from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QBrush, QPen
-    from PySide6.QtCore import Qt, QRectF
+    from PySide6.QtCore import QRectF, Qt
+    from PySide6.QtGui import QBrush, QColor, QIcon, QPainter, QPen, QPixmap
     pm = QPixmap(48, 48)
     pm.fill(Qt.transparent)
     p = QPainter(pm)
@@ -626,8 +657,8 @@ def make_wall_icon() -> QIcon:
 
 def make_ruler_icon() -> QIcon:
     """Ícone vetorial de alta definição para a régua de alturas e linhas-guia."""
-    from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QBrush, QPen
-    from PySide6.QtCore import Qt, QRectF
+    from PySide6.QtCore import QRectF, Qt
+    from PySide6.QtGui import QBrush, QColor, QIcon, QPainter, QPen, QPixmap
     pm = QPixmap(48, 48)
     pm.fill(Qt.transparent)
     p = QPainter(pm)
@@ -658,8 +689,16 @@ def make_ruler_icon() -> QIcon:
 
 def make_render_icon() -> QIcon:
     """Ícone vetorial de câmera fotográfica com brilho para Render Foto-Realista."""
-    from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QBrush, QPen, QPainterPath
-    from PySide6.QtCore import Qt, QRectF
+    from PySide6.QtCore import QRectF, Qt
+    from PySide6.QtGui import (
+        QBrush,
+        QColor,
+        QIcon,
+        QPainter,
+        QPainterPath,
+        QPen,
+        QPixmap,
+    )
     pm = QPixmap(48, 48)
     pm.fill(Qt.transparent)
     p = QPainter(pm)
@@ -694,8 +733,8 @@ def make_render_icon() -> QIcon:
 
 def make_paint_icon() -> QIcon:
     """Ícone vetorial de rolo de pintura / paleta de tintas para paredes."""
-    from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QBrush, QPen
-    from PySide6.QtCore import Qt, QRectF
+    from PySide6.QtCore import QRectF, Qt
+    from PySide6.QtGui import QBrush, QColor, QIcon, QPainter, QPen, QPixmap
     pm = QPixmap(48, 48)
     pm.fill(Qt.transparent)
     p = QPainter(pm)
@@ -731,8 +770,8 @@ def make_paint_icon() -> QIcon:
 
 def make_emoji_icon(emoji: str) -> QIcon:
     """Gera um QIcon a partir de um caractere emoji ou texto."""
-    from PySide6.QtGui import QIcon, QPixmap, QPainter, QFont
-    from PySide6.QtCore import Qt, QRectF
+    from PySide6.QtCore import QRectF, Qt
+    from PySide6.QtGui import QFont, QIcon, QPainter, QPixmap
     pm = QPixmap(32, 32)
     pm.fill(Qt.transparent)
     p = QPainter(pm)
@@ -745,8 +784,8 @@ def make_emoji_icon(emoji: str) -> QIcon:
 
 
 def make_light_icon():
-    from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QBrush, QPen, QPolygonF
-    from PySide6.QtCore import Qt, QRectF, QPointF
+    from PySide6.QtCore import QPointF, QRectF, Qt
+    from PySide6.QtGui import QBrush, QColor, QIcon, QPainter, QPen, QPixmap, QPolygonF
     pm = QPixmap(48, 48)
     pm.fill(Qt.transparent)
     p = QPainter(pm)
@@ -778,8 +817,16 @@ def make_light_icon():
 
 def make_magnet_snap_icon() -> QIcon:
     """Ícone estilizado representando atração e snap magnético (ímã 3D)."""
-    from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QBrush, QPen, QPainterPath
-    from PySide6.QtCore import Qt, QRectF
+    from PySide6.QtCore import QRectF, Qt
+    from PySide6.QtGui import (
+        QBrush,
+        QColor,
+        QIcon,
+        QPainter,
+        QPainterPath,
+        QPen,
+        QPixmap,
+    )
     pm = QPixmap(48, 48)
     pm.fill(Qt.transparent)
     p = QPainter(pm)
@@ -820,8 +867,16 @@ def make_magnet_snap_icon() -> QIcon:
 
 def make_pbr_material_icon() -> QIcon:
     """Ícone vetorial de esfera de materiais PBR com reflexo especular e paleta de acabamentos."""
-    from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QBrush, QPen, QRadialGradient
-    from PySide6.QtCore import Qt, QRectF, QPointF
+    from PySide6.QtCore import QPointF, QRectF, Qt
+    from PySide6.QtGui import (
+        QBrush,
+        QColor,
+        QIcon,
+        QPainter,
+        QPen,
+        QPixmap,
+        QRadialGradient,
+    )
     pm = QPixmap(48, 48)
     pm.fill(Qt.transparent)
     p = QPainter(pm)
@@ -859,8 +914,8 @@ def make_pbr_material_icon() -> QIcon:
 
 def make_free_zoom_icon() -> QIcon:
     """Ícone vetorial para a ferramenta Zoom Livre / Atravessar Sólidos (Estilo SketchUp)."""
-    from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QBrush, QPen, QPolygonF
-    from PySide6.QtCore import Qt, QRectF, QPointF
+    from PySide6.QtCore import QPointF, QRectF, Qt
+    from PySide6.QtGui import QBrush, QColor, QIcon, QPainter, QPen, QPixmap, QPolygonF
     pm = QPixmap(48, 48)
     pm.fill(Qt.transparent)
     p = QPainter(pm)

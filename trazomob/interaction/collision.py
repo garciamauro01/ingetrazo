@@ -22,12 +22,12 @@ def get_piece_aabb(piece: Group) -> tuple[float, float, float, float, float, flo
     for v in mesh.vertices:
         p = getattr(v, "position", v)
         x, y, z = p.x(), p.y(), p.z()
-        if x < min_x: min_x = x
-        if x > max_x: max_x = x
-        if y < min_y: min_y = y
-        if y > max_y: max_y = y
-        if z < min_z: min_z = z
-        if z > max_z: max_z = z
+        min_x = min(min_x, x)
+        max_x = max(max_x, x)
+        min_y = min(min_y, y)
+        max_y = max(max_y, y)
+        min_z = min(min_z, z)
+        max_z = max(max_z, z)
     if min_x == float("inf"):
         return None
     return (min_x, max_x, min_y, max_y, min_z, max_z)

@@ -108,8 +108,7 @@ class FakeTabbedWindow(QMainWindow):
         doc = FakeDoc(viewport=vp)
         self.documents.append(doc)
         vp.sceneVersionChanged.connect(lambda v=vp: self._dispatch_doc_change(v))
-        if self._active_index < 0:
-            self._active_index = 0
+        self._active_index = max(self._active_index, 0)
         return doc
 
     def _dispatch_doc_change(self, vp: FakeViewport) -> None:

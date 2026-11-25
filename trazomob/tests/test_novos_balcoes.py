@@ -123,11 +123,11 @@ def test_space_corner_travessa_frontal_em_pe_recuo_topo():
             for v in g.mesh.vertices:
                 pos = v.position
                 vz = pos.z() if callable(pos.z) else pos.z
-                if vz > mz: mz = vz
+                mz = max(mz, vz)
         if hasattr(g, 'children'):
             for c in g.children:
                 cz = get_max_z(c)
-                if cz > mz: mz = cz
+                mz = max(mz, cz)
         return mz
 
     g_deitada = CantoEspecialBuilder.build_canto_gaveteiro_l(

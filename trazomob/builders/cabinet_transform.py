@@ -530,8 +530,7 @@ class CabinetTransformMixin:
                 from ..domain.materials_catalog import CHAPA_MAX_COMPRIMENTO_UTIL_MM
                 for dim_key in ("largura", "altura", "profundidade"):
                     if dim_key in mod_p and isinstance(mod_p[dim_key], (int, float)):
-                        if mod_p[dim_key] > CHAPA_MAX_COMPRIMENTO_UTIL_MM:
-                            mod_p[dim_key] = CHAPA_MAX_COMPRIMENTO_UTIL_MM
+                        mod_p[dim_key] = min(mod_p[dim_key], CHAPA_MAX_COMPRIMENTO_UTIL_MM)
 
                 from ..domain.module_geometry import get_module_carcass_bounds
                 from ..interaction.magnetic_drag import get_module_bounds

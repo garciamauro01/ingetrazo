@@ -544,8 +544,7 @@ def calcular_orcamento_cutlist(
     total_parcelado = total_final + desconto_valor
 
     num_parcelas = int(pricing.get("parcelas_sem_juros", 6) or 6)
-    if num_parcelas < 1:
-        num_parcelas = 1
+    num_parcelas = max(num_parcelas, 1)
     valor_parcela = total_parcelado / num_parcelas
 
     return ResumoOrcamento(
