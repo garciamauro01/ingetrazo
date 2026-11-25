@@ -1436,6 +1436,7 @@ class CantoEspecialBuilder:
         larg_travessa_traseira_mm: float = 70.0,
         travessa_frontal_em_pe: bool = False,
         travessa_traseira_em_pe: bool = False,
+        recuo_porta_topo_mm: float = 50.0,
         material: str = "MDF Branco 15mm",
         frente_material: str | None = None,
         material_frentes: str | None = None,
@@ -1738,8 +1739,9 @@ class CantoEspecialBuilder:
 
         qtd = max(1, min(6, int(num_gavetas)))
         folga_f = 0.003
-        alt_int = H_caixa - 2.0 * E
-        alt_frente_cada = (alt_int - (qtd + 1) * folga_f) / qtd
+        recuo_topo = (recuo_porta_topo_mm / 1000.0) if travessa_frontal_em_pe else 0.0
+        alt_disponivel = max(0.10, H_caixa - recuo_topo - E)
+        alt_frente_cada = (alt_disponivel - (qtd + 1) * folga_f) / qtd
         cor_pux_rgb = (0.15, 0.15, 0.15) if puxador_cor in ("preto", "dark") else (0.85, 0.85, 0.85)
 
         slide_vec = QVector3D(1.0 / math.sqrt(2), -1.0 / math.sqrt(2), 0.0)

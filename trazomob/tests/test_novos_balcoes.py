@@ -115,3 +115,38 @@ def test_registry_novos_modulos():
     for mod_id in ["terminal_chanfrado", "porta_panos", "adega_colmeia", "balcao_peninsula", "canto_gaveteiro_l"]:
         fn = get_module_builder(mod_id)
         assert fn is not None, f"Builder para {mod_id} não encontrado no registro"
+
+
+def test_space_corner_travessa_frontal_em_pe_recuo_topo():
+    def get_max_z(g):
+        mz = -999.0
+        if hasattr(g, 'mesh') and g.mesh:
+            for v in g.mesh.vertices:
+                pos = v.position
+                vz = pos.z() if callable(pos.z) else pos.z
+                if vz > mz: mz = vz
+        if hasattr(g, 'children'):
+            for c in g.children:
+                cz = get_max_z(c)
+                if cz > mz: mz = cz
+        return mz
+
+    g_deitada = CantoEspecialBuilder.build_canto_gaveteiro_l(
+        largura_mm=1050, altura_mm=850, prof_mm=1050,
+        travessa_frontal_em_pe=False,
+    )
+    g_em_pe = CantoEspecialBuilder.build_canto_gaveteiro_l(
+        largura_mm=1050, altura_mm=850, prof_mm=1050,
+        travessa_frontal_em_pe=True,
+        recuo_porta_topo_mm=50.0,
+    )
+
+    frentes_deitada = [p for p in g_deitada if 'Frente' in p.name]
+    frentes_em_pe = [p for p in g_em_pe if 'Frente' in p.name]
+
+    z_deitada = max(get_max_z(p) for p in frentes_deitada)
+    z_em_pe = max(get_max_z(p) for p in frentes_em_pe)
+
+    # A diferença no topo das frentes deve ser exatamente 50 mm (0.050 m)
+    assert abs((z_deitada - z_em_pe) - 0.050) < 1e-4
+

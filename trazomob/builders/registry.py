@@ -1390,6 +1390,7 @@ def _build_space_corner(cls, params: Dict[str, Any], ctx: Dict[str, Any]) -> Tup
         larg_travessa_traseira_mm=float(params.get("larg_travessa_traseira_mm", 70.0)),
         travessa_frontal_em_pe=bool(params.get("travessa_frontal_em_pe", False)),
         travessa_traseira_em_pe=bool(params.get("travessa_traseira_em_pe", False)),
+        recuo_porta_topo_mm=float(params.get("recuo_porta_topo_mm", params.get("recuo_porta_pia_mm", 50.0))),
         material=ctx["material"],
         origin=ctx["offset"],
         puxador_tipo=ctx.get("puxador_tipo", "perfil"),
