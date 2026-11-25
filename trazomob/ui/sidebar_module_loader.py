@@ -1285,10 +1285,12 @@ class SidebarModuleLoaderMixin:
                         break
 
         if abs(dx) > 1e-5 or abs(dy) > 1e-5 or abs(dz) > 1e-5:
-            xf = getattr(mod, "xform", None) or QMatrix4x4()
-            m_tr = QMatrix4x4()
-            m_tr.translate(dx, dy, dz)
-            mod.xform = m_tr * xf
+            from PySide6.QtGui import QVector3D
+            delta = QVector3D(dx, dy, dz)
+            mesh = getattr(mod, "mesh", None)
+            for v in getattr(mesh, "vertices", []) or []:
+                if hasattr(v, "position"):
+                    v.position = v.position + delta
 
         if vp is not None:
             if getattr(vp, "scene", None) is not None and hasattr(host, "dirty_group_chunks"):
