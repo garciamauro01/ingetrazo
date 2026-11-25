@@ -41,6 +41,7 @@ class DrawingMixin:
 
         # 2. Desenha Paredes Existentes
         self._draw_walls(painter)
+        self._draw_mep_points(painter)
 
         # 3. Desenha Prévia do que está sendo desenhado (Borracha elástica / Rubberband)
         self._draw_rubberband(painter)
@@ -721,3 +722,45 @@ class DrawingMixin:
         # Cota din?mica com texto
         self._draw_dimension(painter, p_ref, p_proj, dist_m, is_preview=True)
 
+
+    def _draw_mep_points(self, painter: QPainter) -> None:
+        mep_points = getattr(self.graph, "mep_points", None)
+        if not mep_points:
+            return
+        from ..domain.mep_points import MEP_KINDS
+
+        short_tags = {
+            "tomada_110v": "110V",
+            "tomada_220v": "220V",
+            "interruptor": "INT",
+            "agua_fria": "AF",
+            "agua_quente": "AQ",
+            "esgoto": "ESG",
+            "gas": "GÁS",
+        }
+        painter.save()
+        for pt in mep_points.values():
+            seg = self.graph.segments.get(pt.seg_id)
+            if seg is None:
+                continue
+            na = self.graph.nodes.get(seg.node_a_id)
+            nb = self.graph.nodes.get(seg.node_b_id)
+            if na is None or nb is None:
+                continue
+            dx, dy = nb.x - na.x, nb.y - na.y
+            seg_len = math.hypot(dx, dy)
+            if seg_len <= 1e-6:
+                continue
+            t = max(0.0, min(1.0, pt.offset_m / seg_len))
+            wx = na.x + dx * t
+            wy = na.y + dy * t
+            sp = self.world_to_screen(wx, wy)
+            rgb = MEP_KINDS.get(pt.kind, {}).get("color", (0.9, 0.3, 0.2))
+            col = QColor(int(rgb[0] * 255), int(rgb[1] * 255), int(rgb[2] * 255))
+            painter.setPen(QPen(QColor(255, 255, 255), 1.5))
+            painter.setBrush(QBrush(col))
+            painter.drawEllipse(sp, 7, 7)
+            tag = short_tags.get(pt.kind, pt.kind[:3].upper())
+            painter.setPen(QPen(QColor(255, 255, 255), 1))
+            painter.drawText(int(sp.x() + 10), int(sp.y() + 4), tag)
+        painter.restore()
