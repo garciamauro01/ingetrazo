@@ -3,8 +3,6 @@
 """Diálogo 2D de Planta Baixa para desenho de paredes e geração 3D automática."""
 from __future__ import annotations
 
-from typing import Tuple
-
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import (
     QWheelEvent,
@@ -91,7 +89,7 @@ class NavigationMixin:
         sy = self._offset_y - wy * self._zoom  # Inverte eixo Y para padrão CAD (+Y para cima)
         return QPointF(sx, sy)
 
-    def screen_to_world(self, sx: float, sy: float) -> Tuple[float, float]:
+    def screen_to_world(self, sx: float, sy: float) -> tuple[float, float]:
         wx = (sx - self._offset_x) / self._zoom
         wy = -(sy - self._offset_y) / self._zoom
         return wx, wy

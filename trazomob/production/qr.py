@@ -13,11 +13,9 @@ desenhada com ``QPainter`` — sem ``qrcode``/``segno``/PIL instalados.
 """
 from __future__ import annotations
 
-from typing import List, Optional
-
 # ── Aritmética de Galois GF(256), polinômio primitivo 0x11D ──────────────────
-_EXP: List[int] = [0] * 512
-_LOG: List[int] = [0] * 256
+_EXP: list[int] = [0] * 512
+_LOG: list[int] = [0] * 256
 _x = 1
 for _i in range(255):
     _EXP[_i] = _x
@@ -35,7 +33,7 @@ def _mul(a: int, b: int) -> int:
     return _EXP[_LOG[a] + _LOG[b]]
 
 
-def _poly_mul(p: List[int], q: List[int]) -> List[int]:
+def _poly_mul(p: list[int], q: list[int]) -> list[int]:
     """Multiplica dois polinômios (coeficientes do maior grau para o menor)."""
     out = [0] * (len(p) + len(q) - 1)
     for i, a in enumerate(p):
@@ -46,7 +44,7 @@ def _poly_mul(p: List[int], q: List[int]) -> List[int]:
     return out
 
 
-def _rs_generator(n: int) -> List[int]:
+def _rs_generator(n: int) -> list[int]:
     """Polinômio gerador de Reed-Solomon com ``n`` codewords de correção."""
     g = [1]
     for i in range(n):
@@ -54,7 +52,7 @@ def _rs_generator(n: int) -> List[int]:
     return g
 
 
-def _rs_remainder(data: List[int], gen: List[int], n: int) -> List[int]:
+def _rs_remainder(data: list[int], gen: list[int], n: int) -> list[int]:
     """Resto da divisão de ``data·x^n`` pelo gerador (codewords de correção)."""
     res = list(data) + [0] * n
     for i in range(len(data)):
@@ -94,9 +92,9 @@ def _choose_version(n_bytes: int, error: str = "M") -> int:
     )
 
 
-def _data_codewords(data: bytes, version: int) -> List[int]:
+def _data_codewords(data: bytes, version: int) -> list[int]:
     cap = _CAP_M[version]
-    bits: List[int] = []
+    bits: list[int] = []
     _append_bits(bits, 0b0100, 4)          # modo byte
     _append_bits(bits, len(data), 8)       # contagem de caracteres
     for b in data:
@@ -116,17 +114,17 @@ def _data_codewords(data: bytes, version: int) -> List[int]:
     return codewords
 
 
-def _append_bits(bits: List[int], value: int, length: int) -> None:
+def _append_bits(bits: list[int], value: int, length: int) -> None:
     for i in range(length - 1, -1, -1):
         bits.append((value >> i) & 1)
 
 
-def _interleave(codewords: List[int], version: int) -> List[int]:
+def _interleave(codewords: list[int], version: int) -> list[int]:
     ec_per_block, groups = _BLOCKS_M[version]
     gen = _rs_generator(ec_per_block)
 
-    blocks_data: List[List[int]] = []
-    blocks_ec: List[List[int]] = []
+    blocks_data: list[list[int]] = []
+    blocks_ec: list[list[int]] = []
     idx = 0
     for n_blocks, size in groups:
         for _ in range(n_blocks):
@@ -135,7 +133,7 @@ def _interleave(codewords: List[int], version: int) -> List[int]:
             blocks_data.append(block)
             blocks_ec.append(_rs_remainder(block, gen, ec_per_block))
 
-    out: List[int] = []
+    out: list[int] = []
     max_data = max(len(b) for b in blocks_data)
     for i in range(max_data):
         for b in blocks_data:
@@ -211,7 +209,7 @@ def _place_function_patterns(m: _Matrix, version: int) -> None:
         m.set(size - 1 - i, 8, 0)
 
 
-def _place_data(m: _Matrix, bits: List[int]) -> None:
+def _place_data(m: _Matrix, bits: list[int]) -> None:
     size = m.size
     i = 0
     col = size - 1
@@ -310,7 +308,7 @@ def _penalty(m: _Matrix) -> int:
 
     score_n1 = score_n2 = score_n3 = 0
     dark = 0
-    last_row: Optional[List[int]] = None
+    last_row: list[int] | None = None
     n3_column = bytearray(size)
     for i in range(size):
         row = mods[i]
@@ -354,7 +352,7 @@ def _penalty(m: _Matrix) -> int:
     return score_n1 + score_n2 + score_n3 + score_n4
 
 
-def encode(text: str, error: str = "M", mask: Optional[int] = None) -> List[List[bool]]:
+def encode(text: str, error: str = "M", mask: int | None = None) -> list[list[bool]]:
     """Codifica ``text`` e devolve a matriz de módulos (``True`` = escuro).
 
     ``error`` é o nível de correção (apenas ``"M"`` é suportado nesta versão).
@@ -369,7 +367,7 @@ def encode(text: str, error: str = "M", mask: Optional[int] = None) -> List[List
     codewords = _data_codewords(data, version)
     interleaved = _interleave(codewords, version)
 
-    bits: List[int] = []
+    bits: list[int] = []
     for cw in interleaved:
         _append_bits(bits, cw, 8)
 

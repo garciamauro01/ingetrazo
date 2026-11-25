@@ -22,7 +22,7 @@ Ler ``group.ext["trazomob_module"]`` direto é o que produzia a divergência.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ..domain.entity import get_trazomob
 
@@ -120,7 +120,7 @@ _ESQUADRIA_TO_MODULE: dict[str, tuple[str, ...]] = {
 }
 
 
-def _ensure_ext(group: Any) -> Optional[Dict[str, Any]]:
+def _ensure_ext(group: Any) -> dict[str, Any] | None:
     """Garante um ``group.ext`` do tipo dicionário; devolve ``None`` sem grupo."""
     if group is None:
         return None
@@ -134,7 +134,7 @@ def _ensure_ext(group: Any) -> Optional[Dict[str, Any]]:
     return ext
 
 
-def kind_of(group: Any) -> Optional[str]:
+def kind_of(group: Any) -> str | None:
     """Tipo de um grupo do TrazoMob, ou ``None`` quando ele não é do plugin.
 
     A chave oficial ``ext["trazomob"]["kind"]`` manda; as chaves legadas são
@@ -161,10 +161,10 @@ def is_kind(group: Any, kind: str) -> bool:
     return kind_of(group) == kind
 
 
-def _merged(group: Any) -> Dict[str, Any]:
+def _merged(group: Any) -> dict[str, Any]:
     """Une as três chaves sem perder campos: a oficial sobrescreve as legadas."""
     ext = getattr(group, "ext", None)
-    out: Dict[str, Any] = {}
+    out: dict[str, Any] = {}
     if not isinstance(ext, dict):
         return out
     for key in ("trazomob_module", "trazomob_esquadria", "trazomob"):
@@ -178,8 +178,8 @@ def _merged(group: Any) -> Dict[str, Any]:
     return out
 
 
-def _with_aliases(data: Dict[str, Any],
-                  aliases: Dict[str, tuple[str, ...]]) -> Dict[str, Any]:
+def _with_aliases(data: dict[str, Any],
+                  aliases: dict[str, tuple[str, ...]]) -> dict[str, Any]:
     """Completa os campos canônicos a partir dos nomes alternativos."""
     out = dict(data)
     for canonical, sources in aliases.items():
@@ -192,7 +192,7 @@ def _with_aliases(data: Dict[str, Any],
     return out
 
 
-def params_of(group: Any) -> Dict[str, Any]:
+def params_of(group: Any) -> dict[str, Any]:
     """Todos os parâmetros do grupo, com os nomes canônicos preenchidos.
 
     Serve tanto para módulos quanto para esquadrias: os apelidos das duas
@@ -204,27 +204,27 @@ def params_of(group: Any) -> Dict[str, Any]:
     return _with_aliases(data, _ESQUADRIA_ALIASES)
 
 
-def module_params(group: Any) -> Dict[str, Any]:
+def module_params(group: Any) -> dict[str, Any]:
     """Parâmetros de um módulo (cópia; para alterar use ``live_module_data``)."""
     return _with_aliases(_merged(group), _MODULE_ALIASES)
 
 
-def esquadria_params(group: Any) -> Dict[str, Any]:
+def esquadria_params(group: Any) -> dict[str, Any]:
     """Parâmetros de uma esquadria (cópia)."""
     return _with_aliases(_merged(group), _ESQUADRIA_ALIASES)
 
 
-def light_params(group: Any) -> Dict[str, Any]:
+def light_params(group: Any) -> dict[str, Any]:
     """Dados de uma luminária (cópia)."""
     return dict(get_trazomob(group))
 
 
-def wall_params(group: Any) -> Dict[str, Any]:
+def wall_params(group: Any) -> dict[str, Any]:
     """Dados de uma parede (cópia)."""
     return dict(get_trazomob(group))
 
 
-def live_module_data(group: Any) -> Dict[str, Any]:
+def live_module_data(group: Any) -> dict[str, Any]:
     """Dicionário **vivo** dos metadados de módulo, mutável no lugar.
 
     Use quando o chamador vai alterar valores (rotação, offset, medidas):
@@ -243,8 +243,8 @@ def live_module_data(group: Any) -> Dict[str, Any]:
     return tm
 
 
-def set_module_data(group: Any, data: Optional[Dict[str, Any]] = None,
-                    **kwargs: Any) -> Dict[str, Any]:
+def set_module_data(group: Any, data: dict[str, Any] | None = None,
+                    **kwargs: Any) -> dict[str, Any]:
     """Grava metadados de módulo nas duas chaves canônicas, com o mesmo dict."""
     ext = _ensure_ext(group)
     payload = dict(data or {})
@@ -257,7 +257,7 @@ def set_module_data(group: Any, data: Optional[Dict[str, Any]] = None,
 
 
 def update_module_data(group: Any,
-                       data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+                       data: dict[str, Any] | None = None) -> dict[str, Any]:
     """Atualiza no lugar o dicionário de módulo já publicado (não cria cópia).
 
     É o caminho para valores calculados depois de ``set_module_data`` — por
@@ -276,8 +276,8 @@ def update_module_data(group: Any,
     return tm
 
 
-def set_esquadria_data(group: Any, data: Optional[Dict[str, Any]] = None,
-                       **kwargs: Any) -> Dict[str, Any]:
+def set_esquadria_data(group: Any, data: dict[str, Any] | None = None,
+                       **kwargs: Any) -> dict[str, Any]:
     """Grava metadados de esquadria nas três chaves, com os apelidos certos.
 
     ``trazomob`` fica com o ``kind`` e os nomes ``*_mm``; ``trazomob_esquadria``
@@ -301,7 +301,7 @@ def set_esquadria_data(group: Any, data: Optional[Dict[str, Any]] = None,
 
 
 def update_esquadria_data(group: Any,
-                          data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+                          data: dict[str, Any] | None = None) -> dict[str, Any]:
     """Atualiza metadados de esquadria mantendo as três chaves coerentes.
 
     Parte do que já está gravado e reescreve tudo por ``set_esquadria_data``:
@@ -312,18 +312,18 @@ def update_esquadria_data(group: Any,
     return set_esquadria_data(group, dados)
 
 
-def ambiente_params(group: Any) -> Dict[str, Any]:
+def ambiente_params(group: Any) -> dict[str, Any]:
     """Parâmetros de um ambiente (cópia)."""
     return dict(get_trazomob(group))
 
 
-def pavimento_params(group: Any) -> Dict[str, Any]:
+def pavimento_params(group: Any) -> dict[str, Any]:
     """Dados de um pavimento (cópia)."""
     return dict(get_trazomob(group))
 
 
-def set_ambiente_data(group: Any, data: Optional[Dict[str, Any]] = None,
-                      **kwargs: Any) -> Dict[str, Any]:
+def set_ambiente_data(group: Any, data: dict[str, Any] | None = None,
+                      **kwargs: Any) -> dict[str, Any]:
     """Grava metadados de ambiente na chave oficial."""
     ext = _ensure_ext(group)
     payload = dict(data or {})
@@ -336,7 +336,7 @@ def set_ambiente_data(group: Any, data: Optional[Dict[str, Any]] = None,
 
 
 def update_ambiente_data(group: Any,
-                         data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+                         data: dict[str, Any] | None = None) -> dict[str, Any]:
     """Atualiza metadados de ambiente no lugar."""
     ext = _ensure_ext(group)
     if ext is None:
@@ -349,8 +349,8 @@ def update_ambiente_data(group: Any,
     return tm
 
 
-def set_pavimento_data(group: Any, data: Optional[Dict[str, Any]] = None,
-                       **kwargs: Any) -> Dict[str, Any]:
+def set_pavimento_data(group: Any, data: dict[str, Any] | None = None,
+                       **kwargs: Any) -> dict[str, Any]:
     """Grava metadados de pavimento na chave oficial."""
     ext = _ensure_ext(group)
     payload = dict(data or {})
@@ -363,7 +363,7 @@ def set_pavimento_data(group: Any, data: Optional[Dict[str, Any]] = None,
 
 
 def update_pavimento_data(group: Any,
-                          data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+                          data: dict[str, Any] | None = None) -> dict[str, Any]:
     """Atualiza metadados de pavimento no lugar."""
     ext = _ensure_ext(group)
     if ext is None:
@@ -376,8 +376,8 @@ def update_pavimento_data(group: Any,
     return tm
 
 
-def set_floor_data(group: Any, data: Optional[Dict[str, Any]] = None,
-                   **kwargs: Any) -> Dict[str, Any]:
+def set_floor_data(group: Any, data: dict[str, Any] | None = None,
+                   **kwargs: Any) -> dict[str, Any]:
     """Grava metadados de piso/laje na chave oficial."""
     ext = _ensure_ext(group)
     payload = dict(data or {})
@@ -389,8 +389,8 @@ def set_floor_data(group: Any, data: Optional[Dict[str, Any]] = None,
     return payload
 
 
-def set_ceiling_data(group: Any, data: Optional[Dict[str, Any]] = None,
-                     **kwargs: Any) -> Dict[str, Any]:
+def set_ceiling_data(group: Any, data: dict[str, Any] | None = None,
+                     **kwargs: Any) -> dict[str, Any]:
     """Grava metadados de teto/forro na chave oficial."""
     ext = _ensure_ext(group)
     payload = dict(data or {})
@@ -402,8 +402,8 @@ def set_ceiling_data(group: Any, data: Optional[Dict[str, Any]] = None,
     return payload
 
 
-def set_wall_data(group: Any, data: Optional[Dict[str, Any]] = None,
-                  **kwargs: Any) -> Dict[str, Any]:
+def set_wall_data(group: Any, data: dict[str, Any] | None = None,
+                  **kwargs: Any) -> dict[str, Any]:
     """Grava metadados de parede na chave oficial."""
     ext = _ensure_ext(group)
     payload = dict(data or {})

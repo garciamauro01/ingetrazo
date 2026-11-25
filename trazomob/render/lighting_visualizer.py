@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Optional
 
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import (
@@ -217,15 +216,15 @@ def _ray_blocked(vp, ray_orig: QVector3D, ray_dir: QVector3D, reach: float, occ_
 class TrazoMobLightVisualizer:
     """Gerencia a renderização dos cones de spot, alvos de mira, fitas LED e seleção no viewport."""
 
-    _selected_light_idx: Optional[int] = None
-    _active_hud: Optional[LightQuickPopupHUD] = None
+    _selected_light_idx: int | None = None
+    _active_hud: LightQuickPopupHUD | None = None
 
     @classmethod
-    def get_selected_index(cls) -> Optional[int]:
+    def get_selected_index(cls) -> int | None:
         return cls._selected_light_idx
 
     @classmethod
-    def set_selected_index(cls, idx: Optional[int], viewport=None):
+    def set_selected_index(cls, idx: int | None, viewport=None):
         cls._selected_light_idx = idx
         if viewport is not None:
             viewport.update()
@@ -235,7 +234,7 @@ class TrazoMobLightVisualizer:
         cls,
         viewport,
         world_pt: QVector3D,
-        normal_hint: Optional[QVector3D] = None,
+        normal_hint: QVector3D | None = None,
         _ctx=None,
     ) -> bool:
         """Verifica se o ponto 3D está desobstruído na visão da câmera (sem objetos/móveis à frente)."""
@@ -292,7 +291,7 @@ class TrazoMobLightVisualizer:
         viewport,
         vec_p1: QVector3D,
         vec_p2: QVector3D,
-        normal_hint: Optional[QVector3D] = None,
+        normal_hint: QVector3D | None = None,
         _ctx=None,
         samples: int = 24,
     ) -> list[tuple[QVector3D, QVector3D, bool, bool]]:
@@ -327,7 +326,7 @@ class TrazoMobLightVisualizer:
             return [(vec_p1, vec_p2, True, True)]
 
         segments: list[tuple[QVector3D, QVector3D, bool, bool]] = []
-        seg_start_t: Optional[float] = 0.0 if vis_samples[0] else None
+        seg_start_t: float | None = 0.0 if vis_samples[0] else None
         seg_start_exact = bool(vis_samples[0])
 
         for k in range(1, n + 1):
@@ -349,7 +348,7 @@ class TrazoMobLightVisualizer:
         return segments
 
     @classmethod
-    def pick_light_or_target(cls, viewport, px: float, py: float) -> Optional[tuple[str, int]]:
+    def pick_light_or_target(cls, viewport, px: float, py: float) -> tuple[str, int] | None:
         """Verifica se o clique pegou a lâmpada/spot, fita LED ou o ponto focal de um spot.
         Retorna ('bulb', idx), ('target', idx), ('led_p1', idx), ('led_p2', idx) ou None.
         Ignora luzes que estejam obstruídas por móveis ou paredes.
@@ -403,7 +402,7 @@ class TrazoMobLightVisualizer:
         return best
 
     @classmethod
-    def on_light_clicked(cls, pick_result: Optional[tuple[str, int]], viewport, click_pos=None):
+    def on_light_clicked(cls, pick_result: tuple[str, int] | None, viewport, click_pos=None):
         if pick_result is None:
             cls.set_selected_index(None, viewport)
             if cls._active_hud:

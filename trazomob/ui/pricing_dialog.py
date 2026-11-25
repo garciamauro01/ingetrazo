@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import copy
-from typing import Any, Dict, List
+from typing import Any
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
@@ -560,7 +560,7 @@ class AdminCostSettingsDialog(QDialog):
 class PricingProposalPresentationDialog(QDialog):
     """Janela de Orçamento e Proposta Comercial no Modo Apresentação (Visão Cliente)."""
 
-    def __init__(self, parts: List[Dict[str, Any]], parent=None):
+    def __init__(self, parts: list[dict[str, Any]], parent=None):
         super().__init__(parent)
         self.setWindowTitle("💼 Proposta Comercial & Orçamento (Visão de Apresentação)")
         self.resize(760, 520)

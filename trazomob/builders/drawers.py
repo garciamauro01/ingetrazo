@@ -7,8 +7,6 @@ e suportando espessuras dinâmicas (15mm, 18mm, 25mm, etc.).
 
 from __future__ import annotations
 
-from typing import Tuple
-
 from core.group import Group
 from trazomob.builders.chapa_builder import build_chapa
 from trazomob.builders.chapa_spec import (
@@ -233,7 +231,7 @@ class CanonicalDrawerBuilder:
     def build_gaveta_completa(
         cls,
         prefixo: str = "Gaveta",
-        origem: Tuple[float, float, float] = (0.0, 0.0, 0.0),
+        origem: tuple[float, float, float] = (0.0, 0.0, 0.0),
         largura: float = 0.50,
         profundidade: float = 0.50,
         altura: float = 0.18,

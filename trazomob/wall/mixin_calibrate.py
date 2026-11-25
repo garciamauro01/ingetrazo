@@ -3,8 +3,6 @@
 """Diálogo 2D de Planta Baixa para desenho de paredes e geração 3D automática."""
 from __future__ import annotations
 
-from typing import Optional, Tuple
-
 from PySide6.QtCore import Qt
 from PySide6.QtGui import (
     QPixmap,
@@ -15,8 +13,8 @@ from PySide6.QtGui import (
 class CalibrateMixin:
     """Gerenciamento de imagem de referencia e calibracao do canvas."""
 
-    def set_reference_image(self, file_path: str, pos_world: Optional[Tuple[float, float]] = None,
-                            width_m: Optional[float] = None, opacity: float = 0.5,
+    def set_reference_image(self, file_path: str, pos_world: tuple[float, float] | None = None,
+                            width_m: float | None = None, opacity: float = 0.5,
                             rotation: int = 0, visible: bool = True) -> bool:
         """Carrega imagem de referência e define escala e posicionamento."""
         pm = QPixmap(file_path)

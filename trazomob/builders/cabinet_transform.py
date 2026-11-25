@@ -173,6 +173,7 @@ def _rotate_group_tree(
     visited.add(id(grp))
 
     from core.group import carry_axes
+
     from ..integrations import platform as host
     _remap_uvws = host.remap_uvws
 
@@ -448,6 +449,7 @@ class CabinetTransformMixin:
             return False
 
         from core.group import carry_axes
+
         from ..integrations import platform as host
         _remap_uvws = host.remap_uvws
         from core.history import scale_matrix

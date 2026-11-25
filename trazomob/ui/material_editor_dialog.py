@@ -8,7 +8,7 @@ Permite listar todos os materiais da cena atual e configurar:
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 from PySide6.QtCore import QEvent, QObject, Qt, Signal
 from PySide6.QtGui import QColor, QIcon, QImage, QPainter, QPixmap
@@ -153,7 +153,7 @@ def _resolve_mat_name(attrs: dict | None) -> str:
 
 
 def _register_material_entry(
-    materials_dict: Dict[str, Dict[str, Any]],
+    materials_dict: dict[str, dict[str, Any]],
     attrs: dict | None,
     *,
     owner_name: str | None = None,
@@ -192,8 +192,8 @@ def _register_material_entry(
 def _mesh_unique_attrs(
     mesh: Any,
     paint: Any,
-    cache: Dict[tuple[int, int], List[dict]],
-) -> List[dict]:
+    cache: dict[tuple[int, int], list[dict]],
+) -> list[dict]:
     """Extrai os dicionários de atributos efetivos únicos de ``mesh`` com cache por ``(id(mesh), id(paint))``."""
     from core.materials import effective_attrs
     from core.mesh import face_attrs
@@ -203,7 +203,7 @@ def _mesh_unique_attrs(
     if cached is not None:
         return cached
 
-    unique_attrs: Dict[str, dict] = {}
+    unique_attrs: dict[str, dict] = {}
     for f_attrs in face_attrs(mesh):
         if not isinstance(f_attrs, dict):
             continue
@@ -223,8 +223,8 @@ def _mesh_unique_attrs(
 
 def _collect_group_materials(
     group: Any,
-    materials_dict: Dict[str, Dict[str, Any]],
-    mesh_attrs_cache: Dict[tuple[int, int], List[dict]],
+    materials_dict: dict[str, dict[str, Any]],
+    mesh_attrs_cache: dict[tuple[int, int], list[dict]],
     *,
     top_group: Any = None,
 ) -> None:
@@ -255,7 +255,7 @@ def _collect_group_materials(
             )
 
 
-def extract_scene_materials(scene) -> List[dict]:
+def extract_scene_materials(scene) -> list[dict]:
     """Extrai todos os materiais e texturas reais usados na cena, retornando lista de dicts com metadados.
 
     Cada item retornado possui:
@@ -271,7 +271,7 @@ def extract_scene_materials(scene) -> List[dict]:
     """
     from core.mesh import face_attrs
 
-    materials_dict: Dict[str, Dict[str, Any]] = {}
+    materials_dict: dict[str, dict[str, Any]] = {}
 
     # 1. Varre os materiais cadastrados no registro da cena (scene.materials)
     registry = getattr(scene, "materials", None) or {}
@@ -305,7 +305,7 @@ def extract_scene_materials(scene) -> List[dict]:
 
     # 3. Varre grupos e componentes com herança de pintura sem clonar para coordenadas do mundo
     ent_vis = getattr(scene, "entity_visible", None)
-    mesh_attrs_cache: Dict[tuple[int, int], List[dict]] = {}
+    mesh_attrs_cache: dict[tuple[int, int], list[dict]] = {}
     for g in getattr(scene, "groups", []):
         if callable(ent_vis) and not ent_vis(g):
             continue
@@ -315,11 +315,11 @@ def extract_scene_materials(scene) -> List[dict]:
     return sorted(list(materials_dict.values()), key=lambda m: m["display_name"].lower())
 
 
-def extract_group_materials(group) -> List[Dict[str, Any]]:
+def extract_group_materials(group) -> list[dict[str, Any]]:
     """Extrai todos os materiais e texturas usados em um único Group (e seus filhos)."""
     if group is None:
         return []
-    materials_dict: Dict[str, Dict[str, Any]] = {}
+    materials_dict: dict[str, dict[str, Any]] = {}
     _collect_group_materials(group, materials_dict, {}, top_group=group)
     return sorted(list(materials_dict.values()), key=lambda m: m["display_name"].lower())
 
@@ -1333,7 +1333,7 @@ class MaterialEditorDialog(QDialog):
         """Sincroniza os ajustes de opacidade (0.05..1.0) para o modelo 3D."""
         if self.scene is None:
             return
-        opacity_updates: Dict[str, float | None] = {}
+        opacity_updates: dict[str, float | None] = {}
         for mat_item in self._scene_materials:
             mat_name = mat_item.get("name")
             if not mat_name:

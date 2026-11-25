@@ -11,8 +11,8 @@ módulos ao longo da direção horizontal da face.
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 from PySide6.QtGui import QVector3D
 

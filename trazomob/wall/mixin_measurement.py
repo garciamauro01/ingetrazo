@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import math
-from typing import List, Optional, Tuple
 
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -29,7 +28,7 @@ from ..wall.plan_2d import dist_2d
 class MeasurementMixin:
     """Logica de medicao e aplicacao de cotas/dimensoes do canvas."""
 
-    def _find_segment_for_dimension(self, p1: Tuple[float, float], p2: Tuple[float, float]) -> Optional[int]:
+    def _find_segment_for_dimension(self, p1: tuple[float, float], p2: tuple[float, float]) -> int | None:
         """Localiza qual parede é representada ou corre paralela a esses dois pontos cotados.
 
         A escolha é determinística: usa as paredes efetivamente cobertas pela cota
@@ -43,14 +42,14 @@ class MeasurementMixin:
 
         L = chain.span_len
 
-        def overlap(item: Tuple[int, float, float, float]) -> float:
+        def overlap(item: tuple[int, float, float, float]) -> float:
             _sid, min_t, max_t, _sL = item
             return max(0.0, min(L, max_t) - max(0.0, min_t))
 
         best = max(chain.spans, key=lambda item: (overlap(item), -item[1]))
         return best[0] if overlap(best) > 1e-6 else None
 
-    def _find_segments_along_dimension(self, p1: Tuple[float, float], p2: Tuple[float, float]) -> List[Tuple[int, float, float, float]]:
+    def _find_segments_along_dimension(self, p1: tuple[float, float], p2: tuple[float, float]) -> list[tuple[int, float, float, float]]:
         """Retorna as paredes colineares cobertas pelo vão de p1 a p2.
 
         Retorna lista ordenada de tuplas: (seg_id, min_t, max_t, comprimento_m).
@@ -321,7 +320,7 @@ class MeasurementMixin:
                 self.update()
             return False
 
-    def _edit_segment_length_dialog(self, seg_id: int, face_type: str = "centro", current_face_len: Optional[float] = None) -> bool:
+    def _edit_segment_length_dialog(self, seg_id: int, face_type: str = "centro", current_face_len: float | None = None) -> bool:
         """Abre caixa de diálogo para digitar nova medida e escolher o sentido de expansão/ancoragem.
 
         Retorna True se confirmado/aceito, False se cancelado.

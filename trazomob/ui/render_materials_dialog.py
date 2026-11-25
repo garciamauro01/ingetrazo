@@ -3,7 +3,7 @@
 """Diálogo para mapear cada material/cor/textura de um objeto para presets de render."""
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from PySide6.QtCore import QEvent, QObject, Qt
 from PySide6.QtGui import QColor, QPixmap
@@ -67,8 +67,8 @@ class RenderMaterialsDialog(QDialog):
         super().__init__(parent)
         self._group = group
         self._viewport = viewport
-        self._eyedropper_filter: Optional[_ViewportEyedropperFilter] = None
-        self._selected_row_widget: Optional[QWidget] = None
+        self._eyedropper_filter: _ViewportEyedropperFilter | None = None
+        self._selected_row_widget: QWidget | None = None
 
         obj_name = getattr(group, "name", "") or tr("Objeto")
         self.setWindowTitle(f"{tr('Acabamentos de Render')} — {obj_name}")
@@ -85,9 +85,9 @@ class RenderMaterialsDialog(QDialog):
         info.setWordWrap(True)
         root.addWidget(info)
 
-        self._combos: Dict[str, QComboBox] = {}
-        self._row_widgets: Dict[str, QWidget] = {}
-        self._rows: List[Tuple[str, QWidget, QComboBox]] = []
+        self._combos: dict[str, QComboBox] = {}
+        self._row_widgets: dict[str, QWidget] = {}
+        self._rows: list[tuple[str, QWidget, QComboBox]] = []
         slots = extract_group_material_slots(group)
         saved = get_group_render_materials(group)
 

@@ -11,7 +11,7 @@ Concentra:
 from __future__ import annotations
 
 import math
-from typing import Any, Optional, Tuple
+from typing import Any
 
 from PySide6.QtGui import QVector3D
 
@@ -21,7 +21,7 @@ from ..domain.module_utils import is_esquadria, shift_module_geometry
 from ..domain.schema import module_params
 
 
-def get_module_carcass_bounds(mod: Group) -> Optional[Tuple[float, float, float, float, float, float]]:
+def get_module_carcass_bounds(mod: Group) -> tuple[float, float, float, float, float, float] | None:
     """Calcula os limites em metros da caixaria (min_x, max_x, min_y, max_y, min_z, max_z).
 
     Ignora frentes móveis, portas abertas, puxadores e perfis de acabamento para obter o volume
@@ -133,7 +133,7 @@ def preserve_module_back_alignment(old_mod: Group, new_mod: Group, rot_z_deg: fl
 # ``domain.module_utils``; ver o topo deste arquivo.
 
 
-def get_reference_module(scene) -> Optional[Group]:
+def get_reference_module(scene) -> Group | None:
     """Retorna o módulo de referência selecionado ou o último adicionado na cena."""
     if scene is None:
         return None

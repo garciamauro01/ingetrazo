@@ -3,7 +3,7 @@
 """Diálogo 2D de Planta Baixa para desenho de paredes e geração 3D automática."""
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from PySide6.QtCore import QPointF, Qt, Signal
 from PySide6.QtGui import (
@@ -31,7 +31,7 @@ class WallFloorplanCanvas(NavigationMixin, HistoryMixin, InputHandlingMixin, Dra
     current_length_changed = Signal(float)  # comprimento em tempo real enquanto desenha
     point_edit_hint = Signal(str)  # feedback da ferramenta de adicionar/remover pontos
 
-    def __init__(self, graph: WallGraph2D, parent: Optional[QWidget] = None):
+    def __init__(self, graph: WallGraph2D, parent: QWidget | None = None):
         super().__init__(parent)
         self.graph = graph
         self.setMouseTracking(True)
@@ -41,56 +41,56 @@ class WallFloorplanCanvas(NavigationMixin, HistoryMixin, InputHandlingMixin, Dra
         self._zoom = 80.0  # pixels por metro (80px = 1.0m)
         self._offset_x = 0.0
         self._offset_y = 0.0
-        self._pan_start: Optional[QPointF] = None
+        self._pan_start: QPointF | None = None
 
         # Ferramenta ativa: "linha", "retangulo", "selecionar", "cota" ou "pontos"
         self.mode = "linha"
 
         # Estado de desenho
-        self._start_pt: Optional[Tuple[float, float]] = None
-        self._current_mouse_world: Tuple[float, float] = (0.0, 0.0)
-        self._snap_info: Optional[str] = None
-        self._history: List[List[Tuple[float, float, float, float]]] = []
+        self._start_pt: tuple[float, float] | None = None
+        self._current_mouse_world: tuple[float, float] = (0.0, 0.0)
+        self._snap_info: str | None = None
+        self._history: list[list[tuple[float, float, float, float]]] = []
 
         # Guias de alinhamento com outros pontos (cantos / nós)
-        self._align_guides: List[Tuple[QPointF, QPointF]] = []
+        self._align_guides: list[tuple[QPointF, QPointF]] = []
 
         # Estado de seleção e arrasto
-        self._selected_seg_id: Optional[int] = None
-        self._selected_node_id: Optional[int] = None
-        self._selected_dim_id: Optional[int] = None
-        self._drag_dim_id: Optional[int] = None
-        self._drag_dim_start_mouse: Optional[Tuple[float, float]] = None
-        self._drag_node_id: Optional[int] = None
-        self._drag_mid_seg_id: Optional[int] = None
-        self._drag_mid_start_mouse: Optional[Tuple[float, float]] = None
-        self._drag_start_mouse: Optional[Tuple[float, float]] = None
-        self._dimension_badges: Dict[str, Dict[str, Any]] = {}  # {badge_key: {rect, seg_id, dim_id, length_m}}
-        self._room_badges: List[Dict[str, Any]] = []  # [{rect, cycle_pts, name, area_m2}]
+        self._selected_seg_id: int | None = None
+        self._selected_node_id: int | None = None
+        self._selected_dim_id: int | None = None
+        self._drag_dim_id: int | None = None
+        self._drag_dim_start_mouse: tuple[float, float] | None = None
+        self._drag_node_id: int | None = None
+        self._drag_mid_seg_id: int | None = None
+        self._drag_mid_start_mouse: tuple[float, float] | None = None
+        self._drag_start_mouse: tuple[float, float] | None = None
+        self._dimension_badges: dict[str, dict[str, Any]] = {}  # {badge_key: {rect, seg_id, dim_id, length_m}}
+        self._room_badges: list[dict[str, Any]] = []  # [{rect, cycle_pts, name, area_m2}]
         self._next_badge_id: int = 1
 
         # Modo Cota Livre / Pontos Cotados
-        self._cota_points: List[Tuple[float, float]] = []
+        self._cota_points: list[tuple[float, float]] = []
 
         # Buffer de digitação direta numérica (VCB)
         self._type_buffer: str = ""
-        self._t_ref_info: Optional[Dict[str, Any]] = None
+        self._t_ref_info: dict[str, Any] | None = None
 
         # Linhas de projeção do pavimento inferior (underlay)
-        self._underlay_lines: List[Tuple[Tuple[float, float], Tuple[float, float]]] = []
+        self._underlay_lines: list[tuple[tuple[float, float], tuple[float, float]]] = []
 
         # Imagem de Referência / Decalque de Fundo
-        self._ref_image_path: Optional[str] = None
-        self._ref_pixmap: Optional[QPixmap] = None
-        self._ref_original_pixmap: Optional[QPixmap] = None
-        self._ref_pos_world: Tuple[float, float] = (0.0, 0.0)  # Canto inferior esquerdo em coords do mundo
+        self._ref_image_path: str | None = None
+        self._ref_pixmap: QPixmap | None = None
+        self._ref_original_pixmap: QPixmap | None = None
+        self._ref_pos_world: tuple[float, float] = (0.0, 0.0)  # Canto inferior esquerdo em coords do mundo
         self._ref_width_m: float = 10.0  # Largura física da imagem no mundo
         self._ref_opacity: float = 0.5   # Opacidade 0.1 a 1.0
         self._ref_visible: bool = True
         self._ref_rotation: int = 0      # Rotação 0, 90, 180, 270
 
         # Estados de interação da imagem
-        self._drag_ref_start: Optional[Tuple[float, float]] = None
-        self._drag_ref_initial_pos: Optional[Tuple[float, float]] = None
-        self._calib_points: List[Tuple[float, float]] = []
+        self._drag_ref_start: tuple[float, float] | None = None
+        self._drag_ref_initial_pos: tuple[float, float] | None = None
+        self._calib_points: list[tuple[float, float]] = []
 

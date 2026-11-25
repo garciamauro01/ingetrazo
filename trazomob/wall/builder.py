@@ -10,7 +10,6 @@ gerando geometria 3D sólida (manifold), limpa e agrupada automaticamente na cam
 from __future__ import annotations
 
 import math
-from typing import Optional
 
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QVector3D
@@ -44,7 +43,7 @@ class AddWallGroupCommand(Command):
 class ReplaceWallGroupCommand(Command):
     """Comando reversível para atualizar o sólido da parede contínua ao estender a cadeia."""
 
-    def __init__(self, old_group: Optional[Group], new_group: Group) -> None:
+    def __init__(self, old_group: Group | None, new_group: Group) -> None:
         self.old_group = old_group
         self.new_group = new_group
 
@@ -146,14 +145,14 @@ class WallBuilderTool(Tool):
         self.on_wall_added = on_wall_added
         self.on_deactivated = on_deactivated
 
-        self.start_point: Optional[QVector3D] = None
-        self.hover_point: Optional[QVector3D] = None
-        self.chain_first_point: Optional[QVector3D] = None
+        self.start_point: QVector3D | None = None
+        self.hover_point: QVector3D | None = None
+        self.chain_first_point: QVector3D | None = None
         self.chain_points: list[QVector3D] = []
-        self._current_wall_group: Optional[Group] = None
+        self._current_wall_group: Group | None = None
         self._wall_counter = 1
 
-    def set_params(self, altura_m: float, espessura_m: float, alinhamento: str, gerar_teto: Optional[bool] = None) -> None:
+    def set_params(self, altura_m: float, espessura_m: float, alinhamento: str, gerar_teto: bool | None = None) -> None:
         self.altura_m = altura_m
         self.espessura_m = espessura_m
         self.alinhamento = alinhamento
@@ -187,7 +186,7 @@ class WallBuilderTool(Tool):
         self._reset()
         viewport.update()
 
-    def _apply_ortho_snap(self, pt: QVector3D, shift_held: bool = False) -> tuple[QVector3D, Optional[str]]:
+    def _apply_ortho_snap(self, pt: QVector3D, shift_held: bool = False) -> tuple[QVector3D, str | None]:
         """Aplica atracão magnética ortogonal 90° (Eixos X e Y) em relação ao start_point.
 
         Se Shift estiver pressionado ou o ângulo estiver dentro da tolerância magnética (~15°),
@@ -242,7 +241,7 @@ class WallBuilderTool(Tool):
 
     def _find_snap_on_existing_walls(
         self, raw_pt: QVector3D, scene, threshold_m: float = 0.25
-    ) -> tuple[Optional[QVector3D], Optional[str], Optional[Group], Optional[int]]:
+    ) -> tuple[QVector3D | None, str | None, Group | None, int | None]:
         """Busca vértices ou arestas de paredes existentes (trazomob_wall) próximas ao cursor.
 
         Retorna (ponto_ajustado, tipo_snap, wall_group, seg_index).
@@ -363,7 +362,7 @@ class WallBuilderTool(Tool):
         host_grp: Group,
         snap_pt: QVector3D,
         snap_type: str,
-        snap_seg: Optional[int],
+        snap_seg: int | None,
         branch_dir: QVector3D,
     ) -> None:
         """Divide a parede hospedeira no ponto de junção T (Split) e abre a face de encontro
@@ -965,16 +964,16 @@ class WallBuilderTool(Tool):
         altura_m: float | list[float],
         espessura_m: float,
         alinhamento: str = "interno",
-        name_override: Optional[str] = None,
-        segment_index: Optional[int] = None,
+        name_override: str | None = None,
+        segment_index: int | None = None,
         miter_start: bool = False,
         miter_end: bool = False,
         open_start: bool = False,
         open_end: bool = False,
-        open_quinas: Optional[list[int]] = None,
-        open_side_a: Optional[list[int]] = None,
-        open_side_b: Optional[list[int]] = None,
-        openings: Optional[list[dict[str, any]]] = None,
+        open_quinas: list[int] | None = None,
+        open_side_a: list[int] | None = None,
+        open_side_b: list[int] | None = None,
+        openings: list[dict[str, any]] | None = None,
     ) -> Group:
         """Constrói uma parede contínua única (manifold sólida), com cantos unidos em esquadria."""
         n_pts = len(pts)
@@ -1054,10 +1053,10 @@ class WallBuilderTool(Tool):
         miter_end: bool = False,
         open_start: bool = False,
         open_end: bool = False,
-        open_quinas: Optional[list[int]] = None,
-        open_side_a: Optional[list[int]] = None,
-        open_side_b: Optional[list[int]] = None,
-        openings: Optional[list[dict[str, any]]] = None,
+        open_quinas: list[int] | None = None,
+        open_side_a: list[int] | None = None,
+        open_side_b: list[int] | None = None,
+        openings: list[dict[str, any]] | None = None,
     ) -> tuple[Mesh, dict[int, int]]:
         """Delega o calculo da malha 3D de paredes para o WallMeshBuilder."""
         return WallMeshBuilder.compute_wall_mesh(
@@ -1076,12 +1075,12 @@ class WallBuilderTool(Tool):
             openings=openings,
         )
 
-    def _build_floor(self, scene, points: list[QVector3D]) -> Optional[AddFloorCommand]:
+    def _build_floor(self, scene, points: list[QVector3D]) -> AddFloorCommand | None:
         """Delega a geracao do solido do piso para o WallMeshBuilder."""
         grp = WallMeshBuilder.build_floor_group(scene, points)
         return AddFloorCommand(grp) if grp is not None else None
 
-    def _build_ceiling(self, scene, points: list[QVector3D], altura_m: float = 2.60) -> Optional[AddFloorCommand]:
+    def _build_ceiling(self, scene, points: list[QVector3D], altura_m: float = 2.60) -> AddFloorCommand | None:
         """Delega a geracao do solido do teto para o WallMeshBuilder."""
         grp = WallMeshBuilder.build_ceiling_group(scene, points, altura_m=altura_m)
         return AddFloorCommand(grp) if grp is not None else None

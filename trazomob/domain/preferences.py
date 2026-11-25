@@ -15,7 +15,7 @@ import json
 import logging
 import secrets
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from core.paths import user_log_dir
 
@@ -67,7 +67,7 @@ def get_preferences_file_path() -> Path:
     return base_dir / PREFERENCES_FILENAME
 
 
-DEFAULT_PREFERENCES: Dict[str, Any] = {
+DEFAULT_PREFERENCES: dict[str, Any] = {
     # ── 1. Padrões Globais de Marcenaria ──
     "global": {
         "espessura_caixa_mm": 15.0,
@@ -228,11 +228,11 @@ DEFAULT_PREFERENCES: Dict[str, Any] = {
 class TrazoMobPreferencesManager:
     """Gerenciador singleton para leitura e escrita segura de preferências do usuário."""
 
-    _instance: Optional[TrazoMobPreferencesManager] = None
+    _instance: TrazoMobPreferencesManager | None = None
 
     def __init__(self) -> None:
         self.filepath = get_preferences_file_path()
-        self._data: Dict[str, Any] = {}
+        self._data: dict[str, Any] = {}
         self.load()
 
     @classmethod
@@ -272,7 +272,7 @@ class TrazoMobPreferencesManager:
             logger.error("Erro ao salvar preferências: %s", e)
             return False
 
-    def get_section(self, section: str) -> Dict[str, Any]:
+    def get_section(self, section: str) -> dict[str, Any]:
         return self._data.setdefault(section, {})
 
     def get_global(self, key: str, default: Any = None) -> Any:
@@ -287,15 +287,15 @@ class TrazoMobPreferencesManager:
             return m_defs[mod_id_or_cat][param]
         return default
 
-    def set_module_defaults(self, mod_id_or_cat: str, params: Dict[str, Any]) -> None:
+    def set_module_defaults(self, mod_id_or_cat: str, params: dict[str, Any]) -> None:
         m_defs = self._data.setdefault("module_defaults", {})
         target = m_defs.setdefault(mod_id_or_cat, {})
         target.update(params)
 
-    def get_wall_guides_config(self) -> Dict[str, Any]:
+    def get_wall_guides_config(self) -> dict[str, Any]:
         return self._data.setdefault("wall_guides", {})
 
-    def save_wall_guides_config(self, active_preset: str, visible: bool, show_labels: bool, snap_enabled: bool, custom_presets: Optional[Dict] = None) -> None:
+    def save_wall_guides_config(self, active_preset: str, visible: bool, show_labels: bool, snap_enabled: bool, custom_presets: dict | None = None) -> None:
         wg = self.get_wall_guides_config()
         wg["active_preset"] = active_preset
         wg["visible"] = bool(visible)
@@ -306,7 +306,7 @@ class TrazoMobPreferencesManager:
         self.save()
 
     # ── Meus Módulos (catálogo pessoal) ──
-    def get_user_modules(self) -> list[Dict[str, Any]]:
+    def get_user_modules(self) -> list[dict[str, Any]]:
         """Retorna a lista de módulos salvos pelo usuário (cópia defensiva)."""
         mods = self._data.setdefault("user_modules", [])
         if not isinstance(mods, list):
@@ -314,12 +314,12 @@ class TrazoMobPreferencesManager:
             self._data["user_modules"] = mods
         return [dict(m) for m in mods if isinstance(m, dict)]
 
-    def set_user_modules(self, modules: list[Dict[str, Any]]) -> bool:
+    def set_user_modules(self, modules: list[dict[str, Any]]) -> bool:
         """Substitui toda a coleção de módulos do usuário e persiste."""
         self._data["user_modules"] = [dict(m) for m in modules if isinstance(m, dict)]
         return self.save()
 
-    def add_user_module(self, module: Dict[str, Any]) -> bool:
+    def add_user_module(self, module: dict[str, Any]) -> bool:
         """Adiciona (ou atualiza, mesmo ``id``) um módulo do usuário e persiste."""
         module = dict(module)
         module_id = module.get("id")
@@ -336,7 +336,7 @@ class TrazoMobPreferencesManager:
         return self.set_user_modules(restantes)
 
     # ── Precificação (Onda 3 + Híbrido) ──
-    def get_pricing_config(self) -> Dict[str, Any]:
+    def get_pricing_config(self) -> dict[str, Any]:
         return self._data.setdefault("pricing", {})
 
     def check_pin(self, pin: str) -> bool:
@@ -399,17 +399,17 @@ class TrazoMobPreferencesManager:
         pricing = self.get_pricing_config()
         return pricing.get("desconto_percent", 0.0)
 
-    def get_frete_config(self) -> Dict[str, Any]:
+    def get_frete_config(self) -> dict[str, Any]:
         pricing = self.get_pricing_config()
         return {
             "tipo": pricing.get("frete_tipo", "fixo"),
             "valor": pricing.get("frete_valor", 0.0),
         }
 
-    def get_empresa_config(self) -> Dict[str, Any]:
+    def get_empresa_config(self) -> dict[str, Any]:
         pricing = self.get_pricing_config()
         return pricing.get("empresa", {})
 
-    def save_pricing_config(self, pricing_data: Dict[str, Any]) -> None:
+    def save_pricing_config(self, pricing_data: dict[str, Any]) -> None:
         self._data["pricing"] = pricing_data
         self.save()

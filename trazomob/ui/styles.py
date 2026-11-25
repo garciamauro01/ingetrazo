@@ -3,13 +3,11 @@
 """Gerenciamento centralizado de temas e estilos QSS para o plugin TrazoMob."""
 from __future__ import annotations
 
-from typing import Dict
-
 from PySide6.QtGui import QPalette
 from PySide6.QtWidgets import QApplication
 
 
-def get_theme_palette() -> Dict[str, str]:
+def get_theme_palette() -> dict[str, str]:
     """Retorna os tokens de cores adaptados ao tema ativo (Dark/Light)."""
     app = QApplication.instance()
     is_dark = True
@@ -59,7 +57,7 @@ def get_theme_palette() -> Dict[str, str]:
     }
 
 
-def get_dialog_stylesheet(c: Dict[str, str]) -> str:
+def get_dialog_stylesheet(c: dict[str, str]) -> str:
     """Gera a folha de estilo principal para janelas e diálogos do TrazoMob."""
     return f"""
         QDialog {{

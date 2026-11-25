@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING
 
 from PySide6.QtGui import QVector3D
 
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 class MagneticDragContextMixin:
     """Contexto de selecao e vizinhos para o arraste magnetico."""
 
-    def _get_selected_module(self) -> Optional[Group]:
+    def _get_selected_module(self) -> Group | None:
         """Retorna o módulo TrazoMob atualmente selecionado na cena, se houver."""
         scene = getattr(self.viewport, "scene", None)
         if not scene:
@@ -44,7 +44,7 @@ class MagneticDragContextMixin:
             self._refresh_active_cotas()
             self.viewport.update()
 
-    def _is_module_group(self, group: Optional[Group]) -> bool:
+    def _is_module_group(self, group: Group | None) -> bool:
         if group is None:
             return False
         return bool(
@@ -53,7 +53,7 @@ class MagneticDragContextMixin:
             and "trazomob_module" in group.ext
         )
 
-    def _find_top_module(self, group: Optional[Group]) -> Optional[Group]:
+    def _find_top_module(self, group: Group | None) -> Group | None:
         """Encontra o módulo raiz caso o usuário tenha clicado numa peça interna."""
         if group is None:
             return None
@@ -93,7 +93,7 @@ class MagneticDragContextMixin:
                         return g
         return group if hasattr(group, "mesh") or getattr(group, "xform", None) is not None else None
 
-    def _get_other_modules_bounds(self, exclude_module: Optional[Group] = None, exclude_groups: Optional[List[Group]] = None) -> List[Tuple[Group, Tuple[float, float, float, float, float, float]]]:
+    def _get_other_modules_bounds(self, exclude_module: Group | None = None, exclude_groups: list[Group] | None = None) -> list[tuple[Group, tuple[float, float, float, float, float, float]]]:
         """Retorna [(group, bounds)] dos demais módulos da cena, usando cache durante o arraste."""
         if self._drag_active and getattr(self, "_other_modules_bounds_cache", None) is not None:
             return self._other_modules_bounds_cache
@@ -118,7 +118,7 @@ class MagneticDragContextMixin:
             self._other_modules_bounds_cache = res
         return res
 
-    def _collect_walls(self) -> List[Group]:
+    def _collect_walls(self) -> list[Group]:
         """Retorna todos os grupos de paredes contínuas presentes na cena."""
         walls = []
         scene = getattr(self.viewport, "scene", None)
@@ -128,7 +128,7 @@ class MagneticDragContextMixin:
                     walls.append(g)
         return walls
 
-    def _find_adjacent_wall_face(self, module: Group, tolerance_m: float = 0.08) -> Optional[Tuple[Group, Face]]:
+    def _find_adjacent_wall_face(self, module: Group, tolerance_m: float = 0.08) -> tuple[Group, Face] | None:
         """Verifica se o móvel está encostado ou rente a alguma face de parede na cena."""
         bounds = get_module_reference_bounds(module)
         if not bounds:

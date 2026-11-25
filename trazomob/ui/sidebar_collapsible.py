@@ -7,8 +7,6 @@ e controle de visibilidade e tooltip da aba no QTabWidget pai, sem cabeçalho re
 """
 from __future__ import annotations
 
-from typing import Optional
-
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QFormLayout,
@@ -30,14 +28,14 @@ class CollapsibleSection(QWidget):
         self,
         title: str,
         icon_text: str = "",
-        parent: Optional[QWidget] = None,
+        parent: QWidget | None = None,
         collapsed: bool = False,
     ) -> None:
         super().__init__(parent)
         self._is_collapsed = False
         self._title = title
         self._icon_text = icon_text
-        self._tab_widget: Optional[QTabWidget] = None
+        self._tab_widget: QTabWidget | None = None
         self._tab_index: int = -1
 
         # Mantido oculto apenas para compatibilidade de chamadas a set_badge()

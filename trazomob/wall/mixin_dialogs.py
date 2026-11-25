@@ -3,7 +3,7 @@
 """Diálogo 2D de Planta Baixa para desenho de paredes e geração 3D automática."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Tuple
+from typing import TYPE_CHECKING
 
 from PySide6.QtWidgets import (
     QInputDialog,
@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
 from core.units import bare_number_scale, model_precision, model_unit
 
 if TYPE_CHECKING:
-    Point2D = Tuple[float, float]
+    Point2D = tuple[float, float]
 
 
 class DialogsMixin:
@@ -46,7 +46,7 @@ class DialogsMixin:
             if callable(sync):
                 sync()
 
-    def _edit_room_name_dialog(self, cycle_pts: List[Point2D], current_name: str, area_m2: float) -> None:
+    def _edit_room_name_dialog(self, cycle_pts: list[Point2D], current_name: str, area_m2: float) -> None:
         """Abre diálogo para renomear individualmente o cômodo selecionado na planta 2D."""
         from PySide6.QtWidgets import QInputDialog
         novo_nome, ok = QInputDialog.getText(

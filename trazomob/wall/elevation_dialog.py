@@ -16,7 +16,7 @@ Projeta a vista ortogonal frontal de uma parede selecionada exibindo:
 from __future__ import annotations
 
 import math
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import (
@@ -50,7 +50,7 @@ from ..wall.selection import WallSelectionManager
 class WallElevationCanvas(QWidget):
     """Canvas 2D interativo com renderização ortogonal precisa da elevação da parede."""
 
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.StrongFocus)
@@ -59,15 +59,15 @@ class WallElevationCanvas(QWidget):
         self.wall_width_m: float = 3.00
         self.wall_height_m: float = 2.60
         self.wall_label: str = "Parede"
-        self.modules_2d: List[Dict[str, Any]] = []
-        self.guide_levels: List[Dict[str, Any]] = []
+        self.modules_2d: list[dict[str, Any]] = []
+        self.guide_levels: list[dict[str, Any]] = []
 
         # Navegação (Pan e Zoom estilo CAD)
         self._scale: float = 200.0  # pixels por metro
         self._offset_x: float = 120.0
         self._offset_y: float = 100.0
         self._is_panning: bool = False
-        self._last_mouse_pos: Optional[QPointF] = None
+        self._last_mouse_pos: QPointF | None = None
 
         # Opções visuais
         self.show_cotas: bool = True
@@ -80,8 +80,8 @@ class WallElevationCanvas(QWidget):
         wall_width_m: float,
         wall_height_m: float,
         wall_label: str,
-        modules_2d: List[Dict[str, Any]],
-        guide_levels: List[Dict[str, Any]],
+        modules_2d: list[dict[str, Any]],
+        guide_levels: list[dict[str, Any]],
     ) -> None:
         self.wall_width_m = max(0.10, wall_width_m)
         self.wall_height_m = max(0.10, wall_height_m)
@@ -324,7 +324,7 @@ class WallElevationCanvas(QWidget):
                 painter.setPen(QColor("#475569"))
                 painter.drawText(rect_sub, Qt.AlignCenter, text_dim)
 
-    def _draw_door_opening_lines(self, painter: QPainter, rect: QRectF, mod: Dict[str, Any]) -> None:
+    def _draw_door_opening_lines(self, painter: QPainter, rect: QRectF, mod: dict[str, Any]) -> None:
         """Desenha linhas finas tracejadas indicando o sentido de abertura de portas ou gavetas."""
         pen_dash = QPen(QColor("#94A3B8"), 1.0, Qt.DotLine)
         painter.setPen(pen_dash)
@@ -542,7 +542,7 @@ class WallElevationCanvas(QWidget):
 class WallElevationDialog(QDialog):
     """Janela completa de visualização, exportação e impressão de elevação técnica de paredes."""
 
-    def __init__(self, viewport=None, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, viewport=None, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.viewport = viewport
         self.setWindowTitle("TrazoMob — Elevação Técnica da Parede com Cotas")
@@ -731,7 +731,7 @@ class WallElevationDialog(QDialog):
 
         # Descobre os módulos encostados nesta parede
         scene = getattr(self.viewport, "scene", None) if self.viewport else None
-        modules_2d: List[Dict[str, Any]] = []
+        modules_2d: list[dict[str, Any]] = []
 
         if scene:
             for g in getattr(scene, "groups", []):

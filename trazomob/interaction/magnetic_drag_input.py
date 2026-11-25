@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import List, Optional, Tuple
 
 from PySide6.QtCore import QEvent, QObject, QPointF, Qt
 from PySide6.QtGui import (
@@ -25,8 +24,8 @@ logger = logging.getLogger("trazomob.magnetic_drag")
 def _intersect_ray_aabb(
     orig: QVector3D,
     dirc: QVector3D,
-    bounds: Tuple[float, float, float, float, float, float],
-) -> Optional[QVector3D]:
+    bounds: tuple[float, float, float, float, float, float],
+) -> QVector3D | None:
     """Intersecciona um raio com uma caixa AABB (método dos planos) retornando o ponto frontal."""
     b_min = (bounds[0], bounds[2], bounds[4])
     b_max = (bounds[1], bounds[3], bounds[5])
@@ -58,7 +57,7 @@ def _intersect_ray_aabb(
 
 def _point_in_bounds(
     pt: QVector3D,
-    bounds: Tuple[float, float, float, float, float, float],
+    bounds: tuple[float, float, float, float, float, float],
     margin: float = 0.0,
 ) -> bool:
     """Verifica se um ponto 3D está contido dentro de bounds expandido por margin."""
@@ -71,7 +70,7 @@ def _point_in_bounds(
 
 
 def _prevent_camera_inside_module(
-    orig_bounds: Tuple[float, float, float, float, float, float],
+    orig_bounds: tuple[float, float, float, float, float, float],
     delta: QVector3D,
     eye_pos: QVector3D,
     margin_xy: float = 0.05,
@@ -129,6 +128,7 @@ class FastTranslateGroupCommand(Command):
             from PySide6.QtGui import QMatrix4x4
 
             from core.group import carry_axes
+
             from ..integrations import platform as host
             _remap_uvws = host.remap_uvws
             _key = host.topology_key
@@ -506,10 +506,10 @@ class MagneticDragInputMixin:
             self._module_orig_bounds = get_module_carcass_bounds(module) or get_module_bounds(module)
         self._auto_rot_deg = 0.0
         self._initial_wall_face = self._find_adjacent_wall_face(module, tolerance_m=0.06)
-        self._other_modules_bounds_cache: Optional[List[Tuple[Group, Tuple[float, float, float, float, float, float]]]] = None
+        self._other_modules_bounds_cache: list[tuple[Group, tuple[float, float, float, float, float, float]]] | None = None
 
         # Preserva exatamente o ponto clicado na superfície do móvel (evita saltos de dezenas de metros no zoom próximo)
-        grab_pt: Optional[QVector3D] = QVector3D(ctx.world) if (ctx is not None and ctx.world is not None) else None
+        grab_pt: QVector3D | None = QVector3D(ctx.world) if (ctx is not None and ctx.world is not None) else None
         if grab_pt is None and orig is not None and dirc is not None:
             if self._module_orig_bounds:
                 grab_pt = _intersect_ray_aabb(orig, dirc, self._module_orig_bounds)
@@ -604,7 +604,7 @@ class MagneticDragInputMixin:
         p0 = self._start_world_pt
         plane_n = getattr(self, "_drag_plane_normal", None) or QVector3D(0.0, 0.0, 1.0)
         grab_dist = max(0.05, float(getattr(self, "_drag_grab_dist", (p0 - orig).length())))
-        curr_pt: Optional[QVector3D] = None
+        curr_pt: QVector3D | None = None
 
         if abs(plane_n.z()) > 0.9:
             max_t = min(35.0, max(1.2, grab_dist * 5.0))

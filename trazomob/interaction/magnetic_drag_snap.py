@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Any, List, Optional, Tuple
+from typing import Any
 
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QVector3D
@@ -23,7 +23,7 @@ from ..domain.snap_contract import (
 logger = logging.getLogger("trazomob.magnetic_drag")
 
 
-def _extract_esquadria_u_dir(mod: Optional[Group], bounds: Tuple[float, float, float, float, float, float]) -> Optional[QVector3D]:
+def _extract_esquadria_u_dir(mod: Group | None, bounds: tuple[float, float, float, float, float, float]) -> QVector3D | None:
     """Determina o vetor de direção longitudinal U da esquadria no plano XY."""
     if mod is not None and hasattr(mod, "ext") and isinstance(mod.ext, dict):
         esq_info = mod.ext.get("trazomob_esquadria") or mod.ext.get("trazomob_module") or mod.ext.get("trazomob") or {}
@@ -42,13 +42,13 @@ def _extract_esquadria_u_dir(mod: Optional[Group], bounds: Tuple[float, float, f
     return None
 
 
-def get_module_bounds(mod: Group) -> Optional[Tuple[float, float, float, float, float, float]]:
+def get_module_bounds(mod: Group) -> tuple[float, float, float, float, float, float] | None:
     """Calcula os limites AABB do módulo em coordenadas globais (min_x, max_x, min_y, max_y, min_z, max_z)."""
     from ..interaction.align_tools import get_entity_world_bounds
     return get_entity_world_bounds(mod)
 
 
-def is_esquadria_group(mod: Optional[Group]) -> bool:
+def is_esquadria_group(mod: Group | None) -> bool:
     """Identifica se o grupo é uma esquadria (porta ou janela) e não um módulo de marcenaria.
 
     Mantido como nome público (reexportado por ``magnetic_drag``); a regra em si
@@ -57,7 +57,7 @@ def is_esquadria_group(mod: Optional[Group]) -> bool:
     return is_esquadria(mod)
 
 
-def get_module_reference_bounds(mod: Group) -> Optional[Tuple[float, float, float, float, float, float]]:
+def get_module_reference_bounds(mod: Group) -> tuple[float, float, float, float, float, float] | None:
     """Limites estáveis de posicionamento (marco/caixaria), ignorando peças móveis abertas.
 
     Ao abrir uma porta ou janela, a folha gira (ou desliza) para fora do plano da parede.
@@ -77,7 +77,7 @@ def get_module_reference_bounds(mod: Group) -> Optional[Tuple[float, float, floa
     return get_module_bounds(mod)
 
 
-def get_bounds_min_projection(bounds: Tuple[float, float, float, float, float, float], direction: QVector3D) -> float:
+def get_bounds_min_projection(bounds: tuple[float, float, float, float, float, float], direction: QVector3D) -> float:
     """Calcula a projeção mínima da AABB do móvel ao longo de 'direction' de forma instantânea."""
     min_x, max_x, min_y, max_y, _, _ = bounds
     corners = (
@@ -187,11 +187,11 @@ def _interval_overlap(a0: float, a1: float, b0: float, b1: float) -> float:
 
 
 def _polygon_u_intervals_at_z(
-    loops_2d: List[List[Tuple[float, float]]],
+    loops_2d: list[list[tuple[float, float]]],
     z_val: float,
-) -> List[Tuple[float, float]]:
+) -> list[tuple[float, float]]:
     """Retorna intervalos horizontais [u0, u1] solidos da face na cota Z dada."""
-    crossings: List[float] = []
+    crossings: list[float] = []
     for loop in loops_2d:
         n = len(loop)
         if n < 3:
@@ -227,9 +227,9 @@ def _is_group_visible_obstacle(group: Any, affected_set: set) -> bool:
     return True
 
 
-def _extract_vertical_wall_faces(scene: Any, affected_set: set) -> List[dict[str, Any]]:
+def _extract_vertical_wall_faces(scene: Any, affected_set: set) -> list[dict[str, Any]]:
     """Extrai faces verticais de paredes visiveis em coordenadas de mundo."""
-    faces_data: List[dict[str, Any]] = []
+    faces_data: list[dict[str, Any]] = []
     for g in getattr(scene, "groups", []):
         if g in affected_set:
             continue
@@ -259,7 +259,7 @@ def _extract_vertical_wall_faces(scene: Any, affected_set: set) -> List[dict[str
             if u_dir.lengthSquared() < 1e-10:
                 continue
             u_dir = u_dir.normalized()
-            loops_2d: List[List[Tuple[float, float]]] = [
+            loops_2d: list[list[tuple[float, float]]] = [
                 [(QVector3D.dotProduct(v, u_dir), float(v.z())) for v in verts_w]
             ]
             for hole in getattr(face, "holes", None) or []:
@@ -441,7 +441,7 @@ class MagneticDragSnapMixin:
         finally:
             painter.restore()
 
-    def _refresh_active_cotas(self, target: Optional[Group] = None) -> None:
+    def _refresh_active_cotas(self, target: Group | None = None) -> None:
         """Centraliza o cálculo e atualização das cotas para um módulo ou seleção atual."""
         scene = getattr(self.viewport, "scene", None)
         groups = getattr(scene, "groups", None) if scene is not None else None
@@ -950,10 +950,10 @@ class MagneticDragSnapMixin:
 
     def _compute_cotas_for_bounds(
         self,
-        bounds: Tuple[float, float, float, float, float, float],
-        exclude_module: Optional[Group] = None,
-        exclude_groups: Optional[List[Group]] = None,
-    ) -> List[Tuple[QVector3D, QVector3D, QColor, float]]:
+        bounds: tuple[float, float, float, float, float, float],
+        exclude_module: Group | None = None,
+        exclude_groups: list[Group] | None = None,
+    ) -> list[tuple[QVector3D, QVector3D, QColor, float]]:
         if any(not math.isfinite(v) for v in bounds):
             return []
 
@@ -1076,7 +1076,7 @@ class MagneticDragSnapMixin:
             exclude_module=exclude_module,
             exclude_groups=exclude_groups,
         )
-        obstacle_bounds: List[Tuple[float, float, float, float, float, float]] = [
+        obstacle_bounds: list[tuple[float, float, float, float, float, float]] = [
             ob for _om, ob in module_bounds_pairs
         ]
 

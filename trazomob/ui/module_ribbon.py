@@ -18,7 +18,7 @@ from __future__ import annotations
 import json
 import logging
 import math
-from typing import Any, Optional
+from typing import Any
 
 from PySide6.QtCore import QMimeData, QPoint, QSize, Qt, QTimer
 from PySide6.QtGui import QDrag, QIcon, QMouseEvent, QPixmap, QVector3D
@@ -946,9 +946,9 @@ class TrazoMobModuleRibbonBar(QToolBar):
     def insert_module_into_scene(
         self,
         mod_data: dict[str, Any],
-        explicit_offset: Optional[tuple[float, float, float]] = None,
-        explicit_rot_z: Optional[float] = None,
-        explicit_wall: Optional[Any] = None,
+        explicit_offset: tuple[float, float, float] | None = None,
+        explicit_rot_z: float | None = None,
+        explicit_wall: Any | None = None,
     ):
         # Garante cópia defensiva fresca dos dados do módulo
         mod_data = dict(mod_data)

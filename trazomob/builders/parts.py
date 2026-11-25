@@ -3,7 +3,7 @@
 """Construtor especializado para peças avulsas e tampos engrossados de marcenaria."""
 from __future__ import annotations
 
-from typing import Any, List, Optional, Tuple
+from typing import Any
 
 from core.group import Group
 
@@ -24,7 +24,7 @@ def _chapa(
     color: tuple[float, float, float] | None = None,
     papel: PapelChapa = PapelChapa.PECA_AVULSA,
     material_fita: str | None = None,
-    operacoes: Optional[list[dict[str, Any]]] = None,
+    operacoes: list[dict[str, Any]] | None = None,
     **kwargs: Any,
 ) -> Group:
     """Cria uma peça avulsa pela API canônica de chapa (material explícito)."""
@@ -431,7 +431,7 @@ class CustomPartsBuilder:
         material: str = "MDF Branco TX 15mm",
         offset: tuple[float, float, float] = (0.0, 0.0, 0.0),
         material_fita: str | None = None,
-    ) -> List[Group]:
+    ) -> list[Group]:
         """Gera uma base de rodapé fechado estruturada para marcenaria.
 
         Composição:
@@ -456,7 +456,7 @@ class CustomPartsBuilder:
         cor = cls.get_material_color(material)
         cor_fita = cls.get_material_color(material_fita) if material_fita else None
 
-        groups: List[Group] = []
+        groups: list[Group] = []
 
         # 1. Frente recuada (plano XZ, espessura em Y)
         if L > 0 and A > 0 and E > 0:
@@ -573,9 +573,9 @@ class CustomPartsBuilder:
         fechar_embaixo: bool = False,
         snap_parede: str = "auto",
         material: str = "MDF Branco TX",
-        material_fita: Optional[str] = None,
-        offset: Tuple[float, float, float] = (0.0, 0.0, 0.0),
-    ) -> List[Group]:
+        material_fita: str | None = None,
+        offset: tuple[float, float, float] = (0.0, 0.0, 0.0),
+    ) -> list[Group]:
         """Gera um tampo engrossado de marcenaria com réguas perimetrais na espessura real da chapa.
 
         ``snap_parede`` é metadado de encaixe (não altera a geometria): define
@@ -598,7 +598,7 @@ class CustomPartsBuilder:
         cor = cls.get_material_color(material)
         cor_fita = cls.get_material_color(material_fita) if material_fita else None
 
-        groups: List[Group] = []
+        groups: list[Group] = []
 
         # ── ESTRUTURA VERTICAL DE BAIXO PARA CIMA: ──────────────────
         # Nível inferior do módulo completo começa em oz:
@@ -721,15 +721,15 @@ class CustomPartsBuilder:
         esp_mm: float = 15.0,
         transpasse_mm: float = 30.0,
         material: str = "MDF Branco TX 15mm",
-        material_fita: Optional[str] = None,
-        offset: Tuple[float, float, float] = (0.0, 0.0, 0.0),
+        material_fita: str | None = None,
+        offset: tuple[float, float, float] = (0.0, 0.0, 0.0),
         puxador_tipo: str = "perfil",
         puxador_cor: str = "preto",
         puxador_pos: str = "padrao",
         desconto_perfil_mm: float = 35.0,
         perfil_modelo: str = "gola",
         mat_ctx: ModuloMaterialContext | None = None,
-    ) -> List[Group]:
+    ) -> list[Group]:
         """Gera um conjunto avulso de portas de correr (2 a 4 portas) com trilhos duplos de alumínio."""
         from PySide6.QtGui import QVector3D
         if mat_ctx is None:
@@ -749,7 +749,7 @@ class CustomPartsBuilder:
         cor_frente = cls.get_material_color(material)
         cor_fita = cls.get_material_color(material_fita) if material_fita else None
 
-        groups: List[Group] = []
+        groups: list[Group] = []
 
         # 1. Trilhos Duplos de Alumínio (Inferior e Superior)
         prof_trilho = min(0.045, P)

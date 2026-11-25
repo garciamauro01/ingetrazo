@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import os
 import zlib
-from typing import Any, List
+from typing import Any
 
 from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen, QPixmap
@@ -269,7 +269,7 @@ def render_label_pixmap(
 class ProductionLabelsDialog(QDialog):
     """Diálogo de visualização e impressão das etiquetas técnicas de produção da marcenaria."""
 
-    def __init__(self, parts: List[dict[str, Any]], parent=None):
+    def __init__(self, parts: list[dict[str, Any]], parent=None):
         super().__init__(parent)
         self.setWindowTitle("🏷️ Etiquetas Técnicas de Produção & Fábrica — TrazoMob")
         self.resize(750, 600)

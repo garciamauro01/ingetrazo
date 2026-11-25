@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from PySide6.QtGui import QVector3D
 
@@ -27,7 +27,7 @@ from core.mesh import Mesh
 
 logger = logging.getLogger("trazomob.hardware_geometry")
 
-Coord = Tuple[float, float, float]
+Coord = tuple[float, float, float]
 
 _COLOR_METAL_CLARO = (0.78, 0.80, 0.84)
 _COLOR_METAL_ESCURO = (0.35, 0.37, 0.42)
@@ -52,7 +52,7 @@ def is_hardware_group(group: Any) -> bool:
 def hardware_row(name: str, key: str, mesh: Mesh, module_tag: str = "",
                  linked_piece: str | None = None) -> Group:
     """Cria um grupo filho que representa uma ferragem."""
-    tm: Dict[str, Any] = {
+    tm: dict[str, Any] = {
         "kind": "hardware",
         "hardware_code": key,
         "nome": name,
@@ -194,7 +194,7 @@ def _add_cylinder_z(
         f.attrs["color"] = color
 
 
-def _hinge_positions(altura_m: float, n: int) -> List[float]:
+def _hinge_positions(altura_m: float, n: int) -> list[float]:
     """Posições Z (m) das dobradiças, com afastamento de 100 mm dos cantos."""
     h = float(altura_m or 0.0)
     if h <= 0:
@@ -335,12 +335,12 @@ def _make_corner_drawer_runners(
     key: str,
     num_gavetas: int,
     module_tag: str,
-    pieces: List[Group],
+    pieces: list[Group],
     p_lat_esq: Group,
     p_lat_dir: Group,
-) -> List[Group]:
+) -> list[Group]:
     """Cria corrediças telescópicas angulares de 3 estágios fixadas nas laterais inclinadas a 45° do Space Corner."""
-    groups: List[Group] = []
+    groups: list[Group] = []
 
     # Extrai os vértices das faces internas das laterais inclinadas
     vs_e = [v.position for v in getattr(getattr(p_lat_esq, "mesh", None), "vertices", [])]
@@ -393,7 +393,7 @@ def _make_corner_drawer_runners(
     folga_lado = 0.013
 
     # Agrupa peças por índice de gaveta (frentes e fundo)
-    by_drawer: Dict[int, Group] = {}
+    by_drawer: dict[int, Group] = {}
     for p in pieces:
         pname = str(getattr(p, "name", "") or "")
         if "gaveta" in pname.lower() and "frente esq" in pname.lower():
@@ -475,8 +475,8 @@ def _make_corner_drawer_runners(
 def _make_drawer_runners(
     name: str, key: str, bounds: tuple[float, ...], num_gavetas: int,
     module_tag: str = "",
-    pieces: List[Group] | None = None,
-) -> List[Group]:
+    pieces: list[Group] | None = None,
+) -> list[Group]:
     """Cria corrediças telescópicas de 3 estágios realistas posicionadas exatamente nas laterais de cada gaveta.
 
     Em módulos mistos (ex: ``balcao_misto``), localiza a caixa real de cada gaveta
@@ -512,11 +512,11 @@ def _make_drawer_runners(
     h = max_z - min_z
     cell = h / n
     default_length = max(0.15, (max_y - min_y) - 0.075)
-    groups: List[Group] = []
+    groups: list[Group] = []
 
     # Agrupa peças por índice de gaveta (1..n)
-    by_drawer: Dict[int, Dict[str, Tuple[Group, Tuple[float, ...]]]] = {}
-    targets: Dict[int, str] = {}
+    by_drawer: dict[int, dict[str, tuple[Group, tuple[float, ...]]]] = {}
+    targets: dict[int, str] = {}
     for p in pieces or []:
         pname = str(getattr(p, "name", "") or "")
         if pname.startswith("Ferragem -"):
@@ -654,9 +654,9 @@ def _make_feet(name: str, key: str, bounds: tuple[float, ...], n: int,
 def build_module_hardware_3d(
     master: Group | None,
     hardware_items: Any,
-    pieces: List[Group] | None = None,
-    params: Dict[str, Any] | None = None,
-) -> List[Group]:
+    pieces: list[Group] | None = None,
+    params: dict[str, Any] | None = None,
+) -> list[Group]:
     """Cria grupos 3D esquemáticos de ferragem e os anexa ao módulo.
 
     Retorna a lista de grupos criados. Nunca lança exceção.
@@ -687,7 +687,7 @@ def build_module_hardware_3d(
     except Exception:
         logger.debug("HardwareItem indisponível para verificação de tipo", exc_info=True)
 
-    bb_by_piece: List[Tuple[Group, Tuple[float, ...]]] = []
+    bb_by_piece: list[tuple[Group, tuple[float, ...]]] = []
     for p in pieces or []:
         b = _bounds(getattr(p, "mesh", None))
         if b:
@@ -697,16 +697,16 @@ def build_module_hardware_3d(
     by_key = {getattr(it, "key", None): it for it in items}
 
     # limites do módulo (caixaria, aproximadamente, incluindo frentes)
-    xs: List[float] = []
-    ys: List[float] = []
-    zs: List[float] = []
+    xs: list[float] = []
+    ys: list[float] = []
+    zs: list[float] = []
     for _p, b in bb_by_piece:
         xs.extend([b[0], b[1]])
         ys.extend([b[2], b[3]])
         zs.extend([b[4], b[5]])
     full = (min(xs), max(xs), min(ys), max(ys), min(zs), max(zs)) if xs else None
 
-    criadas: List[Group] = []
+    criadas: list[Group] = []
 
     # ── Dobradiças 35mm (Caneco + Braço Articulado + Calço Cruciforme) ──
     dobra = by_key.get("dobradica_35mm")

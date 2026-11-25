@@ -7,7 +7,7 @@ documento HTML em ``production.assembly_manual`` e salva em arquivo.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from PySide6.QtWidgets import (
     QDialog,
@@ -28,7 +28,7 @@ DEFAULT_PROJECT_NAME = "Projeto de Interiores TrazoMob"
 class AssemblyManualDialog(QDialog):
     """Coleta os dados do projeto e salva o Manual de Montagem em HTML."""
 
-    def __init__(self, parent=None, parts: Optional[List[Dict[str, Any]]] = None,
+    def __init__(self, parent=None, parts: list[dict[str, Any]] | None = None,
                  project_name: str = ""):
         super().__init__(parent)
         self.setWindowTitle("Manual de Montagem — TrazoMob")
@@ -99,9 +99,9 @@ class AssemblyManualDialog(QDialog):
 
 def export_assembly_manual(
     parent,
-    parts: List[Dict[str, Any]],
+    parts: list[dict[str, Any]],
     project_name: str = DEFAULT_PROJECT_NAME,
-) -> Optional[str]:
+) -> str | None:
     """Abre o diálogo e salva o Manual de Montagem. Retorna o caminho ou None."""
     if not parts:
         QMessageBox.information(

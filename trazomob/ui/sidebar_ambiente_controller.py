@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -42,7 +42,7 @@ from ..domain.schema import (
 class SidebarAmbienteController(QWidget):
     """Card retrátil na Sidebar para visualização, isolamento e visibilidade de pavimentos e cômodos."""
 
-    def __init__(self, sidebar_panel: Any, parent: Optional[QWidget] = None):
+    def __init__(self, sidebar_panel: Any, parent: QWidget | None = None):
         super().__init__(parent)
         self.sidebar_panel = sidebar_panel
         self._updating_tree = False

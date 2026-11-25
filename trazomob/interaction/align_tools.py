@@ -7,8 +7,6 @@ Suporta Groups de marcenaria, peças soltas, e entidades em geral com histórico
 """
 from __future__ import annotations
 
-from typing import Optional, Tuple
-
 from PySide6.QtGui import QVector3D
 
 from core.group import Group, iter_placements
@@ -18,7 +16,7 @@ _MESH_LOCAL_BOUNDS_CACHE: dict[int, tuple] = {}
 _MAX_MESH_BOUNDS_CACHE = 4096
 
 
-def _mesh_local_bounds(mesh) -> Optional[Tuple[float, float, float, float, float, float]]:
+def _mesh_local_bounds(mesh) -> tuple[float, float, float, float, float, float] | None:
     """Retorna e armazena em cache a AABB local de uma malha sem materializar DeferredMesh."""
     if mesh is None:
         return None
@@ -87,7 +85,7 @@ def _mesh_local_bounds(mesh) -> Optional[Tuple[float, float, float, float, float
     return bounds
 
 
-def get_entity_world_bounds(entity) -> Optional[Tuple[float, float, float, float, float, float]]:
+def get_entity_world_bounds(entity) -> tuple[float, float, float, float, float, float] | None:
     """Retorna os limites AABB (min_x, max_x, min_y, max_y, min_z, max_z) em metros no espaço global."""
     if entity is None:
         return None
@@ -162,7 +160,7 @@ def center_objects(
     reference_entity,
     axes: str = "xy",
     viewport=None
-) -> Optional[QVector3D]:
+) -> QVector3D | None:
     """Centraliza `target_group` em relação a `reference_entity`.
 
     :param target_group: Objeto / Grupo que será movido.
@@ -224,7 +222,7 @@ def align_objects(
     reference_entity,
     mode: str = "drop_top_center",
     viewport=None,
-) -> Optional[QVector3D]:
+) -> QVector3D | None:
     """Alinha ou apoia `target_group` em relação a `reference_entity`.
 
     Modos suportados:
@@ -454,7 +452,7 @@ def resolve_rotatable_groups(scene, candidates=None) -> list[Group]:
     return resolved
 
 
-def _combined_bounds_center(groups: list[Group]) -> Optional[QVector3D]:
+def _combined_bounds_center(groups: list[Group]) -> QVector3D | None:
     """Calcula o centro da AABB combinada de uma lista de grupos."""
     min_x = min_y = min_z = float("inf")
     max_x = max_y = max_z = float("-inf")

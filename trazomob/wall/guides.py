@@ -10,7 +10,6 @@ Permite:
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Optional, Tuple
 
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QVector3D
@@ -33,7 +32,7 @@ class LevelSnapResult(tuple):
 
 
 # Presets de alturas de referência por ambiente (em milímetros)
-DEFAULT_RULER_PRESETS: Dict[str, List[Dict[str, any]]] = {
+DEFAULT_RULER_PRESETS: dict[str, list[dict[str, any]]] = {
     "Cozinha": [
         {"name": "Rodapé / Base Alvenaria", "z_mm": 150, "color": (234, 179, 8)},       # Amarelo
         {"name": "Bancada Inferior", "z_mm": 900, "color": (16, 185, 129)},             # Esmeralda
@@ -74,8 +73,8 @@ _NON_OCCLUDER_KINDS = frozenset({"floor", "ceiling", "light", "guide"})
 
 
 def compute_world_face_normal(
-    raw_pts: List[QVector3D],
-    local_normal: Optional[QVector3D],
+    raw_pts: list[QVector3D],
+    local_normal: QVector3D | None,
     xf=None,
 ) -> QVector3D:
     """Calcula a normal da face em coordenadas do mundo de forma robusta (inclui faces com recortes e xform)."""
@@ -104,7 +103,7 @@ def compute_world_face_normal(
     return QVector3D(0.0, 0.0, 0.0)
 
 
-def get_camera_eye(cam) -> Optional[QVector3D]:
+def get_camera_eye(cam) -> QVector3D | None:
     """Obtém a posição eye() da câmera em coordenadas de mundo."""
     if cam is None:
         return None
@@ -118,9 +117,9 @@ def get_camera_eye(cam) -> Optional[QVector3D]:
 
 def is_wall_face_visible_to_camera(
     cam,
-    raw_pts: List[QVector3D],
-    local_normal: Optional[QVector3D],
-    center: Optional[QVector3D],
+    raw_pts: list[QVector3D],
+    local_normal: QVector3D | None,
+    center: QVector3D | None,
     xf=None,
 ) -> bool:
     """Determina se a face da parede está voltada para a câmera (perspectiva ou paralela/ortográfica)."""
@@ -216,7 +215,7 @@ _OCCLUDER_MASK_CACHE: dict[tuple, any] = {}
 _MAX_OCCLUDER_MASK_CACHE = 16
 
 
-def build_wall_occluder_context(vp, wall_group) -> Optional[Dict[str, any]]:
+def build_wall_occluder_context(vp, wall_group) -> dict[str, any] | None:
     """Prepara contexto de oclusão para linhas-guia e contorno de parede selecionada."""
     cam = getattr(vp, "camera", None)
     if cam is None:
@@ -287,7 +286,7 @@ def build_wall_occluder_context(vp, wall_group) -> Optional[Dict[str, any]]:
     }
 
 
-def _is_point_occluded(vp, pt: QVector3D, occ_ctx: Dict[str, any]) -> bool:
+def _is_point_occluded(vp, pt: QVector3D, occ_ctx: dict[str, any]) -> bool:
     """Verifica se há algum sólido opaco entre a câmera e o ponto 3D informado."""
     if occ_ctx["is_persp"]:
         cam_eye = occ_ctx["cam_eye"]
@@ -353,12 +352,12 @@ def filter_occluded_segments(
     vp,
     p0: QVector3D,
     p1: QVector3D,
-    occ_ctx: Optional[Dict[str, any]],
+    occ_ctx: dict[str, any] | None,
     step_m: float = 0.12,
     min_steps: int = 4,
     max_steps: int = 36,
-    test_offset: Optional[QVector3D] = None,
-) -> List[Tuple[QVector3D, QVector3D]]:
+    test_offset: QVector3D | None = None,
+) -> list[tuple[QVector3D, QVector3D]]:
     """Subdivide um segmento 3D e retorna apenas os trechos contínuos não ocluídos."""
     if occ_ctx is None:
         return [(p0, p1)]
@@ -379,8 +378,8 @@ def filter_occluded_segments(
     mids_t = [(s_i + 0.5) / n_coarse for s_i in range(n_coarse)]
     mids_vis = [_is_vis(t) for t in mids_t]
 
-    visible_runs: List[Tuple[QVector3D, QVector3D]] = []
-    run_start_t: Optional[float] = 0.0 if mids_vis[0] else None
+    visible_runs: list[tuple[QVector3D, QVector3D]] = []
+    run_start_t: float | None = 0.0 if mids_vis[0] else None
 
     for s_i in range(n_coarse - 1):
         v_a = mids_vis[s_i]
@@ -411,7 +410,7 @@ def filter_occluded_segments(
 class WallGuideRulerManager:
     """Gerencia as réguas ativas, configurações de altura e renderização das guias."""
 
-    _instance: Optional[WallGuideRulerManager] = None
+    _instance: WallGuideRulerManager | None = None
 
     def __init__(self) -> None:
         from ..domain.preferences import TrazoMobPreferencesManager
@@ -452,7 +451,7 @@ class WallGuideRulerManager:
             custom_presets=custom,
         )
 
-    def get_active_levels(self) -> List[Dict[str, any]]:
+    def get_active_levels(self) -> list[dict[str, any]]:
         """Retorna a lista de níveis de altura da régua ativa."""
         return self.presets.get(self.active_preset_name, self.presets.get("Cozinha", []))
 
@@ -493,7 +492,7 @@ class WallGuideRulerManager:
             self.active_preset_name = name
             self.save_preferences()
 
-    def create_preset(self, name: str, levels: Optional[List[Dict[str, any]]] = None, base_preset: Optional[str] = None) -> bool:
+    def create_preset(self, name: str, levels: list[dict[str, any]] | None = None, base_preset: str | None = None) -> bool:
         """Cria um novo preset de régua com nome único."""
         name = name.strip()
         if not name or name in self.presets:
@@ -535,7 +534,7 @@ class WallGuideRulerManager:
         self.save_preferences()
         return True
 
-    def update_preset_levels(self, name: str, levels: List[Dict[str, any]]) -> bool:
+    def update_preset_levels(self, name: str, levels: list[dict[str, any]]) -> bool:
         """Atualiza a lista completa de níveis de um preset."""
         if name not in self.presets:
             return False
@@ -557,7 +556,7 @@ class WallGuideRulerManager:
         self,
         wall_face_info,
         margin_m: float = 0.05,
-    ) -> List[Dict[str, any]]:
+    ) -> list[dict[str, any]]:
         """Calcula as coordenadas 3D (p0, p1) de cada linha-guia na face da parede selecionada."""
         if wall_face_info is None or not getattr(wall_face_info, "face", None):
             return []
@@ -610,7 +609,7 @@ class WallGuideRulerManager:
 
         return guides
 
-    def draw_ruler_overlay(self, vp, painter: QPainter, wall_face_info, occ_ctx: Optional[Dict[str, any]] = None) -> None:
+    def draw_ruler_overlay(self, vp, painter: QPainter, wall_face_info, occ_ctx: dict[str, any] | None = None) -> None:
         """Renderiza as linhas-guia com traçado moderno e badges com cotas em milímetros."""
         if not self.visible or wall_face_info is None or not wall_face_info.face:
             return
@@ -702,7 +701,7 @@ class WallGuideRulerManager:
         finally:
             painter.restore()
 
-    def snap_to_levels(self, current_z: float, threshold_m: float = 0.08) -> Optional[LevelSnapResult]:
+    def snap_to_levels(self, current_z: float, threshold_m: float = 0.08) -> LevelSnapResult | None:
         """Retorna LevelSnapResult(z_snapped, guide_name, diff) se o current_z estiver dentro do threshold de atração.
         Compatível com desempacotamento de 2 itens: (snapped_z, guide_name) = res.
         """
@@ -725,7 +724,7 @@ class WallGuideRulerManager:
             return LevelSnapResult(best_z, best_name, min_diff)
         return None
 
-    def get_slot_between_guides(self, z_world: float) -> Dict[str, any]:
+    def get_slot_between_guides(self, z_world: float) -> dict[str, any]:
         """Detecta a faixa vertical RIGOROSA entre as duas linhas-guia adjacentes onde o usuário clicou.
 
         Obedece estritamente às linhas-guia da régua:

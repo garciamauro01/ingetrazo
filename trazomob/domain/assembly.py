@@ -16,7 +16,8 @@ core, então posição, transformação e undo/redo continuam sendo os do app.
 """
 from __future__ import annotations
 
-from typing import Any, Iterable, Iterator, List, Optional
+from collections.abc import Iterable, Iterator
+from typing import Any
 
 from core.group import Group
 from core.history import ExplodeGroupCommand, MakeNestedGroupCommand
@@ -42,7 +43,7 @@ def is_module(group: Any) -> bool:
     return "trazomob_module" in ext
 
 
-def assembly_members(group: Any) -> List[Any]:
+def assembly_members(group: Any) -> list[Any]:
     """Filhos diretos de um assembly (módulos e subgrupos)."""
     if not is_assembly(group):
         return []
@@ -67,7 +68,7 @@ def iter_module_groups(roots: Iterable[Any]) -> Iterator[Any]:
             yield from iter_module_groups(children)
 
 
-def _tag_assembly(container: Group, name: Optional[str] = None) -> Group:
+def _tag_assembly(container: Group, name: str | None = None) -> Group:
     """Grava o ``kind`` de assembly no contêiner, preservando o que já havia."""
     ext = getattr(container, "ext", None)
     if not isinstance(ext, dict):
@@ -89,8 +90,8 @@ def _tag_assembly(container: Group, name: Optional[str] = None) -> Group:
 
 def build_assembly_command(
     groups: Iterable[Any],
-    name: Optional[str] = None,
-) -> Optional[MakeNestedGroupCommand]:
+    name: str | None = None,
+) -> MakeNestedGroupCommand | None:
     """Prepara o comando que agrupa módulos, ou ``None`` se não há o que agrupar.
 
     Devolve o comando (em vez de executá-lo) para o chamador rodá-lo pelo
@@ -102,14 +103,14 @@ def build_assembly_command(
     return MakeNestedGroupCommand([], [], members, name=name)
 
 
-def apply_assembly_tag(container: Optional[Group], name: Optional[str] = None) -> Optional[Group]:
+def apply_assembly_tag(container: Group | None, name: str | None = None) -> Group | None:
     """Marca o contêiner devolvido pelo comando como assembly do TrazoMob."""
     if container is None:
         return None
     return _tag_assembly(container, name)
 
 
-def build_dissolve_command(assembly: Any) -> Optional[ExplodeGroupCommand]:
+def build_dissolve_command(assembly: Any) -> ExplodeGroupCommand | None:
     """Prepara o comando que devolve os módulos ao nível do modelo.
 
     O ``ExplodeGroupCommand`` do core levanta os filhos inteiros (com
@@ -122,13 +123,13 @@ def build_dissolve_command(assembly: Any) -> Optional[ExplodeGroupCommand]:
     return ExplodeGroupCommand(assembly)
 
 
-def modules_in_selection(scene: Any) -> List[Group]:
+def modules_in_selection(scene: Any) -> list[Group]:
     """Módulos selecionados diretamente (ignora peças e contêineres)."""
     selection = getattr(scene, "selection", None) or ()
     return [item for item in selection if isinstance(item, Group) and is_module(item)]
 
 
-def selected_assembly(scene: Any) -> Optional[Group]:
+def selected_assembly(scene: Any) -> Group | None:
     """Assembly selecionado, se houver exatamente um."""
     selection = getattr(scene, "selection", None) or ()
     assemblies = [item for item in selection if isinstance(item, Group) and is_assembly(item)]

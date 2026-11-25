@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Optional, Tuple
+from typing import Any
 
 
 class PapelChapa(str, Enum):
@@ -40,10 +40,10 @@ class PapelChapa(str, Enum):
 class ModuloMaterialContext:
     """Contexto de materiais e regras herdadas do módulo."""
     material_caixa: str = "MDF Branco TX 15mm"
-    material_fita_caixa: Optional[str] = None
+    material_fita_caixa: str | None = None
     fita_caixa_modo: str = "frontal_1L"  # frontal_1L, 2L, 4L, sem_fita
-    material_frentes: Optional[str] = None
-    material_fita_frentes: Optional[str] = None
+    material_frentes: str | None = None
+    material_fita_frentes: str | None = None
     fita_frentes_modo: str = "4L"  # Portas/frentes por padrão são 4L
     espessura_fita_padrao: float = 0.45
     espessura_fita_frentes: float = 0.45
@@ -90,7 +90,7 @@ class ChapaSpec:
     fita_c2: bool = False
     fita_l1: bool = False
     fita_l2: bool = False
-    material_fita: Optional[str] = None
+    material_fita: str | None = None
     espessura_fita: float = 0.45
     ignorar_veio: bool = False
     operacoes: list[dict[str, Any]] = field(default_factory=list)
@@ -100,12 +100,12 @@ class ChapaSpec:
         cls,
         nome: str,
         papel: PapelChapa | str,
-        ctx: Optional[ModuloMaterialContext] = None,
-        material_override: Optional[str] = None,
-        fita_override: Optional[Tuple[bool, bool, bool, bool]] = None,
-        material_fita_override: Optional[str] = None,
-        espessura_fita_override: Optional[float] = None,
-        operacoes: Optional[list[dict[str, Any]]] = None,
+        ctx: ModuloMaterialContext | None = None,
+        material_override: str | None = None,
+        fita_override: tuple[bool, bool, bool, bool] | None = None,
+        material_fita_override: str | None = None,
+        espessura_fita_override: float | None = None,
+        operacoes: list[dict[str, Any]] | None = None,
     ) -> ChapaSpec:
         """Resolve material e fitamento com base no papel funcional e regras herdadas."""
         if isinstance(papel, str):
@@ -161,7 +161,7 @@ class ChapaSpec:
         )
 
     @staticmethod
-    def _resolve_fitamento_padrao(papel: PapelChapa, ctx: ModuloMaterialContext) -> Tuple[bool, bool, bool, bool]:
+    def _resolve_fitamento_padrao(papel: PapelChapa, ctx: ModuloMaterialContext) -> tuple[bool, bool, bool, bool]:
         """Aplica a regra padrão de marcenaria por papel funcional."""
         # Fundo nunca tem fita
         if papel in (PapelChapa.FUNDO, PapelChapa.FUNDO_GAVETA):

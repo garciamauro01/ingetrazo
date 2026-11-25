@@ -31,7 +31,6 @@ Comportamento e Recursos:
 from __future__ import annotations
 
 import math
-from typing import List, Optional
 
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen, QVector3D
@@ -46,7 +45,7 @@ from .align_tools import get_entity_world_bounds
 
 class NotablePoint:
     """Representa um ponto de atração magnética (Centro, Ponto Médio, Quina ou Face)."""
-    def __init__(self, pos: QVector3D, kind: str, label: str, group: Optional[Group] = None):
+    def __init__(self, pos: QVector3D, kind: str, label: str, group: Group | None = None):
         self.pos = QVector3D(pos)
         self.kind = kind    # "center", "face_center", "midpoint", "corner"
         self.label = label  # "Centro da Base", "Centro do Topo", "Centro XYZ", etc.
@@ -63,11 +62,11 @@ class AlignSnapTool(Tool):
 
     def __init__(self):
         super().__init__()
-        self.source_group: Optional[Group] = None
-        self.source_point: Optional[NotablePoint] = None
-        self.hovered_point: Optional[NotablePoint] = None
+        self.source_group: Group | None = None
+        self.source_point: NotablePoint | None = None
+        self.hovered_point: NotablePoint | None = None
         self.align_and_move: bool = True
-        self.axis_lock: Optional[str] = None  # None (XYZ livre), "x", "y", "z"
+        self.axis_lock: str | None = None  # None (XYZ livre), "x", "y", "z"
         self.copy_mode: bool = False
         self._overlay_installed: bool = False
 
@@ -177,7 +176,7 @@ class AlignSnapTool(Tool):
 
         return False
 
-    def _get_group_notable_points(self, group: Group) -> List[NotablePoint]:
+    def _get_group_notable_points(self, group: Group) -> list[NotablePoint]:
         """Calcula todos os pontos notáveis da Bounding Box do grupo (Centros, Pontos Médios e Quinas)."""
         b = get_entity_world_bounds(group)
         if not b:
@@ -257,7 +256,7 @@ class AlignSnapTool(Tool):
                 candidate_points.append(NotablePoint(pt, "face_center", "Centro da Face Real", picked_group))
 
         # Encontra o ponto com menor distância em pixels até o cursor
-        best_pt: Optional[NotablePoint] = None
+        best_pt: NotablePoint | None = None
         best_dist = 28.0  # Raio de atração magnética de 28 pixels
 
         for np in candidate_points:

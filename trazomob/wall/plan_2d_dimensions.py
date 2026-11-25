@@ -4,9 +4,8 @@
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Optional, Tuple
 
-Point2D = Tuple[float, float]
+Point2D = tuple[float, float]
 
 from typing import TYPE_CHECKING
 
@@ -29,11 +28,11 @@ from .plan_2d import (
 class Plan2DDimensionsMixin:
     """Gerenciamento de cotas e cadeias de cotas 2D extraído de WallGraph2D."""
 
-    def _segment_attachment_tolerance(self, seg: Optional[WallSegment2D] = None) -> float:
+    def _segment_attachment_tolerance(self, seg: WallSegment2D | None = None) -> float:
         th = seg.thickness if seg is not None and seg.thickness is not None else self.default_thickness
         return max(0.10, th * 0.5 + 0.05)
 
-    def _attach_dimension_point(self, p: Point2D, preferred_seg_id: Optional[int] = None) -> _DimAnchor:
+    def _attach_dimension_point(self, p: Point2D, preferred_seg_id: int | None = None) -> _DimAnchor:
         """Resolve um ponto cotado para uma referência estável do grafo.
 
         Regras (estilo CAD):
@@ -62,13 +61,13 @@ class Plan2DDimensionsMixin:
                 return _DimAnchor(node_id=nid)
 
         # 2. Projeta sobre o(s) segmento(s) próximos
-        candidate_ids: List[int]
+        candidate_ids: list[int]
         if preferred_seg_id is not None and preferred_seg_id in self.segments:
             candidate_ids = [preferred_seg_id]
         else:
             candidate_ids = list(self.segments.keys())
 
-        best: Optional[_DimAnchor] = None
+        best: _DimAnchor | None = None
         best_score = float("inf")
         for sid in candidate_ids:
             seg = self.segments.get(sid)
@@ -131,9 +130,9 @@ class Plan2DDimensionsMixin:
 
         return _DimAnchor()
 
-    def _resolve_dimension_anchor(self, seg_id: Optional[int], end: Optional[str],
+    def _resolve_dimension_anchor(self, seg_id: int | None, end: str | None,
                                   along: float, perp: float,
-                                  node_id: Optional[int], fallback: Point2D) -> Point2D:
+                                  node_id: int | None, fallback: Point2D) -> Point2D:
         """Recalcula a posição absoluta de uma extremidade de cota a partir da referência."""
         seg = self.segments.get(seg_id) if seg_id is not None else None
         if seg is not None:
@@ -164,7 +163,7 @@ class Plan2DDimensionsMixin:
             return node.pt
         return fallback
 
-    def _resolve_dimension_points(self, d: CustomDimension2D) -> Tuple[Point2D, Point2D]:
+    def _resolve_dimension_points(self, d: CustomDimension2D) -> tuple[Point2D, Point2D]:
         p1 = self._resolve_dimension_anchor(
             d.a_seg_id, d.a_end, d.a_dist, d.a_perp, d.node_a_id, d.p1
         )
@@ -179,7 +178,7 @@ class Plan2DDimensionsMixin:
         b_partial = d.b_seg_id is not None and d.b_end is None
         return a_partial or b_partial
 
-    def _nearest_node_within(self, p: Point2D, tol: float) -> Optional[int]:
+    def _nearest_node_within(self, p: Point2D, tol: float) -> int | None:
         best_nid = None
         best_d = tol
         for nid, node in self.nodes.items():
@@ -190,12 +189,12 @@ class Plan2DDimensionsMixin:
         return best_nid
 
     def _collinear_segment_path(self, start_nid: int, end_nid: int,
-                                axis: Point2D, corridor: float) -> List[int]:
+                                axis: Point2D, corridor: float) -> list[int]:
         """Caminho de segmentos colineares entre dois nós (lista ordenada de seg_ids)."""
         ax, ay = axis
         origin = self.nodes[start_nid].pt
         nx, ny = -ay, ax
-        adj: Dict[int, List[Tuple[int, int]]] = {}
+        adj: dict[int, list[tuple[int, int]]] = {}
         for sid, seg in self.segments.items():
             na = self.nodes.get(seg.node_a_id)
             nb = self.nodes.get(seg.node_b_id)
@@ -215,7 +214,7 @@ class Plan2DDimensionsMixin:
             adj.setdefault(seg.node_b_id, []).append((seg.node_a_id, sid))
 
         # BFS do nó inicial até o final, guardando o caminho de segmentos
-        queue: List[Tuple[int, List[int]]] = [(start_nid, [])]
+        queue: list[tuple[int, list[int]]] = [(start_nid, [])]
         visited = {start_nid}
         while queue:
             nid, path = queue.pop(0)
@@ -260,8 +259,8 @@ class Plan2DDimensionsMixin:
         # Cantos de face ficam afastados do nó do eixo em ~t/2 em cada eixo.
         anchor_tol = max(0.15, max_th * 0.90)
 
-        def build_spans(sids: List[int]) -> List[Tuple[int, float, float, float]]:
-            out: List[Tuple[int, float, float, float]] = []
+        def build_spans(sids: list[int]) -> list[tuple[int, float, float, float]]:
+            out: list[tuple[int, float, float, float]] = []
             for sid in sids:
                 seg = self.segments.get(sid)
                 if seg is None:
@@ -300,7 +299,7 @@ class Plan2DDimensionsMixin:
 
         # 2. Pontas no meio da parede: só é construtiva se o vão for coberto
         # exatamente pela projeção das paredes (sem sobra e sem buraco).
-        spans: List[Tuple[int, float, float, float]] = []
+        spans: list[tuple[int, float, float, float]] = []
         for sid, seg in self.segments.items():
             na = self.nodes.get(seg.node_a_id)
             nb = self.nodes.get(seg.node_b_id)
@@ -348,7 +347,7 @@ class Plan2DDimensionsMixin:
             [0.0] + [-item[1] for item in spans] + [item[2] - L for item in spans]
         )
 
-        def nearest_node(sid: int, target: Point2D) -> Optional[int]:
+        def nearest_node(sid: int, target: Point2D) -> int | None:
             seg = self.segments[sid]
             candidates = [seg.node_a_id, seg.node_b_id]
             candidates = [nid for nid in candidates if nid in self.nodes]
@@ -369,8 +368,8 @@ class Plan2DDimensionsMixin:
         )
         return chain
 
-    def add_dimension(self, p1: Point2D, p2: Point2D, seg_id: Optional[int] = None,
-                      offset: float = 0.25, driving: bool = True) -> Optional[int]:
+    def add_dimension(self, p1: Point2D, p2: Point2D, seg_id: int | None = None,
+                      offset: float = 0.25, driving: bool = True) -> int | None:
         """Adiciona uma nova cota personalizada entre dois pontos.
 
         A cota nasce como anotação ou restrição conforme ``driving``. Pontos internos
@@ -405,7 +404,7 @@ class Plan2DDimensionsMixin:
         )
         return did
 
-    def sync_all_dimensions(self, old_node_positions: Optional[Dict[int, Point2D]] = None) -> None:
+    def sync_all_dimensions(self, old_node_positions: dict[int, Point2D] | None = None) -> None:
         """Sincroniza todas as cotas com a geometria atual.
 
         ``p1``/``p2`` são recalculados a partir das referências. Não existe mais
@@ -471,7 +470,7 @@ class Plan2DDimensionsMixin:
             return True
         return False
 
-    def check_dimension_conflict(self, p1: Point2D, p2: Point2D, ignore_dim_id: Optional[int] = None) -> Optional[str]:
+    def check_dimension_conflict(self, p1: Point2D, p2: Point2D, ignore_dim_id: int | None = None) -> str | None:
         """Verifica se uma nova cota conflita com cotas já existentes na mesma parede ou alinhamento.
 
         Regra de CAD:

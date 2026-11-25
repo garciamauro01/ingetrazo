@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import math
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ..domain.hardware import (
     consolidate_hardware,
@@ -30,11 +30,11 @@ logger = logging.getLogger("trazomob.report")
 
 
 def generate_project_html_report(
-    parts: List[dict[str, Any]],
+    parts: list[dict[str, Any]],
     project_name: str = "Projeto TrazoMob",
     client_name: str = "Cliente",
     include_pricing: bool = False,
-    client_data: Optional[Dict[str, str]] = None,
+    client_data: dict[str, str] | None = None,
 ) -> str:
     """Gera um relatório executivo completo em HTML com design limpo e profissional.
 
@@ -48,7 +48,7 @@ def generate_project_html_report(
     total_pecas = sum(p.get("quantidade", 1) for p in parts)
 
     # Agrupa por material
-    by_mat: Dict[str, Dict[str, float]] = {}
+    by_mat: dict[str, dict[str, float]] = {}
     total_area_m2 = 0.0
     total_linear_tape_m = 0.0
 
@@ -347,12 +347,12 @@ def generate_project_html_report(
 
 
 def generate_proposal_html(
-    parts: List[dict[str, Any]],
+    parts: list[dict[str, Any]],
     project_name: str = "Projeto TrazoMob",
     client_name: str = "Cliente",
-    client_data: Optional[Dict[str, str]] = None,
+    client_data: dict[str, str] | None = None,
     observacoes: str = "",
-    filepath: Optional[str | Path] = None,
+    filepath: str | Path | None = None,
 ) -> str:
     """Gera uma proposta comercial completa em HTML (pronta para PDF).
 
@@ -644,11 +644,11 @@ def generate_proposal_html(
 
 
 def generate_proposal_pdf(
-    parts: List[dict[str, Any]],
+    parts: list[dict[str, Any]],
     filepath: str | Path,
     project_name: str = "Projeto TrazoMob",
     client_name: str = "Cliente",
-    client_data: Optional[Dict[str, str]] = None,
+    client_data: dict[str, str] | None = None,
     observacoes: str = "",
 ) -> bool:
     """Gera proposta em PDF nativamente via PySide6/Qt (ou weasyprint se disponível)."""

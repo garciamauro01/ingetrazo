@@ -18,7 +18,8 @@ arraste magnetico (``interaction/magnetic_drag_snap.py``).
 from __future__ import annotations
 
 import math
-from typing import Any, Mapping, Tuple
+from collections.abc import Mapping
+from typing import Any
 
 SNAP_PAREDE_AUTO = "auto"
 SNAP_PAREDE_TRASEIRA = "traseira"
@@ -32,7 +33,7 @@ SNAP_PAREDE_NENHUM = "nenhum"
 DEFAULT_SNAP_PAREDE: str = SNAP_PAREDE_AUTO
 
 # (valor persistido, rotulo exibido na UI)
-SNAP_PAREDE_OPCOES: Tuple[Tuple[str, str], ...] = (
+SNAP_PAREDE_OPCOES: tuple[tuple[str, str], ...] = (
     (SNAP_PAREDE_AUTO, "Automático (fundo na parede)"),
     (SNAP_PAREDE_TRASEIRA, "Traseira na parede"),
     (SNAP_PAREDE_FRENTE, "Frente na parede"),
@@ -43,7 +44,7 @@ SNAP_PAREDE_OPCOES: Tuple[Tuple[str, str], ...] = (
     (SNAP_PAREDE_NENHUM, "Sem snap"),
 )
 
-SNAP_PAREDE_VALORES: Tuple[str, ...] = tuple(valor for valor, _ in SNAP_PAREDE_OPCOES)
+SNAP_PAREDE_VALORES: tuple[str, ...] = tuple(valor for valor, _ in SNAP_PAREDE_OPCOES)
 
 _ALIASES: Mapping[str, str] = {
     "": SNAP_PAREDE_AUTO,

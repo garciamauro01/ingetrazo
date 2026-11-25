@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import math
 from pathlib import Path
-from typing import Tuple
 
 from PySide6.QtGui import QMatrix4x4, QVector3D
 
@@ -711,7 +710,7 @@ def get_porta_prototype(igz_path):
     return res
 
 
-def load_esquadria_igz(item_id: str, largura_mm: float, altura_mm: float, esp_parede_mm: float, peitoril_mm: float=0.0, offset: Tuple[float, float, float]=(0.0, 0.0, 0.0), rot_z: float=0.0, lado_abertura: str='direita', sentido_abertura: str='interno'):
+def load_esquadria_igz(item_id: str, largura_mm: float, altura_mm: float, esp_parede_mm: float, peitoril_mm: float=0.0, offset: tuple[float, float, float]=(0.0, 0.0, 0.0), rot_z: float=0.0, lado_abertura: str='direita', sentido_abertura: str='interno'):
     """Carrega e instancia o modelo 3D nativo (.igz) com sub-peças dinâmicas isoladas.
 
     Preserva 100% da fidelidade dos componentes (marco fixo, folha móvel articulável,
@@ -744,7 +743,7 @@ def load_esquadria_igz(item_id: str, largura_mm: float, altura_mm: float, esp_pa
     )
 
 
-def load_porta_original_usuario(igz_path: Path, item_id: str, largura_mm: float, altura_mm: float, esp_parede_mm: float, peitoril_mm: float=0.0, offset: Tuple[float, float, float]=(0.0, 0.0, 0.0), rot_z: float=0.0, lado_abertura: str='direita', sentido_abertura: str='interno'):
+def load_porta_original_usuario(igz_path: Path, item_id: str, largura_mm: float, altura_mm: float, esp_parede_mm: float, peitoril_mm: float=0.0, offset: tuple[float, float, float]=(0.0, 0.0, 0.0), rot_z: float=0.0, lado_abertura: str='direita', sentido_abertura: str='interno'):
     """Carrega com máxima fidelidade uma das portas reais fornecidas pelo usuário.
 
     Preserva 100% da malha geométrica original sem distorcer fechaduras ou puxadores.

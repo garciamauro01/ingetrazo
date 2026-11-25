@@ -10,7 +10,8 @@ Concentra e unifica regras de:
 from __future__ import annotations
 
 import math
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 
 from PySide6.QtGui import QVector3D
 from PySide6.QtWidgets import QMessageBox, QWidget
@@ -34,7 +35,7 @@ def duplicate_contiguous_module(
     gap_mm: float = 0.0,
     viewport: Any = None,
     scene: Any = None,
-) -> Optional[Group]:
+) -> Group | None:
     """Duplica um módulo posicionando-o encostado contiguamente à esquerda ou direita.
 
     Leva em conta a largura total (largura_mm), o espaçamento livre (gap_mm)
@@ -99,7 +100,7 @@ def delete_module(
     viewport: Any = None,
     scene: Any = None,
     prompt_confirm: bool = True,
-    parent_widget: Optional[QWidget] = None,
+    parent_widget: QWidget | None = None,
 ) -> bool:
     """Exclui com segurança um módulo da cena 3D com suporte a Undo/Redo."""
     if module is None:
@@ -140,8 +141,8 @@ def delete_module(
 
 def batch_update_scene_modules(
     viewport: Any,
-    filter_fn: Callable[[Group, Dict[str, Any]], bool],
-    patch_fn: Callable[[Group, Dict[str, Any]], Optional[Dict[str, Any]]],
+    filter_fn: Callable[[Group, dict[str, Any]], bool],
+    patch_fn: Callable[[Group, dict[str, Any]], dict[str, Any] | None],
 ) -> int:
     """Executa a atualização de parâmetros e reconstrução em lote de múltiplos módulos na cena.
 
@@ -160,7 +161,7 @@ def batch_update_scene_modules(
     if not all_modules:
         return 0
 
-    replacements: List[Tuple[Group, Group]] = []
+    replacements: list[tuple[Group, Group]] = []
     for mod in all_modules:
         old_params = module_params(mod)
         if not filter_fn(mod, old_params):

@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Optional, Tuple
 
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import (
@@ -156,7 +155,7 @@ class DrawingMixin:
         painter.setPen(QPen(QColor(80, 200, 120, 140), 1.2))
         painter.drawLine(QPointF(orig.x(), 0), QPointF(orig.x(), h))  # Eixo Y
 
-    def set_underlay_lines(self, lines: List[Tuple[Tuple[float, float], Tuple[float, float]]]) -> None:
+    def set_underlay_lines(self, lines: list[tuple[tuple[float, float], tuple[float, float]]]) -> None:
         """Define linhas de projeção do pavimento inferior (underlay)."""
         self._underlay_lines = list(lines) if lines else []
         self.update()
@@ -178,7 +177,7 @@ class DrawingMixin:
         self._dimension_badges.clear()
 
         # Mapeia quais nós têm 2 paredes formando canto
-        node_segments: Dict[int, List[int]] = {nid: [] for nid in self.graph.nodes}
+        node_segments: dict[int, list[int]] = {nid: [] for nid in self.graph.nodes}
         for seg_id, seg in self.graph.segments.items():
             node_segments[seg.node_a_id].append(seg_id)
             node_segments[seg.node_b_id].append(seg_id)
@@ -547,7 +546,7 @@ class DrawingMixin:
             mid_top_b = QPointF(max(x0, x1), min(y0, y1))
             self._draw_dimension(painter, mid_top_a, mid_top_b, w_m, is_preview=True)
 
-    def _draw_corner_angles(self, painter: QPainter, node_segments: Dict[int, List[int]]) -> None:
+    def _draw_corner_angles(self, painter: QPainter, node_segments: dict[int, list[int]]) -> None:
         """Desenha arco e texto com o ângulo entre paredes nos cantos (ex: 90.0°)."""
         font = QFont()
         font.setPointSize(8)
@@ -618,7 +617,7 @@ class DrawingMixin:
     def nodes_or_graph_get_node(self, nid: int):
         return self.graph.nodes.get(nid)
 
-    def _draw_dimension(self, painter: QPainter, p0: QPointF, p1: QPointF, length_m: float, is_preview: bool = False, seg_id: Optional[int] = None, dim_id: Optional[int] = None, face_type: str = "centro") -> None:
+    def _draw_dimension(self, painter: QPainter, p0: QPointF, p1: QPointF, length_m: float, is_preview: bool = False, seg_id: int | None = None, dim_id: int | None = None, face_type: str = "centro") -> None:
         if length_m < 0.001:
             return
 

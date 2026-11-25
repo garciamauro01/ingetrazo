@@ -6,8 +6,8 @@ predicates used by both UI controllers and anti-regression tests.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import FrozenSet, Mapping, Tuple
 
 DEFAULT_PROF_RASGO_MM: float = 5.0
 DEFAULT_RECUO_FUNDO_MM: float = 10.0
@@ -27,8 +27,8 @@ class TabContract:
     index: int
     key: str
     section_attr: str
-    required_widgets: Tuple[str, ...]
-    forbidden_widgets: Tuple[str, ...] = ()
+    required_widgets: tuple[str, ...]
+    forbidden_widgets: tuple[str, ...] = ()
 
 
 UI_TABS_CONTRACT: Mapping[str, TabContract] = {
@@ -133,7 +133,7 @@ UI_TABS_CONTRACT: Mapping[str, TabContract] = {
     ),
 }
 
-TAB_ORDER: Tuple[str, ...] = (
+TAB_ORDER: tuple[str, ...] = (
     "medidas",
     "estrutura",
     "puxadores",
@@ -141,7 +141,7 @@ TAB_ORDER: Tuple[str, ...] = (
     "avancado",
 )
 
-CANTOS_LADO_CEGO_TIPOS: FrozenSet[str] = frozenset({"balcao_canto"})
+CANTOS_LADO_CEGO_TIPOS: frozenset[str] = frozenset({"balcao_canto"})
 
 
 def should_show_config_gaveteiro(tipo: str) -> bool:

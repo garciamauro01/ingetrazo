@@ -2,7 +2,7 @@
 """Ferramenta e Diálogo de Tintas & Cores de Parede do TrazoMob."""
 from __future__ import annotations
 
-from typing import Any, List
+from typing import Any
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
@@ -30,13 +30,13 @@ from ..wall.paint_catalog import WALL_PAINT_CATALOG
 class SetWallFaceColorCommand(Command):
     """Comando reversível para pintar uma ou todas as faces de uma parede."""
 
-    def __init__(self, target_group: Group, face_indices: List[int], new_color: tuple[float, float, float], paint_name: str):
+    def __init__(self, target_group: Group, face_indices: list[int], new_color: tuple[float, float, float], paint_name: str):
         self.target_group = target_group
         self.face_indices = face_indices
         self.new_color = new_color
         self.paint_name = paint_name
-        self.old_colors: List[Any] = []
-        self.old_names: List[Any] = []
+        self.old_colors: list[Any] = []
+        self.old_names: list[Any] = []
 
     def do(self, scene) -> None:
         mesh = getattr(self.target_group, "mesh", None)

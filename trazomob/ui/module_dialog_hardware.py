@@ -14,7 +14,7 @@ relatórios sem depender de heurística por nome da peça.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -100,11 +100,11 @@ class ModuleDialogHardwareMixin:
         form_layout.addRow(self.frame_hardware)
 
         # Estado: lista de HardwareItem (editável pelo usuário)
-        self._hardware_items: List[HardwareItem] = []
+        self._hardware_items: list[HardwareItem] = []
 
     # ------------------------------------------------------------------ fill
 
-    def _fill_hardware_table(self, params: Dict[str, Any]) -> None:
+    def _fill_hardware_table(self, params: dict[str, Any]) -> None:
         """Preenche a tabela a partir de ``params["hardware"]`` ou inferindo."""
         self.tbl_hardware.setRowCount(0)
         self._hardware_items = []
@@ -219,7 +219,7 @@ class ModuleDialogHardwareMixin:
 
     # ------------------------------------------------------------------ restore/save
 
-    def _restore_hardware_from_module(self, params: Dict[str, Any]) -> None:
+    def _restore_hardware_from_module(self, params: dict[str, Any]) -> None:
         """Carrega as ferragens do módulo editado na tabela."""
         if not hasattr(self, "tbl_hardware"):
             return
@@ -235,6 +235,6 @@ class ModuleDialogHardwareMixin:
             )
         self._fill_hardware_table(params)
 
-    def _current_hardware_params(self) -> List[Dict[str, Any]]:
+    def _current_hardware_params(self) -> list[dict[str, Any]]:
         """Retorna a lista de ferragens atual (editada) para gravação."""
         return serialize_hardware(self._hardware_items)

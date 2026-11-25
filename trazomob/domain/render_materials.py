@@ -3,9 +3,9 @@
 """Catálogo de presets procedurais de render e mapeamento por slot de material."""
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
-RENDER_PRESETS: List[Tuple[str, str]] = [
+RENDER_PRESETS: list[tuple[str, str]] = [
     ("original", "Manter Original"),
     ("aco_escovado", "Aço Escovado (Inox)"),
     ("cromado", "Cromado Espelhado"),
@@ -26,7 +26,7 @@ RENDER_PRESETS: List[Tuple[str, str]] = [
 RENDER_PRESET_IDS = {pid for pid, _ in RENDER_PRESETS}
 
 
-def face_material_key(face: Any) -> Tuple[str, str, Optional[Tuple[float, float, float]], Optional[str]]:
+def face_material_key(face: Any) -> tuple[str, str, tuple[float, float, float] | None, str | None]:
     """Retorna ``(key, label, color_rgb, texture_path)`` estável para uma face."""
     attrs = getattr(face, "attrs", None) or {}
     tex = attrs.get("texture") if isinstance(attrs, dict) else None
@@ -48,12 +48,12 @@ def face_material_key(face: Any) -> Tuple[str, str, Optional[Tuple[float, float,
     return "mat_default", "Cor Padrão", (0.85, 0.85, 0.85), None
 
 
-def extract_group_material_slots(group: Any) -> List[Dict[str, Any]]:
+def extract_group_material_slots(group: Any) -> list[dict[str, Any]]:
     """Varre um ``Group`` (e seus filhos) e retorna os slots únicos de material/cor/textura."""
     if group is None:
         return []
 
-    slots: Dict[str, Dict[str, Any]] = {}
+    slots: dict[str, dict[str, Any]] = {}
     root_name = str(getattr(group, "name", "") or "").strip()
 
     def _walk(g: Any, is_root: bool = False) -> None:
@@ -85,7 +85,7 @@ def extract_group_material_slots(group: Any) -> List[Dict[str, Any]]:
     return sorted(slots.values(), key=lambda s: -s["face_count"])
 
 
-def get_group_render_materials(group: Any) -> Dict[str, str]:
+def get_group_render_materials(group: Any) -> dict[str, str]:
     """Lê o dicionário ``{material_key: preset_id}`` salvo em ``group.ext``."""
     if group is None:
         return {}
@@ -98,7 +98,7 @@ def get_group_render_materials(group: Any) -> Dict[str, str]:
     return {str(k): str(v) for k, v in data.items() if str(v) in RENDER_PRESET_IDS}
 
 
-def set_group_render_materials(group: Any, mapping: Dict[str, str]) -> None:
+def set_group_render_materials(group: Any, mapping: dict[str, str]) -> None:
     """Grava o dicionário ``{material_key: preset_id}`` em ``group.ext``."""
     if group is None:
         return
@@ -115,9 +115,9 @@ def set_group_render_materials(group: Any, mapping: Dict[str, str]) -> None:
         group.ext.pop("trazomob_render_materials", None)
 
 
-def collect_group_render_overrides(groups: Any) -> Dict[str, Dict[str, Any]]:
+def collect_group_render_overrides(groups: Any) -> dict[str, dict[str, Any]]:
     """Collect ``trazomob_render_materials`` dict overrides across ``groups`` and children."""
-    collected: Dict[str, Dict[str, Any]] = {}
+    collected: dict[str, dict[str, Any]] = {}
 
     def _walk(item: Any) -> None:
         if item is None:

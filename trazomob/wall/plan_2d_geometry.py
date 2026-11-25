@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Optional, Tuple
 
 from PySide6.QtGui import QVector3D
 
@@ -12,7 +11,7 @@ from core.group import Group
 from core.layers import Layer
 from core.mesh import Mesh
 
-Point2D = Tuple[float, float]
+Point2D = tuple[float, float]
 
 from typing import TYPE_CHECKING
 
@@ -25,7 +24,7 @@ from .plan_2d import dist_2d, line_intersection_2d
 class Plan2DGeometryMixin:
     """Polígonos 2D, pilares e extrusão 3D extraídos de WallGraph2D."""
 
-    def compute_wall_polygons(self) -> Dict[int, Tuple[Point2D, Point2D, Point2D, Point2D]]:
+    def compute_wall_polygons(self) -> dict[int, tuple[Point2D, Point2D, Point2D, Point2D]]:
         """Calcula os 4 vértices 2D (c0, c1, c2, c3) para cada segmento de parede.
 
         c0 e c1 são os vértices na borda 'esquerda' (de node_a a node_b).
@@ -40,12 +39,12 @@ class Plan2DGeometryMixin:
         para ângulos retos), fechando perfeitamente os cantos internos e externos.
         """
         # Mapeia quais segmentos incidem em cada nó
-        node_segments: Dict[int, List[int]] = {nid: [] for nid in self.nodes}
+        node_segments: dict[int, list[int]] = {nid: [] for nid in self.nodes}
         for seg_id, seg in self.segments.items():
             node_segments[seg.node_a_id].append(seg_id)
             node_segments[seg.node_b_id].append(seg_id)
 
-        polys: Dict[int, Tuple[Point2D, Point2D, Point2D, Point2D]] = {}
+        polys: dict[int, tuple[Point2D, Point2D, Point2D, Point2D]] = {}
         for seg_id, seg in self.segments.items():
             na = self.nodes[seg.node_a_id]
             nb = self.nodes[seg.node_b_id]
@@ -78,7 +77,7 @@ class Plan2DGeometryMixin:
 
         # Pré-computa as retas de borda esquerda (L) e direita (R) de cada segmento
         # no seu referencial canônico de a->b.
-        seg_rails: Dict[int, Dict[str, Tuple[Point2D, Point2D]]] = {}
+        seg_rails: dict[int, dict[str, tuple[Point2D, Point2D]]] = {}
         for seg_id, seg in self.segments.items():
             na = self.nodes[seg.node_a_id]
             nb = self.nodes[seg.node_b_id]
@@ -218,7 +217,7 @@ class Plan2DGeometryMixin:
         return polys
 
     @staticmethod
-    def _intersect_quad_with_line(quad: Tuple[Point2D, Point2D, Point2D, Point2D], p: Point2D, d: Point2D) -> Optional[Point2D]:
+    def _intersect_quad_with_line(quad: tuple[Point2D, Point2D, Point2D, Point2D], p: Point2D, d: Point2D) -> Point2D | None:
         """Calcula a interseção entre o raio p + t*d (t >= 0) e as 4 arestas do polígono quad."""
         edges = [(quad[0], quad[1]), (quad[1], quad[2]), (quad[2], quad[3]), (quad[3], quad[0])]
         pts = []
@@ -238,19 +237,19 @@ class Plan2DGeometryMixin:
         # Pega a interseção mais próxima do ponto de partida p
         return min(pts, key=lambda pt: (pt[0] - p[0]) ** 2 + (pt[1] - p[1]) ** 2)
 
-    def compute_columns(self) -> Dict[int, Tuple[Point2D, Point2D, Point2D, Point2D]]:
+    def compute_columns(self) -> dict[int, tuple[Point2D, Point2D, Point2D, Point2D]]:
         """Calcula as colunas estruturais nos nós que formam junção em T (ou X).
 
         Quando 3 ou mais paredes se encontram em um nó (ou junção em T),
         gera uma coluna quadrada separando as paredes que chegam ao nó.
         Retorna um dicionário {node_id: (c0, c1, c2, c3)}.
         """
-        node_segments: Dict[int, List[int]] = {nid: [] for nid in self.nodes}
+        node_segments: dict[int, list[int]] = {nid: [] for nid in self.nodes}
         for seg_id, seg in self.segments.items():
             node_segments[seg.node_a_id].append(seg_id)
             node_segments[seg.node_b_id].append(seg_id)
 
-        columns: Dict[int, Tuple[Point2D, Point2D, Point2D, Point2D]] = {}
+        columns: dict[int, tuple[Point2D, Point2D, Point2D, Point2D]] = {}
         for nid, seg_ids in node_segments.items():
             if len(seg_ids) >= 3:
                 node = self.nodes[nid]
@@ -265,7 +264,7 @@ class Plan2DGeometryMixin:
 
         return columns
 
-    def build_3d_group(self, scene, altura_m: float = 2.6, name: str = "Ambiente Paredes", z_base: float = 0.0) -> Optional[Group]:
+    def build_3d_group(self, scene, altura_m: float = 2.6, name: str = "Ambiente Paredes", z_base: float = 0.0) -> Group | None:
         """Gera o grupo de malha 3D contínua a partir de todos os segmentos do grafo 2D.
 
         Salva o próprio grafo 2D serializado em ext['trazomob_wall']['graph_2d'],
@@ -394,7 +393,7 @@ class Plan2DGeometryMixin:
         pavimento_nome: str = "Térreo",
         altura_m: float = 2.6,
         z_base: float = 0.0,
-    ) -> Optional[Group]:
+    ) -> Group | None:
         """
         Constrói um grupo **Ambiente** completo com paredes, piso e teto.
 

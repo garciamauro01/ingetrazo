@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Any, Optional, Tuple
+from typing import Any
 
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QVector3D
@@ -21,7 +21,7 @@ def compute_drop_placement(
     viewport: Any,
     pos: QPointF,
     mod_data: dict[str, Any],
-) -> Tuple[Tuple[float, float, float], float, Optional[Any]]:
+) -> tuple[tuple[float, float, float], float, Any | None]:
     """Calcula o offset 3D (x, y, z) e rot_z para posicionar o m?dulo no ponto solto pelo mouse.
 
     Identifica:
@@ -157,7 +157,7 @@ def compute_drop_placement(
 def draw_drop_preview_overlay(
     viewport: Any,
     painter: QPainter,
-    drop_info: Optional[dict[str, Any]],
+    drop_info: dict[str, Any] | None,
 ) -> None:
     """Renderiza a caixa 3D fantasma (bounding box) e a etiqueta do m?dulo no ponto solto."""
     if not drop_info:

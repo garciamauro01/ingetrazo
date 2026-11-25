@@ -12,7 +12,6 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 
 from PySide6.QtCore import QObject, QProcess, QSettings, QThread, Signal, Slot
 
@@ -58,7 +57,7 @@ class _ExportWorker(QObject):
         width: int,
         height: int,
         correct_verticals: bool,
-        material_overrides: Optional[dict],
+        material_overrides: dict | None,
         clay_mode: bool,
         selected_only: bool,
         sun_softness: float,
@@ -248,13 +247,13 @@ class TrazoMobRenderEngine(QObject):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._process: Optional[QProcess] = None
-        self._output_path: Optional[str] = None
-        self._export_thread: Optional[QThread] = None
-        self._export_worker: Optional[_ExportWorker] = None
+        self._process: QProcess | None = None
+        self._output_path: str | None = None
+        self._export_thread: QThread | None = None
+        self._export_worker: _ExportWorker | None = None
 
     @staticmethod
-    def get_blender_executable() -> Optional[str]:
+    def get_blender_executable() -> str | None:
         """Localiza o executável do Blender no sistema operacional."""
         settings = QSettings()
         custom = settings.value("render/blender_path", "")
@@ -288,7 +287,7 @@ class TrazoMobRenderEngine(QObject):
         width: int = 1920,
         height: int = 1080,
         correct_verticals: bool = True,
-        material_overrides: Optional[dict] = None,
+        material_overrides: dict | None = None,
         clay_mode: bool = False,
         selected_only: bool = False,
         sun_softness: float = 2.5
@@ -345,12 +344,12 @@ class TrazoMobRenderEngine(QObject):
         return True
 
     @Slot(object, object)
-    def _on_worker_finished(self, payload: Optional[dict], err_msg: Optional[str]):
+    def _on_worker_finished(self, payload: dict | None, err_msg: str | None):
         """Slot conectado diretamente para garantir execução na thread principal do Engine."""
         blender_exe = getattr(self, "_current_blender_exe", None) or self.get_blender_executable()
         self._on_export_finished(payload, err_msg, blender_exe)
 
-    def _on_export_finished(self, payload: Optional[dict], err_msg: Optional[str], blender_exe: str):
+    def _on_export_finished(self, payload: dict | None, err_msg: str | None, blender_exe: str):
         """Chamado quando o worker de exportação conclui o processamento."""
         from PySide6.QtCore import QThread
         if self._export_thread is not None:

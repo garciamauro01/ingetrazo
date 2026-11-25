@@ -6,11 +6,11 @@ from __future__ import annotations
 
 import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 
 def generate_executive_html_report(
-    parts: List[Dict[str, Any]],
+    parts: list[dict[str, Any]],
     filepath: str | Path,
     project_name: str = "Projeto TrazoMob",
     group_by_ambiente: bool = True,
@@ -26,7 +26,7 @@ def generate_executive_html_report(
     )
 
     # Agrupa peças por Ambiente e Pavimento
-    groups: Dict[str, List[Dict[str, Any]]] = {}
+    groups: dict[str, list[dict[str, Any]]] = {}
     materiais_set = set()
     total_fita_m = 0.0
 

@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import (
@@ -17,7 +17,7 @@ from core.units import bare_number_scale
 from ..wall.plan_2d import dist_2d
 
 if TYPE_CHECKING:
-    Point2D = Tuple[float, float]
+    Point2D = tuple[float, float]
 
 
 class InputHandlingMixin:
@@ -455,7 +455,7 @@ class InputHandlingMixin:
 
             self.update()
 
-    def _align_to_existing_points(self, wx: float, wy: float, tol_px: float = 12.0) -> Tuple[float, float]:
+    def _align_to_existing_points(self, wx: float, wy: float, tol_px: float = 12.0) -> tuple[float, float]:
         """Detecta alinhamento horizontal (mesmo Y) e vertical (mesmo X) com nós existentes e cria guias."""
         self._align_guides.clear()
         tol_m = tol_px / max(1.0, self._zoom)
@@ -499,7 +499,7 @@ class InputHandlingMixin:
 
         return best_x, best_y
 
-    def _snap_point_or_face(self, wx: float, wy: float) -> Tuple[Point2D, bool]:
+    def _snap_point_or_face(self, wx: float, wy: float) -> tuple[Point2D, bool]:
         """Ancora no ponto notável mais próximo (canto de face ou nó do grafo).
 
         Retorna:
@@ -900,7 +900,7 @@ class InputHandlingMixin:
 
         super().keyPressEvent(event)
 
-    def _ortho_align(self, p0: Tuple[float, float], p1: Tuple[float, float], force_ortho: bool = False) -> Tuple[float, float]:
+    def _ortho_align(self, p0: tuple[float, float], p1: tuple[float, float], force_ortho: bool = False) -> tuple[float, float]:
         dx = p1[0] - p0[0]
         dy = p1[1] - p0[1]
         dist = math.hypot(dx, dy)

@@ -11,7 +11,7 @@ proposta do mesmo jeito.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from PySide6.QtWidgets import (
     QDialog,
@@ -68,7 +68,7 @@ class ProposalExportDialog(QDialog):
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
 
-    def get_data(self) -> Dict[str, str]:
+    def get_data(self) -> dict[str, str]:
         return {
             "nome": self.ed_nome.text().strip(),
             "cpf_cnpj": self.ed_cpf.text().strip(),
@@ -82,10 +82,10 @@ class ProposalExportDialog(QDialog):
 
 def export_proposal(
     parent,
-    parts: List[Dict[str, Any]],
+    parts: list[dict[str, Any]],
     project_name: str = DEFAULT_PROJECT_NAME,
     client_name: str = "",
-) -> Optional[str]:
+) -> str | None:
     """Coleta os dados do cliente, salva a proposta e devolve o caminho gerado.
 
     Retorna ``None`` quando o usuário cancela, quando não há peças ou quando o

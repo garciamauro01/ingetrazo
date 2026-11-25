@@ -7,12 +7,12 @@ o Dialog (inserção/edição modal) e o Sidebar (painel lateral de edição ao 
 """
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ..profiles import library as perfis_lib
 
 
-def extract_ui_module_params(form_owner: Any, base_params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def extract_ui_module_params(form_owner: Any, base_params: dict[str, Any] | None = None) -> dict[str, Any]:
     """Coleta e converte os valores dos widgets de formulário em um dicionário de parâmetros do módulo.
 
     Compatível tanto com TrazoMobDialog quanto com TrazoMobSidebar.
@@ -207,7 +207,7 @@ def extract_ui_module_params(form_owner: Any, base_params: Optional[Dict[str, An
     return params
 
 
-def populate_ui_from_module(form_owner: Any, params: Dict[str, Any]) -> None:
+def populate_ui_from_module(form_owner: Any, params: dict[str, Any]) -> None:
     """Preenche os widgets de formulário a partir de um dicionário de parâmetros do módulo.
 
     Unifica a sincronização bidirecional entre TrazoMobDialog e TrazoMobSidebarPanel.

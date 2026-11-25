@@ -10,8 +10,6 @@ Permite ao usuário:
 """
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple
-
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QComboBox,
@@ -38,7 +36,7 @@ from ..wall.guides import DEFAULT_RULER_PRESETS, WallGuideRulerManager
 class RulerEditorDialog(QDialog):
     """Diálogo modal moderno para gerenciar réguas e seus níveis de altura."""
 
-    def __init__(self, parent: Optional[QWidget] = None, ruler_mgr: Optional[WallGuideRulerManager] = None):
+    def __init__(self, parent: QWidget | None = None, ruler_mgr: WallGuideRulerManager | None = None):
         super().__init__(parent)
         self.setWindowTitle("Configurar Réguas de Altura — TrazoMob")
         self.setMinimumSize(540, 480)
@@ -46,7 +44,7 @@ class RulerEditorDialog(QDialog):
 
         self.ruler_mgr = ruler_mgr or WallGuideRulerManager.get_instance()
         # Cópia de trabalho local dos presets para permitir Cancelar ou Salvar
-        self._working_presets: Dict[str, List[Dict[str, any]]] = {}
+        self._working_presets: dict[str, list[dict[str, any]]] = {}
         for k, v in self.ruler_mgr.presets.items():
             self._working_presets[k] = [dict(item) for item in v]
         self._active_preset = self.ruler_mgr.active_preset_name
@@ -200,7 +198,7 @@ class RulerEditorDialog(QDialog):
             btn_col = self._make_color_button(rgb)
             self.table.setCellWidget(row, 2, btn_col)
 
-    def _make_color_button(self, rgb: Tuple[int, int, int]) -> QPushButton:
+    def _make_color_button(self, rgb: tuple[int, int, int]) -> QPushButton:
         btn = QPushButton()
         btn._rgb_color = rgb
         r, g, b = rgb

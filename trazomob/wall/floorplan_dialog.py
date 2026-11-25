@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Dict, List, Optional, Tuple
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeyEvent, QVector3D
@@ -43,7 +42,7 @@ logger = logging.getLogger("trazomob.wall_floorplan_dialog")
 class WallFloorplanDialog(QDialog):
     """Janela de Diálogo para Desenhar Paredes em Planta Baixa 2D com Extrusão 3D Direta."""
 
-    def __init__(self, viewport, existing_group: Optional[Group] = None, parent: Optional[QWidget] = None):
+    def __init__(self, viewport, existing_group: Group | None = None, parent: QWidget | None = None):
         super().__init__(parent)
         self.viewport = viewport
         self.existing_group = existing_group
@@ -51,8 +50,8 @@ class WallFloorplanDialog(QDialog):
         self.resize(1000, 680)
 
         # Dicionários de grafos e paredes organizados por pavimento
-        self._graphs_by_pav: Dict[str, WallGraph2D] = {}
-        self._scene_walls_by_pav: Dict[str, List[Group]] = {}
+        self._graphs_by_pav: dict[str, WallGraph2D] = {}
+        self._scene_walls_by_pav: dict[str, list[Group]] = {}
         self.existing_walls = []
         self._current_pav = "Térreo"
 
@@ -689,7 +688,7 @@ class WallFloorplanDialog(QDialog):
 
     def _update_underlay_for_pav(self, cur_pav: str) -> None:
         """Calcula as linhas do pavimento imediatamente inferior para servir de guia fantasma (underlay)."""
-        lines: List[Tuple[Tuple[float, float], Tuple[float, float]]] = []
+        lines: list[tuple[tuple[float, float], tuple[float, float]]] = []
         # Se estamos no 1º Andar ou superior, procura o andar de baixo (ex: Térreo)
         lower_pav = None
         if "1" in cur_pav:

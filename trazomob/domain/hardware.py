@@ -22,12 +22,13 @@ cutlist, orçamento e relatório.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any
 
 # Código estável -> (tipo, nome amigável, preço unitário padrão em R$)
 # O tipo controla a seção do relatório: dobradiça | trilho | corredica | puxador | fixacao | outro
-HARDWARE_CATALOG: Dict[str, Dict[str, Any]] = {
+HARDWARE_CATALOG: dict[str, dict[str, Any]] = {
     "dobradica_35mm": {
         "tipo": "dobradica",
         "nome": "Dobradiça 35mm (caneco)",
@@ -101,7 +102,7 @@ HARDWARE_CATALOG: Dict[str, Dict[str, Any]] = {
 }
 
 # Mapeia tipo de puxador salvo nos parâmetros para a chave do catálogo.
-_PUXADOR_KEY: Dict[str, Optional[str]] = {
+_PUXADOR_KEY: dict[str, str | None] = {
     "alca": "puxador_ponto",
     "perfil": "puxador_perfil",
     "cava": "puxador_embutido",
@@ -112,7 +113,7 @@ _PUXADOR_KEY: Dict[str, Optional[str]] = {
 }
 
 # Nº de dobradiças por porta conforme a altura (padrão marcenaria).
-_DOBRA_POR_ALTURA: List[Tuple[float, int]] = [
+_DOBRA_POR_ALTURA: list[tuple[float, int]] = [
     (2100.0, 5),
     (1600.0, 4),
     (900.0, 3),
@@ -129,16 +130,16 @@ class HardwareItem:
     nome: str
     quantidade: int = 1
     preco_unitario: float = 0.0
-    posicao: Optional[Dict[str, Any]] = None
+    posicao: dict[str, Any] | None = None
     visivel_3d: bool = True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         d["preco_unitario"] = round(float(self.preco_unitario or 0.0), 2)
         return d
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "HardwareItem":
+    def from_dict(cls, data: dict[str, Any]) -> "HardwareItem":
         return cls(
             key=str(data.get("key", "")),
             tipo=str(data.get("tipo", "outro")),
@@ -150,7 +151,7 @@ class HardwareItem:
         )
 
 
-def _catalogo(key: str) -> Dict[str, Any]:
+def _catalogo(key: str) -> dict[str, Any]:
     return HARDWARE_CATALOG.get(key, {"tipo": "outro", "nome": key, "preco": 0.0})
 
 
@@ -162,7 +163,7 @@ def _n_dobradicas(altura_mm: float) -> int:
     return 2
 
 
-def infer_module_hardware(params: Dict[str, Any]) -> List[HardwareItem]:
+def infer_module_hardware(params: dict[str, Any]) -> list[HardwareItem]:
     """Infere as ferragens de um módulo a partir dos parâmetros salvos.
 
     Regras de inferência automática:
@@ -178,7 +179,7 @@ def infer_module_hardware(params: Dict[str, Any]) -> List[HardwareItem]:
     * **Pé nivelador**: para módulos de chão (balcões, gaveteiros, torres etc.).
     """
     params = params or {}
-    hw: List[HardwareItem] = []
+    hw: list[HardwareItem] = []
 
     num_portas = int(params.get("num_portas", 0) or 0)
     tipo = str(params.get("tipo", "") or "").lower()
@@ -344,16 +345,16 @@ def infer_module_hardware(params: Dict[str, Any]) -> List[HardwareItem]:
     return hw
 
 
-def serialize_hardware(items: Iterable[HardwareItem]) -> List[Dict[str, Any]]:
+def serialize_hardware(items: Iterable[HardwareItem]) -> list[dict[str, Any]]:
     """Converte uma lista de ``HardwareItem`` para dicionários serializáveis."""
     return [it.to_dict() for it in items]
 
 
-def deserialize_hardware(data: Any) -> List[HardwareItem]:
+def deserialize_hardware(data: Any) -> list[HardwareItem]:
     """Recria ``HardwareItem``s a partir de dados serializados (ext/JSON)."""
     if not isinstance(data, list):
         return []
-    itens: List[HardwareItem] = []
+    itens: list[HardwareItem] = []
     for d in data:
         if not isinstance(d, dict) or not d.get("key"):
             continue
@@ -365,8 +366,8 @@ def deserialize_hardware(data: Any) -> List[HardwareItem]:
 
 
 def consolidate_hardware(
-    entries: Iterable[Tuple[Any, List[HardwareItem]]],
-) -> Dict[str, Dict[str, Any]]:
+    entries: Iterable[tuple[Any, list[HardwareItem]]],
+) -> dict[str, dict[str, Any]]:
     """Agrega ferragens de vários módulos numa única contagem.
 
     ``entries`` é um iterável de ``(chave_modulo, [HardwareItem, ...])``. A
@@ -375,7 +376,7 @@ def consolidate_hardware(
 
     Retorna ``{codigo: {"tipo", "nome", "quantidade", "preco_unitario", "total"}}``.
     """
-    resultado: Dict[str, Dict[str, Any]] = {}
+    resultado: dict[str, dict[str, Any]] = {}
     for _chave_modulo, items in entries:
         for it in items:
             if it.quantidade <= 0:
@@ -397,6 +398,6 @@ def consolidate_hardware(
     return resultado
 
 
-def hardware_total_preco(consolidado: Dict[str, Dict[str, Any]]) -> float:
+def hardware_total_preco(consolidado: dict[str, dict[str, Any]]) -> float:
     """Soma o preço total de todas as ferragens consolidadas."""
     return round(sum(float(e.get("total", 0.0)) for e in consolidado.values()), 2)

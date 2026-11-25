@@ -15,10 +15,9 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Dict
 
 _I18N_DIR = Path(__file__).resolve().parent.parent / "assets" / "i18n"
-_CATALOG_CACHE: Dict[str, Dict[str, str]] = {}
+_CATALOG_CACHE: dict[str, dict[str, str]] = {}
 
 logger = logging.getLogger("trazomob.i18n")
 
@@ -33,13 +32,13 @@ def get_lang() -> str:
         return "pt-BR"
 
 
-def _get_catalog(lang: str) -> Dict[str, str]:
+def _get_catalog(lang: str) -> dict[str, str]:
     """Carrega e faz cache do dicionário JSON para o idioma informado."""
     if not lang or lang in ("pt-BR", "pt", "pt_BR"):
         return {}
     if lang not in _CATALOG_CACHE:
         base_lang = lang.replace("_", "-").split("-")[0].lower()
-        loaded: Dict[str, str] = {}
+        loaded: dict[str, str] = {}
         for candidate in (lang, base_lang):
             path = _I18N_DIR / f"{candidate}.json"
             if path.is_file():

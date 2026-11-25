@@ -6,10 +6,10 @@ Conforme especificado em docs/plugins.md do IngeTrazo:
 """
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 
-def get_trazomob(group: Any) -> Dict[str, Any]:
+def get_trazomob(group: Any) -> dict[str, Any]:
     """Retorna os dados do TrazoMob contidos em group.ext['trazomob'].
 
     Também reconhece de forma transparente objetos legados durante a transição.
@@ -44,7 +44,7 @@ def get_trazomob(group: Any) -> Dict[str, Any]:
     return {}
 
 
-def set_trazomob(group: Any, kind: str, data: Optional[Dict[str, Any]] = None, **kwargs) -> Dict[str, Any]:
+def set_trazomob(group: Any, kind: str, data: dict[str, Any] | None = None, **kwargs) -> dict[str, Any]:
     """Define metadados do grupo sob o namespace oficial group.ext['trazomob']."""
     if getattr(group, "ext", None) is None or not isinstance(group.ext, dict):
         group.ext = {}

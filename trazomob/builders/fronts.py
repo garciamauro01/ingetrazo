@@ -10,8 +10,6 @@ geometria 3D, que é a unidade do espaço de cena.
 """
 from __future__ import annotations
 
-from typing import List, Optional, Tuple
-
 from core.group import Group
 
 from ..builders.chapa_spec import ModuloMaterialContext
@@ -26,8 +24,8 @@ class FrentesKitBuilder:
     @classmethod
     def resolve_folga_mm(
         cls,
-        folga_frentes_mm: Optional[float] = None,
-        mat_ctx: Optional[ModuloMaterialContext] = None,
+        folga_frentes_mm: float | None = None,
+        mat_ctx: ModuloMaterialContext | None = None,
     ) -> float:
         """Resolve a folga padrão de frentes/portas em mm (override, contexto ou padrão)."""
         if folga_frentes_mm is not None:
@@ -42,11 +40,11 @@ class FrentesKitBuilder:
         largura_mm: float,
         altura_mm: float,
         num_portas: int,
-        offset: Tuple[float, float, float] = (0.0, 0.0, 0.0),
+        offset: tuple[float, float, float] = (0.0, 0.0, 0.0),
         esp_frente_mm: float = 15.0,
-        material: Optional[str] = None,
-        color: Optional[Tuple[float, float, float]] = None,
-        door_sides: Optional[List[str]] = None,
+        material: str | None = None,
+        color: tuple[float, float, float] | None = None,
+        door_sides: list[str] | None = None,
         prefixo: str = "Modulo",
         puxador_tipo: str = "alca",
         puxador_cor: str = "preto",
@@ -57,9 +55,9 @@ class FrentesKitBuilder:
         gerar_furacao: bool = True,
         recuo_topo_mm: float = 0.0,
         recuo_base_mm: float = 0.0,
-        mat_ctx: Optional[ModuloMaterialContext] = None,
-        folga_frentes_mm: Optional[float] = None,
-    ) -> List[Group]:
+        mat_ctx: ModuloMaterialContext | None = None,
+        folga_frentes_mm: float | None = None,
+    ) -> list[Group]:
         """Gera um conjunto distribuído de portas de giro com folgas padronizadas."""
         from ..builders.cabinet_caixa import CaixaMixin
 
@@ -86,7 +84,7 @@ class FrentesKitBuilder:
         larg_disponivel = largura_total_m - (2.0 * folga_p) - (n - 1) * folga_f
         larg_porta = max(0.10, larg_disponivel / n)
 
-        groups: List[Group] = []
+        groups: list[Group] = []
         x_atual = ox + folga_p
         z_atual = oz + recuo_base_m + folga_p
 
@@ -134,20 +132,20 @@ class FrentesKitBuilder:
         largura_mm: float,
         altura_mm: float,
         num_gavetas: int,
-        offset: Tuple[float, float, float] = (0.0, 0.0, 0.0),
+        offset: tuple[float, float, float] = (0.0, 0.0, 0.0),
         esp_frente_mm: float = 15.0,
-        material: Optional[str] = None,
-        color: Optional[Tuple[float, float, float]] = None,
+        material: str | None = None,
+        color: tuple[float, float, float] | None = None,
         prefixo: str = "Modulo",
         puxador_tipo: str = "alca",
         puxador_cor: str = "preto",
         puxador_pos: str = "padrao",
         desconto_perfil_mm: float = 35.0,
         perfil_modelo: str = "gola",
-        alturas_frentes_mm: Optional[List[float]] = None,
-        mat_ctx: Optional[ModuloMaterialContext] = None,
-        folga_frentes_mm: Optional[float] = None,
-    ) -> List[Group]:
+        alturas_frentes_mm: list[float] | None = None,
+        mat_ctx: ModuloMaterialContext | None = None,
+        folga_frentes_mm: float | None = None,
+    ) -> list[Group]:
         """Gera um conjunto vertical de frentes de gaveta com folgas uniformes."""
         from ..builders.cabinet_caixa import CaixaMixin
 
@@ -173,7 +171,7 @@ class FrentesKitBuilder:
             alt_gaveta = max(0.05, altura_util / n)
             alturas = [alt_gaveta] * n
 
-        groups: List[Group] = []
+        groups: list[Group] = []
         z_atual = oz + folga_p
 
         for i, h_frente in enumerate(alturas, 1):

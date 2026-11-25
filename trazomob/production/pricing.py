@@ -13,7 +13,7 @@ import math
 import re
 import unicodedata
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ..domain.preferences import TrazoMobPreferencesManager
 
@@ -50,10 +50,10 @@ class ResumoOrcamento:
     num_parcelas: int = 1
     valor_parcela: float = 0.0
     linha_ferragem: str = "standard"
-    itens: List[ItemCusto] = field(default_factory=list)
-    itens_sem_preco: List[str] = field(default_factory=list)
+    itens: list[ItemCusto] = field(default_factory=list)
+    itens_sem_preco: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "custo_direto": round(self.custo_direto, 2),
             "custo_chapas": round(self.custo_chapas, 2),
@@ -97,7 +97,7 @@ def _normalizar_material(mat: str) -> str:
     return mat
 
 
-def _get_chapa_preco_flexivel(chapas_precos: Dict[str, float], material: str, espessura: float) -> float:
+def _get_chapa_preco_flexivel(chapas_precos: dict[str, float], material: str, espessura: float) -> float:
     """Busca preço de chapa com múltiplas estratégias de chave."""
     # 1. Chave exata como vem do builder: "Material Espessuramm"
     key1 = f"{material} {espessura:.0f}mm"
@@ -127,7 +127,7 @@ def _get_chapa_preco_flexivel(chapas_precos: Dict[str, float], material: str, es
     return 0.0
 
 
-def _get_fita_preco_flexivel(fita_precos: Dict[str, float], espessura_fita: float) -> float:
+def _get_fita_preco_flexivel(fita_precos: dict[str, float], espessura_fita: float) -> float:
     """Busca preço de fita com múltiplas estratégias de chave."""
     # 1. Chave com vírgula (formato brasileiro)
     key1 = f"{espessura_fita:.2f}mm".replace(".", ",")
@@ -170,7 +170,7 @@ def _num_dobradicas(altura_mm: float) -> int:
     return 5
 
 
-def _inferir_ferragens_peca(part: Dict[str, Any]) -> Dict[str, int]:
+def _inferir_ferragens_peca(part: dict[str, Any]) -> dict[str, int]:
     """Infere ferragens de uma peça avulsa a partir do nome e das dimensões.
 
     Usado apenas como *fallback* quando a peça não traz as ferragens do módulo
@@ -214,7 +214,7 @@ def _inferir_ferragens_peca(part: Dict[str, Any]) -> Dict[str, int]:
     return ferragens
 
 
-def _calcular_fita_metros(part: Dict[str, Any]) -> float:
+def _calcular_fita_metros(part: dict[str, Any]) -> float:
     """Calcula metros lineares de fita de borda para uma peça."""
     qtd = part.get("quantidade", 1)
     comp_m = part.get("comprimento", 0.0) / 1000.0
@@ -234,9 +234,9 @@ def _calcular_fita_metros(part: Dict[str, Any]) -> float:
 
 
 def calcular_orcamento_cutlist(
-    parts: List[Dict[str, Any]],
+    parts: list[dict[str, Any]],
     incluir_frete: bool = True,
-    linha_ferragem_override: Optional[str] = None,
+    linha_ferragem_override: str | None = None,
 ) -> ResumoOrcamento:
     """
     Calcula orçamento completo a partir da cutlist (lista de peças).
@@ -288,15 +288,15 @@ def calcular_orcamento_cutlist(
     ferragens_precos = pricing.get("ferragens", {})
 
     # Agregadores
-    chapa_area: Dict[str, Dict[str, Any]] = {}
-    fita_metros: Dict[float, Dict[str, float]] = {}
+    chapa_area: dict[str, dict[str, Any]] = {}
+    fita_metros: dict[float, dict[str, float]] = {}
     custo_chapas = 0.0
     custo_fitas = 0.0
     custo_ferragens = 0.0
     custo_servicos = 0.0
     total_area_liquida_m2 = 0.0
     total_fita_m = 0.0
-    ferragens_count: Dict[str, int] = {}
+    ferragens_count: dict[str, int] = {}
     seen_modules: set = set()
     itens_sem_preco: set = set()
 
@@ -365,7 +365,7 @@ def calcular_orcamento_cutlist(
                 if f_qtd > 0:
                     ferragens_count[f_key] = ferragens_count.get(f_key, 0) + f_qtd
 
-    itens: List[ItemCusto] = []
+    itens: list[ItemCusto] = []
     total_chapas_compradas = 0
 
     # 2. Consolidação de Chapas
@@ -572,7 +572,7 @@ def calcular_orcamento_cutlist(
     )
 
 
-def agrupar_por_ambiente(parts: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+def agrupar_por_ambiente(parts: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     """Agrupa peças pela chave ``"Ambiente (Pavimento)"``.
 
     Fonte única de verdade do agrupamento por ambiente, usada tanto pelo cálculo
@@ -580,7 +580,7 @@ def agrupar_por_ambiente(parts: List[Dict[str, Any]]) -> Dict[str, List[Dict[str
     """
     from collections import defaultdict
 
-    groups: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for p in parts:
         amb = p.get("ambiente") or "Ambiente Geral"
         pav = p.get("pavimento") or "Térreo"
@@ -589,7 +589,7 @@ def agrupar_por_ambiente(parts: List[Dict[str, Any]]) -> Dict[str, List[Dict[str
     return dict(groups)
 
 
-def calcular_orcamento_por_ambiente(parts: List[Dict[str, Any]]) -> Dict[str, ResumoOrcamento]:
+def calcular_orcamento_por_ambiente(parts: list[dict[str, Any]]) -> dict[str, ResumoOrcamento]:
     """
     Calcula orçamento separado por ambiente/pavimento.
     Retorna dict { "Ambiente (Pavimento)": ResumoOrcamento }.
@@ -607,12 +607,12 @@ def formatar_moeda(valor: float) -> str:
 
 
 def gerar_proposta_dados(
-    parts: List[Dict[str, Any]],
+    parts: list[dict[str, Any]],
     project_name: str = "Projeto TrazoMob",
     client_name: str = "Cliente",
-    client_data: Optional[Dict[str, str]] = None,
+    client_data: dict[str, str] | None = None,
     observacoes: str = "",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Gera estrutura completa de dados para proposta (PDF/HTML).
     Inclui orçamento geral, por ambiente, dados da empresa e cliente.

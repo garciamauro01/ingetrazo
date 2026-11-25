@@ -14,7 +14,8 @@ Permite alternar visibilidade de todo o andar e calcular área total.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any
 
 from core.group import Group
 from core.mesh import Mesh
@@ -104,7 +105,7 @@ def iter_tetos_do_ambiente(ambiente: Group) -> Iterable[Group]:
             yield child
 
 
-def ambiente_do_modulo(modulo: Group) -> Optional[Group]:
+def ambiente_do_modulo(modulo: Group) -> Group | None:
     """Sobe na hierarquia até encontrar o ambiente pai do módulo."""
     # Em IngeTrazo, o pai não é exposto diretamente; varremos a cena.
     # Quem chama deve passar a cena ou a lista de ambientes.
@@ -115,7 +116,7 @@ def ambiente_do_modulo(modulo: Group) -> Optional[Group]:
 # Cálculos de geometria
 # ---------------------------------------------------------------------------
 
-def _bounds_do_grupo(group: Group) -> Optional[Tuple[float, float, float, float, float, float]]:
+def _bounds_do_grupo(group: Group) -> tuple[float, float, float, float, float, float] | None:
     """Retorna (minx, maxx, miny, maxy, minz, maxz) em metros do grupo e filhos."""
     xs, ys, zs = [], [], []
     for child in getattr(group, "children", None) or []:
@@ -196,9 +197,9 @@ class AmbienteBuilder:
     @staticmethod
     def build_ambiente_group(
         nome: str,
-        paredes: List[Group],
-        piso: Optional[Group],
-        teto: Optional[Group],
+        paredes: list[Group],
+        piso: Group | None,
+        teto: Group | None,
         pavimento_nome: str = "Térreo",
         z_base: float = 0.0,
         pe_direito: float = 2.7,
@@ -246,7 +247,7 @@ class AmbienteBuilder:
         return master
 
     @staticmethod
-    def ensure_pavimento(scene_groups: List[Group], nome: str, z_base: float = 0.0) -> Group:
+    def ensure_pavimento(scene_groups: list[Group], nome: str, z_base: float = 0.0) -> Group:
         """Garante que existe um grupo Pavimento com esse nome; cria se não houver."""
         for g in scene_groups:
             if is_pavimento(g):
@@ -263,7 +264,7 @@ class AmbienteBuilder:
         return pav
 
     @classmethod
-    def criar_pavimento(cls, scene_groups: List[Group], nome: str, z_base: float = 0.0) -> Group:
+    def criar_pavimento(cls, scene_groups: list[Group], nome: str, z_base: float = 0.0) -> Group:
         """Alias para criação explícita de pavimento."""
         return cls.ensure_pavimento(scene_groups, nome, z_base=z_base)
 
@@ -281,10 +282,10 @@ class AmbienteBuilder:
 # ---------------------------------------------------------------------------
 
 def build_ambiente_command(
-    modulos: List[Group],
+    modulos: list[Group],
     nome: str,
     pavimento_nome: str = "Térreo",
-) -> Optional["Command"]:
+) -> "Command" | None:
     """
     Cria um comando que agrupa os módulos selecionados num novo Ambiente.
 
@@ -321,7 +322,7 @@ def build_ambiente_command(
     return _AmbienteWrapper(cmd, pavimento_nome)
 
 
-def build_dissolve_ambiente_command(ambiente: Group) -> Optional["Command"]:
+def build_dissolve_ambiente_command(ambiente: Group) -> "Command" | None:
     """Cria comando para dissolver o ambiente, devolvendo filhos ao nível do pai."""
     if not is_ambiente(ambiente):
         return None
@@ -373,7 +374,7 @@ def set_pavimento_visivel(pavimento: Group, visivel: bool) -> None:
 # Exportação para cutlist / relatórios
 # ---------------------------------------------------------------------------
 
-def resumo_ambiente(ambiente: Group) -> Dict[str, Any]:
+def resumo_ambiente(ambiente: Group) -> dict[str, Any]:
     """Dicionário pronto para relatório/cutlist filtrado por ambiente."""
     params = ambiente_params(ambiente)
     modulos = list(iter_modulos_do_ambiente(ambiente))

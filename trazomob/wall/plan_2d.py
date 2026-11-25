@@ -5,20 +5,19 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set, Tuple
 
 from PySide6.QtGui import QVector3D
 
 from core.group import Group
 
-Point2D = Tuple[float, float]
+Point2D = tuple[float, float]
 
 
 def dist_2d(p1: Point2D, p2: Point2D) -> float:
     return math.hypot(p2[0] - p1[0], p2[1] - p1[1])
 
 
-def line_intersection_2d(p1: Point2D, d1: Point2D, p2: Point2D, d2: Point2D) -> Optional[Point2D]:
+def line_intersection_2d(p1: Point2D, d1: Point2D, p2: Point2D, d2: Point2D) -> Point2D | None:
     """Calcula a interseção entre duas retas parametrizadas: p1 + s*d1 e p2 + t*d2."""
     det = d1[0] * d2[1] - d1[1] * d2[0]
     if abs(det) < 1e-6:
@@ -51,7 +50,7 @@ class WallSegment2D:
     node_b_id: int
     thickness: float = 0.15  # em metros
     flip_side: bool = False  # mantido para compatibilidade de arquivos legados
-    height: Optional[float] = None  # altura individual em metros
+    height: float | None = None  # altura individual em metros
 
     def length(self, graph: WallGraph2D) -> float:
         na = graph.get_node(self.node_a_id)
@@ -80,19 +79,19 @@ class CustomDimension2D:
     id: int
     p1: Point2D
     p2: Point2D
-    seg_id: Optional[int] = None  # segmento principal associado (compatibilidade/UX)
+    seg_id: int | None = None  # segmento principal associado (compatibilidade/UX)
     offset: float = 0.25          # distância visual da linha de cota em relação aos pontos cotados
-    node_a_id: Optional[int] = None  # nó do grafo vinculado a p1 (compatibilidade)
-    node_b_id: Optional[int] = None  # nó do grafo vinculado a p2 (compatibilidade)
+    node_a_id: int | None = None  # nó do grafo vinculado a p1 (compatibilidade)
+    node_b_id: int | None = None  # nó do grafo vinculado a p2 (compatibilidade)
     driving: bool = True          # True = altera/preserva geometria; False = anotação
     # Referência geométrica de p1 (tem prioridade sobre node_a_id)
-    a_seg_id: Optional[int] = None
-    a_end: Optional[str] = None   # "a", "b" ou None (ponto interno do segmento)
+    a_seg_id: int | None = None
+    a_end: str | None = None   # "a", "b" ou None (ponto interno do segmento)
     a_dist: float = 0.0           # distância do nó A do segmento, quando a_end é None
     a_perp: float = 0.0           # afastamento perpendicular (face da parede)
     # Referência geométrica de p2 (tem prioridade sobre node_b_id)
-    b_seg_id: Optional[int] = None
-    b_end: Optional[str] = None
+    b_seg_id: int | None = None
+    b_end: str | None = None
     b_dist: float = 0.0
     b_perp: float = 0.0
 
@@ -100,9 +99,9 @@ class CustomDimension2D:
 @dataclass
 class _DimAnchor:
     """Referência interna de uma extremidade de cota, resolvida contra o grafo."""
-    node_id: Optional[int] = None
-    seg_id: Optional[int] = None
-    end: Optional[str] = None   # "a" / "b" para extremidades; None para ponto interno
+    node_id: int | None = None
+    seg_id: int | None = None
+    end: str | None = None   # "a" / "b" para extremidades; None para ponto interno
     dist: float = 0.0
     perp: float = 0.0
 
@@ -122,10 +121,10 @@ class DimensionChain2D:
     ``spans`` traz ``(seg_id, min_t, max_t, comprimento)`` ordenado ao longo do
     eixo da cota (t medido em metros a partir da primeira ponta).
     """
-    seg_ids: List[int] = field(default_factory=list)
-    spans: List[Tuple[int, float, float, float]] = field(default_factory=list)
-    start_node_id: Optional[int] = None
-    end_node_id: Optional[int] = None
+    seg_ids: list[int] = field(default_factory=list)
+    spans: list[tuple[int, float, float, float]] = field(default_factory=list)
+    start_node_id: int | None = None
+    end_node_id: int | None = None
     start_pt: Point2D = (0.0, 0.0)
     end_pt: Point2D = (0.0, 0.0)
     span_len: float = 0.0
@@ -154,10 +153,10 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
         self.default_thickness = default_thickness
         self.default_height = default_height
         self.alignment = "centro"  # Todas as paredes são desenhadas e calculadas pelo eixo central
-        self.nodes: Dict[int, WallNode2D] = {}
-        self.segments: Dict[int, WallSegment2D] = {}
-        self.dimensions: Dict[int, CustomDimension2D] = {}
-        self.room_names: Dict[str, str] = {}
+        self.nodes: dict[int, WallNode2D] = {}
+        self.segments: dict[int, WallSegment2D] = {}
+        self.dimensions: dict[int, CustomDimension2D] = {}
+        self.room_names: dict[str, str] = {}
         self._next_node_id: int = 1
         self._next_seg_id: int = 1
         self._next_dim_id: int = 1
@@ -171,7 +170,7 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
         self._next_seg_id = 1
         self._next_dim_id = 1
 
-    def canonical_room_key(self, cycle_pts: List[Point2D]) -> str:
+    def canonical_room_key(self, cycle_pts: list[Point2D]) -> str:
         """Gera uma chave topológica robusta baseada nos IDs das paredes que delimitam o cômodo.
 
         Isso garante que ao reposicionar, esticar ou arrastar as paredes,
@@ -209,7 +208,7 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
         canonical = min([pts[i:] + pts[:i] for i in range(len(pts))] + [list(reversed(pts))[i:] + list(reversed(pts))[:i] for i in range(len(pts))])
         return "room_geom_" + ";".join(f"{x},{y}" for x, y in canonical)
 
-    def get_room_name(self, cycle_pts: List[Point2D], default: str = "Ambiente") -> str:
+    def get_room_name(self, cycle_pts: list[Point2D], default: str = "Ambiente") -> str:
         ck = self.canonical_room_key(cycle_pts)
         if ck in self.room_names:
             return self.room_names[ck]
@@ -222,12 +221,12 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
                 return self.room_names[legacy_key]
         return default
 
-    def set_room_name(self, cycle_pts: List[Point2D], name: str) -> None:
+    def set_room_name(self, cycle_pts: list[Point2D], name: str) -> None:
         ck = self.canonical_room_key(cycle_pts)
         if ck:
             self.room_names[ck] = str(name).strip()
 
-    def max_height_for_cycle(self, cycle_pts: List[Point2D], fallback: float = 2.60) -> float:
+    def max_height_for_cycle(self, cycle_pts: list[Point2D], fallback: float = 2.60) -> float:
         """Maior altura das paredes que limitam um cômodo.
 
         O forro cobre o cômodo todo, então uma parede mais baixa (ex.: 1.00 m)
@@ -266,7 +265,7 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
         self.nodes[n_id] = WallNode2D(id=n_id, x=x, y=y)
         return n_id
 
-    def get_node(self, node_id: int) -> Optional[WallNode2D]:
+    def get_node(self, node_id: int) -> WallNode2D | None:
         return self.nodes.get(node_id)
 
     def add_segment(
@@ -275,9 +274,9 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
         y1: float,
         x2: float,
         y2: float,
-        thickness: Optional[float] = None,
-        height: Optional[float] = None,
-    ) -> Optional[int]:
+        thickness: float | None = None,
+        height: float | None = None,
+    ) -> int | None:
         """Cria uma parede conectando (x1, y1) a (x2, y2).
 
         Se o ponto inicial ou final cair em cima de uma parede existente,
@@ -358,7 +357,7 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
             if d.node_a_id is not None and d.node_a_id == d.node_b_id:
                 d.node_b_id = None
 
-    def _purge_dimension_segment_refs(self, removed_seg_ids: Set[int]) -> None:
+    def _purge_dimension_segment_refs(self, removed_seg_ids: set[int]) -> None:
         """Remove/limpa cotas que dependem de segmentos excluídos do grafo."""
         if not removed_seg_ids:
             return
@@ -383,7 +382,7 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
             if lost_anchor:
                 self.dimensions.pop(did, None)
 
-    def split_segment(self, seg_id: int, t: float = 0.5) -> Optional[int]:
+    def split_segment(self, seg_id: int, t: float = 0.5) -> int | None:
         """Divide uma parede no parâmetro ``t`` (0..1, medido de A para B).
 
         Cria um nó no ponto de divisão e um novo segmento que herda espessura,
@@ -437,7 +436,7 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
         return split_node_id
 
     def mergeable_segments_at(self, node_id: int,
-                              angle_tol_deg: float = 1.5) -> Optional[Tuple[int, int]]:
+                              angle_tol_deg: float = 1.5) -> tuple[int, int] | None:
         """Retorna os dois segmentos que podem ser unidos ao remover um nó.
 
         Só há união segura quando o nó é interno (grau 2), os dois trechos são
@@ -486,7 +485,7 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
 
         return s1.id, s2.id
 
-    def merge_node(self, node_id: int, angle_tol_deg: float = 1.5) -> Optional[int]:
+    def merge_node(self, node_id: int, angle_tol_deg: float = 1.5) -> int | None:
         """Remove um nó interno colinear unindo os dois trechos em uma parede única.
 
         Retorna o id do segmento resultante, ou ``None`` quando a união não é
@@ -553,7 +552,7 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
 
         # Checa se o ponto cai em algum segmento existente (escolhe o mais próximo)
         pt = (x, y)
-        best_sid: Optional[int] = None
+        best_sid: int | None = None
         best_t = 0.0
         best_d = threshold
         for seg_id, seg in self.segments.items():
@@ -575,7 +574,7 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
         return self.add_node(x, y, merge_threshold=threshold)
 
     @staticmethod
-    def _project_point_on_segment(p: Point2D, a: Point2D, b: Point2D) -> Tuple[Point2D, float]:
+    def _project_point_on_segment(p: Point2D, a: Point2D, b: Point2D) -> tuple[Point2D, float]:
         dx = b[0] - a[0]
         dy = b[1] - a[1]
         l2 = dx * dx + dy * dy
@@ -584,7 +583,7 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
         t = max(0.0, min(1.0, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2))
         return (a[0] + t * dx, a[1] + t * dy), t
 
-    def snap_point(self, x: float, y: float, threshold: float = 0.20) -> Tuple[float, float, Optional[str]]:
+    def snap_point(self, x: float, y: float, threshold: float = 0.20) -> tuple[float, float, str | None]:
         """Atracão magnética para auxílio ao desenho do usuário."""
         # 1. Cantos / nós
         for node in self.nodes.values():
@@ -601,7 +600,7 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
 
         return x, y, None
 
-    def find_node_at(self, x: float, y: float, threshold: float = 0.20) -> Optional[int]:
+    def find_node_at(self, x: float, y: float, threshold: float = 0.20) -> int | None:
         """Retorna o id do nó mais próximo de (x, y) dentro do raio threshold."""
         closest_id = None
         min_d = threshold
@@ -612,7 +611,7 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
                 closest_id = nid
         return closest_id
 
-    def find_segment_at(self, x: float, y: float, threshold: float = 0.25) -> Optional[int]:
+    def find_segment_at(self, x: float, y: float, threshold: float = 0.25) -> int | None:
         """Retorna o id do segmento mais próximo de (x, y) dentro da distância threshold."""
         closest_id = None
         min_d = threshold
@@ -626,7 +625,7 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
                 closest_id = sid
         return closest_id
 
-    def get_rigid_component(self, start_nid: int) -> Set[int]:
+    def get_rigid_component(self, start_nid: int) -> set[int]:
         """Calcula o componente rígido paramétrico a partir de um nó inicial.
 
         Em softwares CAD paramétricos, uma cota é imutável: ela define uma restrição
@@ -671,7 +670,7 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
                                 break
 
         # 2. Localiza todos os nós cotados interligados a base_nid via segmentos com cota
-        dim_nodes: Set[int] = set()
+        dim_nodes: set[int] = set()
         if any(s.node_a_id == base_nid or s.node_b_id == base_nid for sid, s in self.segments.items() if sid in dim_segs):
             q = [base_nid]
             dim_nodes.add(base_nid)
@@ -706,7 +705,7 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
             return {start_nid, base_nid} if base_nid != start_nid else {start_nid}
 
         # 3. Inclui divisórias perpendiculares que brotam dos nós cotados (ex: as paredes verticais)
-        rigid: Set[int] = set(dim_nodes)
+        rigid: set[int] = set(dim_nodes)
         for bn in dim_nodes:
             for sid, s in self.segments.items():
                 if sid not in dim_segs:
@@ -851,14 +850,14 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
         return merged_count
 
     @staticmethod
-    def _segment_angle(seg: WallSegment2D, graph: "WallGraph2D") -> Optional[float]:
+    def _segment_angle(seg: WallSegment2D, graph: "WallGraph2D") -> float | None:
         na = graph.nodes.get(seg.node_a_id)
         nb = graph.nodes.get(seg.node_b_id)
         if na is None or nb is None:
             return None
         return math.atan2(nb.y - na.y, nb.x - na.x)
 
-    def _dimension_node_ids(self, d: CustomDimension2D) -> Tuple[Optional[int], Optional[int]]:
+    def _dimension_node_ids(self, d: CustomDimension2D) -> tuple[int | None, int | None]:
         na_id = d.node_a_id
         nb_id = d.node_b_id
         if na_id is None and d.a_seg_id in self.segments and d.a_end in ("a", "b"):
@@ -886,8 +885,8 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
         return False
 
     def check_length_edit(self, seg_id: int, new_length_m: float,
-                          anchor_node_id: Optional[int] = None,
-                          ignore_dim_id: Optional[int] = None) -> Optional[str]:
+                          anchor_node_id: int | None = None,
+                          ignore_dim_id: int | None = None) -> str | None:
         """Simula a alteração de medida e devolve uma mensagem se ela distorcer o modelo.
 
         Regras de proteção (CAD):
@@ -964,8 +963,8 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
 
         return None
 
-    def set_segment_length(self, seg_id: int, new_length_m: float, anchor_node_id: Optional[int] = None,
-                           ignore_dim_id: Optional[int] = None, enforce_constraints: bool = True) -> bool:
+    def set_segment_length(self, seg_id: int, new_length_m: float, anchor_node_id: int | None = None,
+                           ignore_dim_id: int | None = None, enforce_constraints: bool = True) -> bool:
         """Altera o comprimento de uma parede preservando as demais cotas driving.
 
         Retorna ``False`` sem tocar na geometria quando a alteração provocaria
@@ -979,8 +978,8 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
         return self._set_segment_length_unchecked(seg_id, new_length_m, anchor_node_id, ignore_dim_id)
 
     def _set_segment_length_unchecked(self, seg_id: int, new_length_m: float,
-                                      anchor_node_id: Optional[int] = None,
-                                      ignore_dim_id: Optional[int] = None) -> bool:
+                                      anchor_node_id: int | None = None,
+                                      ignore_dim_id: int | None = None) -> bool:
         """Implementação interna da alteração de medida, sem validação de restrições."""
         seg = self.segments.get(seg_id)
         if seg is None or new_length_m <= 0.01:
@@ -1081,18 +1080,18 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
         self.merge_close_nodes(threshold=0.20)
         return True
 
-    def _expand_shift_to_preserve_walls(self, nodes_to_shift: Set[int],
-                                        delta: Tuple[float, float],
-                                        anchor_nid: Optional[int] = None,
-                                        skip_seg_id: Optional[int] = None,
-                                        ignore_dim_id: Optional[int] = None) -> Set[int]:
+    def _expand_shift_to_preserve_walls(self, nodes_to_shift: set[int],
+                                        delta: tuple[float, float],
+                                        anchor_nid: int | None = None,
+                                        skip_seg_id: int | None = None,
+                                        ignore_dim_id: int | None = None) -> set[int]:
         """Expande um deslocamento até que nenhuma parede existente gire ou entorte.
 
         - cotas *driving* mantêm os dois lados juntos (corpo rígido);
         - se uma parede recebe o deslocamento em apenas uma ponta e ele tem
           componente perpendicular à parede, a parede inteira é transladada.
         """
-        def dim_node_ids(d: CustomDimension2D) -> Tuple[Optional[int], Optional[int]]:
+        def dim_node_ids(d: CustomDimension2D) -> tuple[int | None, int | None]:
             na_id = d.node_a_id
             nb_id = d.node_b_id
             if na_id is None and d.a_seg_id in self.segments and d.a_end in ("a", "b"):
@@ -1159,7 +1158,7 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
 
         return nodes_to_shift
 
-    def _move_node_with_orthogonal_propagation(self, move_nid: int, from_seg_id: int, delta: Tuple[float, float], ignore_dim_id: Optional[int] = None) -> None:
+    def _move_node_with_orthogonal_propagation(self, move_nid: int, from_seg_id: int, delta: tuple[float, float], ignore_dim_id: int | None = None) -> None:
         """Move o nó e propaga o deslocamento de forma inteligente.
 
         - Em cadeias abertas: translada todo o restante da cadeia subsequente mantendo intactos
@@ -1247,7 +1246,7 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
                 n.x += delta[0]
                 n.y += delta[1]
 
-    def find_closed_cycles(self) -> List[List[Point2D]]:
+    def find_closed_cycles(self) -> list[list[Point2D]]:
         """Identifica todos os ciclos fechados simples (cômodos / faces) formados pelas paredes.
 
         Usa o algoritmo planar de 'menor ângulo à esquerda' (left-turn) para cada aresta direcionada,
@@ -1257,7 +1256,7 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
             return []
 
         # Grafo de adjacência direcionado: node_id -> list of (neighbor_id, angle)
-        adj: Dict[int, List[int]] = {nid: [] for nid in self.nodes}
+        adj: dict[int, list[int]] = {nid: [] for nid in self.nodes}
         for seg in self.segments.values():
             if seg.node_a_id != seg.node_b_id:
                 if seg.node_b_id not in adj[seg.node_a_id]:
@@ -1271,12 +1270,12 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
             nv = self.nodes[v_id]
             return math.atan2(nv.y - nu.y, nv.x - nu.x)
 
-        sorted_adj: Dict[int, List[int]] = {}
+        sorted_adj: dict[int, list[int]] = {}
         for nid, neighbors in adj.items():
             sorted_adj[nid] = sorted(neighbors, key=lambda v: angle_from(nid, v))
 
-        visited_half_edges: Set[Tuple[int, int]] = set()
-        cycles: List[List[Point2D]] = []
+        visited_half_edges: set[tuple[int, int]] = set()
+        cycles: list[list[Point2D]] = []
 
         for u in self.nodes:
             for v in sorted_adj.get(u, []):
@@ -1373,7 +1372,7 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
         seg.flip_side = not seg.flip_side
         return True
 
-    def segment_offsets(self, seg: WallSegment2D) -> Tuple[float, float]:
+    def segment_offsets(self, seg: WallSegment2D) -> tuple[float, float]:
         """Calcula o offset esquerdo e direito da parede.
         Com o alinhamento 100% no eixo central, a parede se expande exatamente
         metade da sua espessura (thickness / 2.0) para cada um dos lados.
@@ -1384,8 +1383,8 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
     def _determine_auto_flip(self, na_id: int, nb_id: int) -> bool:
         return False
 
-    def get_start_extension(self, start_pt: Tuple[float, float], dir_u: Tuple[float, float],
-                            thickness: Optional[float] = None,
+    def get_start_extension(self, start_pt: tuple[float, float], dir_u: tuple[float, float],
+                            thickness: float | None = None,
                             face: str = "center") -> float:
         """Deslocamento longitudinal da face no canto inicial da parede.
 
@@ -1419,7 +1418,7 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
             return 0.0
 
         o_new = (thickness * 0.5) if face == "left" else (-thickness * 0.5)
-        best_ext: Optional[float] = None
+        best_ext: float | None = None
         for seg in self.segments.values():
             if seg.node_a_id != node_id and seg.node_b_id != node_id:
                 continue
@@ -1470,15 +1469,15 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
 
         return float(best_ext) if best_ext is not None else 0.0
 
-    def get_start_node_extension(self, start_nid: Optional[int], dir_u: Tuple[float, float],
-                                 thickness: Optional[float] = None,
+    def get_start_node_extension(self, start_nid: int | None, dir_u: tuple[float, float],
+                                 thickness: float | None = None,
                                  face: str = "left") -> float:
         node = self.nodes.get(start_nid) if start_nid is not None else None
         if node is None:
             return 0.0
         return self.get_start_extension(node.pt, dir_u, thickness=thickness, face=face)
 
-    def segment_face_length(self, seg_id: int, side: str = "left") -> Optional[float]:
+    def segment_face_length(self, seg_id: int, side: str = "left") -> float | None:
         """Comprimento da face longa de uma parede, já considerando os cantos em 45°."""
         polys = self.compute_wall_polygons()
         quad = polys.get(seg_id)
@@ -1600,7 +1599,7 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
         self._next_dim_id = other._next_dim_id
 
     @classmethod
-    def from_group(cls, group: Group) -> Optional[WallGraph2D]:
+    def from_group(cls, group: Group) -> WallGraph2D | None:
         """Tenta carregar o grafo 2D de um grupo de parede existente na cena."""
         ext = getattr(group, "ext", {})
         if not isinstance(ext, dict):
@@ -1637,7 +1636,7 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
 
         return None
 
-    def reconcile_with_3d_groups(self, wall_groups: List[Group]) -> None:
+    def reconcile_with_3d_groups(self, wall_groups: list[Group]) -> None:
         """Sincroniza as coordenadas 2D dos nós e cotas do grafo com a posição real atual
         das paredes na cena 3D (caso o usuário tenha movido ou rotacionado as paredes no 3D).
         """
@@ -1648,12 +1647,12 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
         orig_cols = self.compute_columns()
         old_positions = {nid: (n.x, n.y) for nid, n in self.nodes.items()}
 
-        def _group_world_xy_verts(grp: Group) -> List[Point2D]:
+        def _group_world_xy_verts(grp: Group) -> list[Point2D]:
             verts = getattr(getattr(grp, "mesh", None), "vertices", None) or []
             if not verts:
                 return []
             xform = getattr(grp, "xform", None)
-            pts_2d: List[Point2D] = []
+            pts_2d: list[Point2D] = []
             seen = set()
             for v in verts:
                 pos = xform.map(v.position) if xform is not None else v.position
@@ -1663,7 +1662,7 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
                     pts_2d.append((float(pos.x()), float(pos.y())))
             return pts_2d
 
-        def _aabb_center_2d(pts: List[Point2D]) -> Point2D:
+        def _aabb_center_2d(pts: list[Point2D]) -> Point2D:
             """Centro da caixa envolvente no plano XY.
 
             É estável mesmo quando a malha da parede ganha vértices extras por
@@ -1676,9 +1675,9 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
             return ((min(xs) + max(xs)) / 2.0, (min(ys) + max(ys)) / 2.0)
 
         # Mapeia grupos segmentados por segment_id ou node_id
-        seg_groups: Dict[int, Group] = {}
-        col_groups: Dict[int, Group] = {}
-        mono_groups: List[Group] = []
+        seg_groups: dict[int, Group] = {}
+        col_groups: dict[int, Group] = {}
+        mono_groups: list[Group] = []
         for g in wall_groups:
             ext = getattr(g, "ext", None)
             w_data = ext.get("trazomob_wall", {}) if isinstance(ext, dict) else {}
@@ -1689,7 +1688,7 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
             else:
                 mono_groups.append(g)
 
-        node_new_pts: Dict[int, List[Point2D]] = {nid: [] for nid in self.nodes}
+        node_new_pts: dict[int, list[Point2D]] = {nid: [] for nid in self.nodes}
 
         # 1. Para cada segmento que possui grupo 3D correspondente, extrai a transformação rígida 2D (ou translação)
         for sid, seg in self.segments.items():

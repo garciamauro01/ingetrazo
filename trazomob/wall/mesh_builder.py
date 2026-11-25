@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Union
 
 from PySide6.QtGui import QVector3D
 
@@ -34,21 +34,21 @@ class WallMeshBuilder:
     @classmethod
     def compute_wall_mesh(
         cls,
-        pts: List[QVector3D],
+        pts: list[QVector3D],
         is_closed: bool,
-        altura_m: Union[float, List[float]],
+        altura_m: Union[float, list[float]],
         espessura_m: float,
         alinhamento: str = "interno",
         miter_start: bool = False,
         miter_end: bool = False,
         open_start: bool = False,
         open_end: bool = False,
-        open_quinas: Optional[List[int]] = None,
-        open_side_a: Optional[List[int]] = None,
-        open_side_b: Optional[List[int]] = None,
-        openings: Optional[List[Dict[str, any]]] = None,
-        quad_2d: Optional[List[Union[List[float], Tuple[float, float]]]] = None,
-    ) -> Tuple[Mesh, Dict[int, int]]:
+        open_quinas: list[int] | None = None,
+        open_side_a: list[int] | None = None,
+        open_side_b: list[int] | None = None,
+        openings: list[dict[str, any]] | None = None,
+        quad_2d: list[Union[list[float], tuple[float, float]]] | None = None,
+    ) -> tuple[Mesh, dict[int, int]]:
         """Calcula a malha 3D sólida manifold da parede com miter joints em cada canto.
 
         Suporta aberturas/recortes arquitetônicos de portas e janelas (openings).
@@ -69,8 +69,8 @@ class WallMeshBuilder:
             elif len(alturas) > n_segs:
                 alturas = alturas[:n_segs]
 
-        segs_dir: List[QVector3D] = []
-        segs_norm: List[QVector3D] = []
+        segs_dir: list[QVector3D] = []
+        segs_norm: list[QVector3D] = []
 
         for i in range(n_segs):
             p_a = pts[i]
@@ -82,8 +82,8 @@ class WallMeshBuilder:
             segs_dir.append(d)
             segs_norm.append(norm)
 
-        pts_A: List[QVector3D] = []
-        pts_B: List[QVector3D] = []
+        pts_A: list[QVector3D] = []
+        pts_B: list[QVector3D] = []
 
         z_base_val = pts[0].z() if pts else 0.0
         if quad_2d and len(quad_2d) == 4 and not is_closed and n_segs == 1:
@@ -173,7 +173,7 @@ class WallMeshBuilder:
                     pts_B.append(pt_b)
 
         mesh = Mesh()
-        face_map: Dict[int, int] = {}
+        face_map: dict[int, int] = {}
         face_idx = 0
 
         for i in range(n_segs):
@@ -472,9 +472,9 @@ class WallMeshBuilder:
         return mesh, face_map
 
     @classmethod
-    def _clean_polygon_points(cls, points: List[QVector3D]) -> List[QVector3D]:
+    def _clean_polygon_points(cls, points: list[QVector3D]) -> list[QVector3D]:
         """Remove pontos duplicados ou colineares consecutivos do contorno."""
-        clean: List[QVector3D] = []
+        clean: list[QVector3D] = []
         for p in points:
             if not clean or (p - clean[-1]).length() > 1e-4:
                 clean.append(p)
@@ -483,7 +483,7 @@ class WallMeshBuilder:
         return clean
 
     @classmethod
-    def build_floor_group(cls, scene, points: List[QVector3D], z_base: float = 0.0) -> Optional[Group]:
+    def build_floor_group(cls, scene, points: list[QVector3D], z_base: float = 0.0) -> Group | None:
         """Gera o sólido do piso fechado a partir dos pontos de perímetro sem arestas de corte internas."""
         pts_clean = cls._clean_polygon_points(points)
         if len(pts_clean) < 3:
@@ -533,7 +533,7 @@ class WallMeshBuilder:
         return grp
 
     @classmethod
-    def build_ceiling_group(cls, scene, points: List[QVector3D], altura_m: float = 2.60, z_base: float = 0.0) -> Optional[Group]:
+    def build_ceiling_group(cls, scene, points: list[QVector3D], altura_m: float = 2.60, z_base: float = 0.0) -> Group | None:
         """Gera o sólido do teto / forro de gesso fechado no pé-direito do ambiente."""
         pts_clean = cls._clean_polygon_points(points)
         if len(pts_clean) < 3:

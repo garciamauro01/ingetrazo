@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF, QVector3D
@@ -47,15 +47,15 @@ class WallFaceInfo:
 class WallSelectionManager:
     """Singleton/Gerenciador de estado para a face de parede ativa no viewport."""
 
-    _instance: Optional[WallSelectionManager] = None
+    _instance: WallSelectionManager | None = None
 
     def __init__(self, viewport=None, sidebar_panel=None) -> None:
         self._fallback_viewport = viewport
         self.sidebar_panel = sidebar_panel
-        self.selected_wall_face: Optional[WallFaceInfo] = None
+        self.selected_wall_face: WallFaceInfo | None = None
         self._saved_face_color = None
         self._overlay_installed = False
-        self.active_placement_slot: Optional[Dict[str, any]] = None
+        self.active_placement_slot: dict[str, any] | None = None
 
     @property
     def viewport(self):
@@ -139,7 +139,9 @@ class WallSelectionManager:
             # Notifica a cena para atualizar os chunks de malha no OpenGL
             if self.viewport is not None and hasattr(self.viewport, "scene"):
                 try:
-                    from trazomob.integrations.platform import dirty_group_chunks as _dirty_group_chunks
+                    from trazomob.integrations.platform import (
+                        dirty_group_chunks as _dirty_group_chunks,
+                    )
                     _dirty_group_chunks(self.viewport.scene)
                 except Exception as exc:
                     logger.debug("falha ao marcar chunks da parede como sujos: %s", exc)
@@ -150,7 +152,7 @@ class WallSelectionManager:
             if self.viewport is not None:
                 self.viewport.update()
 
-    def set_selected_face(self, wall_group: Group, face: Face, notify_sidebar: bool = True) -> Optional[WallFaceInfo]:
+    def set_selected_face(self, wall_group: Group, face: Face, notify_sidebar: bool = True) -> WallFaceInfo | None:
         """Analisa a face e registra como face ativa de parede."""
         if not hasattr(wall_group, "mesh") or not wall_group.mesh or face not in wall_group.mesh.faces:
             return None
@@ -173,7 +175,7 @@ class WallSelectionManager:
             self._saved_face_color = None
 
         params = ext.get("trazomob_wall", {})
-        face_map: Dict[Any, int] = params.get("face_segment_map", {})
+        face_map: dict[Any, int] = params.get("face_segment_map", {})
         f_idx = wall_group.mesh.faces.index(face)
         seg_idx = face_map.get(f_idx, face_map.get(str(f_idx), 0))
 
@@ -241,7 +243,9 @@ class WallSelectionManager:
         # Marca os chunks como sujos para o OpenGL atualizar a malha 3D com a nova cor da face
         if self.viewport is not None and hasattr(self.viewport, "scene"):
             try:
-                from trazomob.integrations.platform import dirty_group_chunks as _dirty_group_chunks
+                from trazomob.integrations.platform import (
+                    dirty_group_chunks as _dirty_group_chunks,
+                )
                 _dirty_group_chunks(self.viewport.scene)
             except Exception as exc:
                 logger.debug("falha ao marcar chunks após pintar a face: %s", exc)
@@ -270,9 +274,9 @@ class WallSelectionManager:
 
     @staticmethod
     def _bounds_u_interval(
-        bounds: Tuple[float, float, float, float, float, float],
+        bounds: tuple[float, float, float, float, float, float],
         u_dir: QVector3D,
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """Intervalo U ocupado pela AABB de um móvel no eixo tangencial da parede."""
         min_x, max_x, min_y, max_y, _, _ = bounds
         vals = [
@@ -294,7 +298,7 @@ class WallSelectionManager:
         width_m: float,
         half_w: float,
         tolerance_m: float = 0.12,
-    ) -> Optional[Tuple[float, float, str]]:
+    ) -> tuple[float, float, str] | None:
         """Atrai o frame para a borda de um móvel já existente na mesma parede/faixa.
 
         Retorna (u_pos, anchor_u, side). ``anchor_u`` é sempre a borda esquerda do
@@ -352,7 +356,7 @@ class WallSelectionManager:
             return None
         return best[1], best[2], best[3]
 
-    def arm_frame_from_click(self, px: float, py: float, target_width_m: Optional[float] = None) -> bool:
+    def arm_frame_from_click(self, px: float, py: float, target_width_m: float | None = None) -> bool:
         """Arma o frame 3D entre as duas linhas-guia mais próximas onde o usuário clicou na parede."""
         self.sync_with_scene(getattr(self.viewport, "scene", None))
         if self.viewport is None or self.selected_wall_face is None:
@@ -466,7 +470,7 @@ class WallSelectionManager:
                 self.viewport.flash_status("🧲 Snap magnético: módulo alinhado ao existente")
         self.install_overlay()
 
-    def update_frame_dimensions(self, width_m: float, depth_m: Optional[float] = None) -> None:
+    def update_frame_dimensions(self, width_m: float, depth_m: float | None = None) -> None:
         """Atualiza a largura e profundidade do frame para casar exatamente com o módulo selecionado no catálogo.
 
         Se o frame estiver ancorado na quina de um móvel já inserido (anchor_u), ele expande ou contrai
@@ -665,7 +669,7 @@ class WallSelectionManager:
         cz = sum(p.z() for p in target_pts) / len(target_pts)
         plane_pt = QVector3D(cx, cy, cz)
 
-        entities_to_hide: List[Any] = []
+        entities_to_hide: list[Any] = []
 
         # 3. Oculta tetos para facilitar a vista aérea/frontal sem obstrução de laje
         for g in getattr(scene, "groups", []):
@@ -685,7 +689,7 @@ class WallSelectionManager:
                 continue
 
             # Agrupa faces por segmento
-            segs: Dict[int, List[Face]] = {}
+            segs: dict[int, list[Face]] = {}
             for f_key, s_key in face_map.items():
                 try:
                     f_idx = int(f_key)
@@ -728,12 +732,14 @@ class WallSelectionManager:
             self.viewport.history.execute(HideCommand(entities_to_hide, hidden=True))
             setattr(self.viewport, "_trazomob_auto_hidden_entities", entities_to_hide)
             try:
-                from trazomob.integrations.platform import dirty_group_chunks as _dirty_group_chunks
+                from trazomob.integrations.platform import (
+                    dirty_group_chunks as _dirty_group_chunks,
+                )
                 _dirty_group_chunks(scene)
             except Exception as exc:
                 logger.debug("falha ao marcar chunks após ocultar a parede: %s", exc)
 
-    def align_view_to_wall(self, wall_info: Optional[WallFaceInfo] = None, margin: float = 1.2) -> bool:
+    def align_view_to_wall(self, wall_info: WallFaceInfo | None = None, margin: float = 1.2) -> bool:
         """Alinha a camera do viewport perpendicularmente de frente para a face da parede e enquadra o segmento."""
         if wall_info is None:
             self.sync_with_scene(getattr(self.viewport, "scene", None))
@@ -929,7 +935,7 @@ class WallSelectionManager:
             painter.restore()
 
     def _draw_placement_frame_overlay(
-        self, vp, painter: QPainter, slot: Dict[str, any], occ_ctx: Optional[Dict[str, any]] = None
+        self, vp, painter: QPainter, slot: dict[str, any], occ_ctx: dict[str, any] | None = None
     ) -> None:
         """Renderiza o volume wireframe translúcido e cotas do frame 3D armado."""
         box = slot.get("box_vertices")

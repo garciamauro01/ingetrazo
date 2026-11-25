@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import math
-from typing import List, Tuple
 
 from PySide6.QtGui import QMatrix4x4, QVector3D
 
@@ -15,7 +14,7 @@ from ..builders.mesh_utils import create_board_group
 from .esquadrias_common import CORES
 
 
-def build_porta_giro(largura_mm: float=800.0, altura_mm: float=2100.0, esp_parede_mm: float=150.0, larg_alisar_mm: float=70.0, esp_folha_mm: float=35.0, esp_marco_mm: float=30.0, folga_mm: float=3.0, lado_abertura: str='right', acabamento: str='madeira_branca', offset: Tuple[float, float, float]=(0.0, 0.0, 0.0), rot_z: float=0.0):
+def build_porta_giro(largura_mm: float=800.0, altura_mm: float=2100.0, esp_parede_mm: float=150.0, larg_alisar_mm: float=70.0, esp_folha_mm: float=35.0, esp_marco_mm: float=30.0, folga_mm: float=3.0, lado_abertura: str='right', acabamento: str='madeira_branca', offset: tuple[float, float, float]=(0.0, 0.0, 0.0), rot_z: float=0.0):
     """Gera uma porta de giro completa com batentes, alisares nos dois lados, folha e maçaneta."""
     ox, oy, oz = offset
     L = max(0.50, largura_mm / 1000.0)
@@ -28,7 +27,7 @@ def build_porta_giro(largura_mm: float=800.0, altura_mm: float=2100.0, esp_pared
     cor = CORES.get(acabamento, CORES["madeira_branca"])
     cor_metal = CORES["metal_macaneta"]
 
-    pieces: List[Group] = []
+    pieces: list[Group] = []
 
     # --- A. Marco / Batente (Laterais Esquerda, Direita e Superior) ---
     # Batente Esquerdo
@@ -171,7 +170,7 @@ def build_porta_giro(largura_mm: float=800.0, altura_mm: float=2100.0, esp_pared
     )
 
 
-def build_janela_correr(largura_mm: float=1200.0, altura_mm: float=1000.0, esp_parede_mm: float=150.0, peitoril_mm: float=1100.0, acabamento_aluminio: str='aluminio_preto', tipo_vidro: str='vidro_incolor', offset: Tuple[float, float, float]=(0.0, 0.0, 0.0), rot_z: float=0.0):
+def build_janela_correr(largura_mm: float=1200.0, altura_mm: float=1000.0, esp_parede_mm: float=150.0, peitoril_mm: float=1100.0, acabamento_aluminio: str='aluminio_preto', tipo_vidro: str='vidro_incolor', offset: tuple[float, float, float]=(0.0, 0.0, 0.0), rot_z: float=0.0):
     """Gera uma janela de correr de 2 folhas com caixilho de alumínio e vidros."""
     ox, oy, oz = offset
     # Aplica a altura do peitoril no Z global
@@ -185,7 +184,7 @@ def build_janela_correr(largura_mm: float=1200.0, altura_mm: float=1000.0, esp_p
     cor_alum = CORES.get(acabamento_aluminio, CORES["aluminio_preto"])
     cor_vidro = CORES.get(tipo_vidro, CORES["vidro_incolor"])
 
-    pieces: List[Group] = []
+    pieces: list[Group] = []
 
     # Centraliza o caixilho na espessura da parede
     y_caixilho = oy + (P * 0.5) - (E_caixilho_prof * 0.5)
@@ -258,7 +257,7 @@ def build_janela_correr(largura_mm: float=1200.0, altura_mm: float=1000.0, esp_p
     )
 
 
-def build_janela_correr_4folhas(largura_mm: float=1900.0, altura_mm: float=1200.0, esp_parede_mm: float=150.0, peitoril_mm: float=1000.0, acabamento_aluminio: str='aluminio_branco', tipo_vidro: str='vidro_incolor', offset: Tuple[float, float, float]=(0.0, 0.0, 0.0), rot_z: float=0.0):
+def build_janela_correr_4folhas(largura_mm: float=1900.0, altura_mm: float=1200.0, esp_parede_mm: float=150.0, peitoril_mm: float=1000.0, acabamento_aluminio: str='aluminio_branco', tipo_vidro: str='vidro_incolor', offset: tuple[float, float, float]=(0.0, 0.0, 0.0), rot_z: float=0.0):
     """Gera uma janela de correr panorâmica de 4 folhas (2 fixas laterais e 2 móveis centrais)."""
     ox, oy, oz = offset
     z_base = oz + (peitoril_mm / 1000.0)
@@ -271,7 +270,7 @@ def build_janela_correr_4folhas(largura_mm: float=1900.0, altura_mm: float=1200.
     cor_alum = CORES.get(acabamento_aluminio, CORES["aluminio_branco"])
     cor_vidro = CORES.get(tipo_vidro, CORES["vidro_incolor"])
 
-    pieces: List[Group] = []
+    pieces: list[Group] = []
     y_caixilho = oy + (P * 0.5) - (E_caixilho_prof * 0.5)
 
     # Marco Perimetral
@@ -320,7 +319,7 @@ def build_janela_correr_4folhas(largura_mm: float=1900.0, altura_mm: float=1200.
     )
 
 
-def build_porta_correr_vidro(largura_mm: float=1600.0, altura_mm: float=2100.0, esp_parede_mm: float=150.0, acabamento_aluminio: str='aluminio_preto', tipo_vidro: str='vidro_incolor', offset: Tuple[float, float, float]=(0.0, 0.0, 0.0), rot_z: float=0.0):
+def build_porta_correr_vidro(largura_mm: float=1600.0, altura_mm: float=2100.0, esp_parede_mm: float=150.0, acabamento_aluminio: str='aluminio_preto', tipo_vidro: str='vidro_incolor', offset: tuple[float, float, float]=(0.0, 0.0, 0.0), rot_z: float=0.0):
     """Gera uma porta de correr de vidro/alumínio (balcão/sacada) de piso a teto."""
     ox, oy, oz = offset
     L = max(1.00, largura_mm / 1000.0)
@@ -331,7 +330,7 @@ def build_porta_correr_vidro(largura_mm: float=1600.0, altura_mm: float=2100.0, 
     cor_alum = CORES.get(acabamento_aluminio, CORES["aluminio_preto"])
     cor_vidro = CORES.get(tipo_vidro, CORES["vidro_incolor"])
 
-    pieces: List[Group] = []
+    pieces: list[Group] = []
     y_caixilho = oy + (P * 0.5) - (E_caixilho_prof * 0.5)
 
     # Marco Perimetral
@@ -381,7 +380,7 @@ def build_porta_correr_vidro(largura_mm: float=1600.0, altura_mm: float=2100.0, 
     )
 
 
-def build_porta_pivotante(largura_mm: float=1000.0, altura_mm: float=2150.0, esp_parede_mm: float=150.0, larg_alisar_mm: float=80.0, esp_folha_mm: float=45.0, dist_pivo_mm: float=120.0, acabamento: str='madeira_freijo', offset: Tuple[float, float, float]=(0.0, 0.0, 0.0), rot_z: float=0.0):
+def build_porta_pivotante(largura_mm: float=1000.0, altura_mm: float=2150.0, esp_parede_mm: float=150.0, larg_alisar_mm: float=80.0, esp_folha_mm: float=45.0, dist_pivo_mm: float=120.0, acabamento: str='madeira_freijo', offset: tuple[float, float, float]=(0.0, 0.0, 0.0), rot_z: float=0.0):
     """Gera uma porta pivotante de entrada elegante com pino pivô, frisos e puxador barra inox de 80cm."""
     ox, oy, oz = offset
     L = max(0.80, largura_mm / 1000.0)
@@ -394,7 +393,7 @@ def build_porta_pivotante(largura_mm: float=1000.0, altura_mm: float=2150.0, esp
     cor = CORES.get(acabamento, CORES["madeira_freijo"])
     cor_inox = CORES["aluminio_inox"]
 
-    pieces: List[Group] = []
+    pieces: list[Group] = []
 
     # Batentes
     pieces.append(create_board_group("Batente Esq", (ox, oy, oz), (E_marco, P, A), "Madeira", color=cor))
@@ -451,7 +450,7 @@ def build_porta_pivotante(largura_mm: float=1000.0, altura_mm: float=2150.0, esp
     )
 
 
-def build_janela_maximar(largura_mm: float=600.0, altura_mm: float=600.0, esp_parede_mm: float=150.0, peitoril_mm: float=1600.0, acabamento_aluminio: str='aluminio_preto', tipo_vidro: str='vidro_incolor', offset: Tuple[float, float, float]=(0.0, 0.0, 0.0), rot_z: float=0.0):
+def build_janela_maximar(largura_mm: float=600.0, altura_mm: float=600.0, esp_parede_mm: float=150.0, peitoril_mm: float=1600.0, acabamento_aluminio: str='aluminio_preto', tipo_vidro: str='vidro_incolor', offset: tuple[float, float, float]=(0.0, 0.0, 0.0), rot_z: float=0.0):
     """Gera uma janela Maxim-Ar de 1 folha basculante projetante para banheiros e lavabos."""
     ox, oy, oz = offset
     z_base = oz + (peitoril_mm / 1000.0)
@@ -464,7 +463,7 @@ def build_janela_maximar(largura_mm: float=600.0, altura_mm: float=600.0, esp_pa
     cor_alum = CORES.get(acabamento_aluminio, CORES["aluminio_preto"])
     cor_vidro = CORES.get(tipo_vidro, CORES["vidro_incolor"])
 
-    pieces: List[Group] = []
+    pieces: list[Group] = []
     y_caixilho = oy + (P * 0.5) - (E_caixilho_prof * 0.5)
 
     # Marco Perimetral
@@ -495,7 +494,7 @@ def build_janela_maximar(largura_mm: float=600.0, altura_mm: float=600.0, esp_pa
     )
 
 
-def build_janela_vertical_bandeira(largura_mm: float=500.0, altura_mm: float=1200.0, esp_parede_mm: float=150.0, peitoril_mm: float=900.0, acabamento_aluminio: str='aluminio_branco', tipo_vidro: str='vidro_incolor', offset: Tuple[float, float, float]=(0.0, 0.0, 0.0), rot_z: float=0.0):
+def build_janela_vertical_bandeira(largura_mm: float=500.0, altura_mm: float=1200.0, esp_parede_mm: float=150.0, peitoril_mm: float=900.0, acabamento_aluminio: str='aluminio_branco', tipo_vidro: str='vidro_incolor', offset: tuple[float, float, float]=(0.0, 0.0, 0.0), rot_z: float=0.0):
     """Gera uma janela vertical alta com bandeira fixa superior e folha basculante inferior (estilo Proto Agrupar#16)."""
     ox, oy, oz = offset
     z_base = oz + (peitoril_mm / 1000.0)
@@ -508,7 +507,7 @@ def build_janela_vertical_bandeira(largura_mm: float=500.0, altura_mm: float=120
     cor_alum = CORES.get(acabamento_aluminio, CORES["aluminio_branco"])
     cor_vidro = CORES.get(tipo_vidro, CORES["vidro_incolor"])
 
-    pieces: List[Group] = []
+    pieces: list[Group] = []
     y_caixilho = oy + (P * 0.5) - (E_caixilho_prof * 0.5)
 
     # Marco Perimetral
@@ -555,7 +554,7 @@ def build_janela_vertical_bandeira(largura_mm: float=500.0, altura_mm: float=120
     )
 
 
-def _build_folha_janela(pieces: List[Group], prefix: str, x: float, y: float, z: float, w: float, prof: float, h: float, e_quadro: float, cor_alum: Tuple[float, float, float], cor_vidro: Tuple[float, float, float]):
+def _build_folha_janela(pieces: list[Group], prefix: str, x: float, y: float, z: float, w: float, prof: float, h: float, e_quadro: float, cor_alum: tuple[float, float, float], cor_vidro: tuple[float, float, float]):
     """Monta o caixilho retangular de alumínio e o painel de vidro interno translúcido."""
     # Travessa inferior da folha
     pieces.append(create_board_group(f"{prefix} Quadro Inf", (x, y, z), (w, prof, e_quadro), "Alumínio", color=cor_alum))
@@ -578,7 +577,7 @@ def _build_folha_janela(pieces: List[Group], prefix: str, x: float, y: float, z:
     ))
 
 
-def _assemble_esquadria_group(name: str, tipo: str, pieces: List[Group], largura_mm: float, altura_mm: float, esp_parede_mm: float, peitoril_mm: float, offset: Tuple[float, float, float], rot_z: float, lado_abertura: str='direita', sentido_abertura: str='interno'):
+def _assemble_esquadria_group(name: str, tipo: str, pieces: list[Group], largura_mm: float, altura_mm: float, esp_parede_mm: float, peitoril_mm: float, offset: tuple[float, float, float], rot_z: float, lado_abertura: str='direita', sentido_abertura: str='interno'):
     """Agrupa os componentes num Group mestre com metadados para corte na parede."""
     master = Group(Mesh(), name=name)
     master.xform = QMatrix4x4()

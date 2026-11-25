@@ -11,7 +11,6 @@ permitindo entrar e atravessar paredes, portas, armários e sólidos livremente.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from PySide6.QtCore import QObject, QPointF
 from PySide6.QtGui import QVector3D, QWheelEvent
@@ -22,7 +21,7 @@ logger = logging.getLogger("trazomob.free_zoom")
 class FreeZoomManager:
     """Controlador global do modo de zoom contínuo/atravessar sólidos."""
 
-    _instance: Optional[FreeZoomManager] = None
+    _instance: FreeZoomManager | None = None
     _enabled: bool = False
 
     @classmethod
@@ -79,7 +78,7 @@ class FreeZoomManager:
 
         # Determina a distância de referência até o que está sob o cursor
         world_under = getattr(viewport, "_world_under_cursor", None)
-        focus: Optional[QVector3D] = None
+        focus: QVector3D | None = None
         if callable(world_under):
             try:
                 focus = world_under(pos.x(), pos.y())

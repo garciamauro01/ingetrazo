@@ -14,8 +14,6 @@ Gera um conjunto profissional de arremate de canto para marcenaria sob medida:
 """
 from __future__ import annotations
 
-from typing import List, Optional, Tuple
-
 from PySide6.QtGui import QVector3D
 
 from core.group import Group
@@ -36,12 +34,12 @@ class FechamentoBuilder:
         prof_mm: float,
         esp_mm: float = 15.0,
         material: str = "MDF Branco TX 15mm",
-        material_fita: Optional[str] = None,
-        offset: Tuple[float, float, float] = (0.0, 0.0, 0.0),
-        cor: Optional[Tuple[float, float, float]] = None,
-        cor_fita: Optional[Tuple[float, float, float]] = None,
+        material_fita: str | None = None,
+        offset: tuple[float, float, float] = (0.0, 0.0, 0.0),
+        cor: tuple[float, float, float] | None = None,
+        cor_fita: tuple[float, float, float] | None = None,
         recuo_sarrafo_mm: float = 50.0,
-    ) -> List[Group]:
+    ) -> list[Group]:
         """Gera as chapas da testeira frontal de arremate e o sarrafo de fixação interno.
 
         Orientação padrão no espaço local:
@@ -61,7 +59,7 @@ class FechamentoBuilder:
         P = max(0.050, prof_mm / 1000.0)
         E = max(0.006, esp_mm / 1000.0)
 
-        groups: List[Group] = []
+        groups: list[Group] = []
 
         # 1. Testeira Frontal de Arremate (alinhada na face frontal do móvel: Y = oy + P - E)
         y_frente = oy + P - E
@@ -115,10 +113,10 @@ class FechamentoBuilder:
         prof_mm: float,
         esp_mm: float = 15.0,
         material: str = "MDF Branco TX 15mm",
-        material_fita: Optional[str] = None,
-        offset: Tuple[float, float, float] = (0.0, 0.0, 0.0),
-        cor: Optional[Tuple[float, float, float]] = None,
-        cor_fita: Optional[Tuple[float, float, float]] = None,
+        material_fita: str | None = None,
+        offset: tuple[float, float, float] = (0.0, 0.0, 0.0),
+        cor: tuple[float, float, float] | None = None,
+        cor_fita: tuple[float, float, float] | None = None,
         rot_z: float = 0.0,
     ) -> Group:
         """Cria o Group mestre container de fechamento de vão com metadados para lista de corte e orçamento."""

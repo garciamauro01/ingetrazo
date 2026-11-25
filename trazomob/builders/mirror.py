@@ -28,7 +28,7 @@ Como o parâmetro fica gravado no ``ext`` do módulo, toda reconstrução
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 from PySide6.QtGui import QVector3D
 
@@ -101,7 +101,7 @@ def is_mirrored(group: Any) -> bool:
     return False
 
 
-def _mesh_bounds_mm(mesh: Any) -> Optional[Tuple[float, float, float]]:
+def _mesh_bounds_mm(mesh: Any) -> tuple[float, float, float] | None:
     """Dimensões (x, y, z) da malha de uma peça, em milímetros."""
     vertices = getattr(mesh, "vertices", None)
     if not vertices:
@@ -123,7 +123,7 @@ def _swap_side_words(text: Any) -> Any:
     return _SIDE_RE.sub(lambda m: _SIDE_MAP[m.group(0)], text)
 
 
-def _flip_operations(meta: Dict[str, Any], length_mm: float) -> None:
+def _flip_operations(meta: dict[str, Any], length_mm: float) -> None:
     """Inverte o eixo X das usinagens de uma peça frontal."""
     operacoes = meta.get("operacoes")
     if not isinstance(operacoes, list):
@@ -143,7 +143,7 @@ def _flip_operations(meta: Dict[str, Any], length_mm: float) -> None:
     meta["operacoes"] = novas
 
 
-def _mirror_piece_metadata(piece: Any, dims_mm: Optional[Tuple[float, float, float]]) -> None:
+def _mirror_piece_metadata(piece: Any, dims_mm: tuple[float, float, float] | None) -> None:
     """Reflete os metadados de uma peça: fita, usinagens, lado e nome."""
     ext = getattr(piece, "ext", None)
     if not isinstance(ext, dict):

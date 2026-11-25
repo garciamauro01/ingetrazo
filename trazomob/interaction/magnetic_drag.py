@@ -24,7 +24,7 @@ Instala um eventFilter no Viewport (100% contido no plugin) para:
 from __future__ import annotations
 
 import logging
-from typing import Any, List, Optional, Tuple
+from typing import Any
 
 from PySide6.QtCore import QObject, QPointF
 from PySide6.QtGui import QColor, QVector3D
@@ -71,33 +71,33 @@ class MagneticModuleDragFilter(
 
     snap_enabled: bool = True    # Alternância global dos snaps magnéticos
 
-    def __init__(self, viewport, parent: Optional[QObject] = None) -> None:
+    def __init__(self, viewport, parent: QObject | None = None) -> None:
         super().__init__(parent or viewport)
         self.viewport = viewport
 
         self._mouse_pressed = False
-        self._press_pos: Optional[QPointF] = None
+        self._press_pos: QPointF | None = None
         self._drag_active = False
 
-        self._target_module: Optional[Group] = None
-        self._affected_groups: List[Group] = []
-        self._start_world_pt: Optional[QVector3D] = None
-        self._module_orig_bounds: Optional[Tuple[float, float, float, float, float, float]] = None
+        self._target_module: Group | None = None
+        self._affected_groups: list[Group] = []
+        self._start_world_pt: QVector3D | None = None
+        self._module_orig_bounds: tuple[float, float, float, float, float, float] | None = None
         self._active_locked_wall_face = None
-        self._press_wall_u: Optional[float] = None
-        self._press_wall_z: Optional[float] = None
-        self._axis_lock: Optional[str] = None  # None, 'z', 'u', 'x', 'y'
-        self._last_event_pos: Optional[QPointF] = None
-        self._drag_plane_normal: Optional[QVector3D] = None
+        self._press_wall_u: float | None = None
+        self._press_wall_z: float | None = None
+        self._axis_lock: str | None = None  # None, 'z', 'u', 'x', 'y'
+        self._last_event_pos: QPointF | None = None
+        self._drag_plane_normal: QVector3D | None = None
         self._drag_grab_dist: float = 1.0
         self._cam_started_inside_module: bool = False
         self._drag_is_esquadria: bool = False
 
         # Estado dinâmico de cotas
-        self._active_cota_items: List[Tuple[QVector3D, QVector3D, QColor, float]] = []
-        self._cota_cache_key: Optional[tuple] = None
+        self._active_cota_items: list[tuple[QVector3D, QVector3D, QColor, float]] = []
+        self._cota_cache_key: tuple | None = None
         # Estado dinâmico de preview para Drag & Drop da Ribbon
-        self._active_drop_preview: Optional[dict[str, Any]] = None
+        self._active_drop_preview: dict[str, Any] | None = None
 
         # Garante que o Viewport aceite eventos de Drag & Drop
         if hasattr(self.viewport, "setAcceptDrops"):

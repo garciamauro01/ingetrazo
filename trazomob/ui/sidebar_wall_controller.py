@@ -3,7 +3,7 @@
 """Mixin para o painel lateral do TrazoMob especializado em paredes 3D (SidebarWallMixin)."""
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from PySide6.QtGui import QVector3D
 
@@ -64,7 +64,7 @@ class SidebarWallMixin:
             self.btn_apply_wall.setVisible(False)
             self._set_editor_enabled(self._selected_module is not None)
 
-    def load_wall(self, wall: Group, segment_index: Optional[int] = None, face_type: Optional[str] = None) -> None:
+    def load_wall(self, wall: Group, segment_index: int | None = None, face_type: str | None = None) -> None:
         """Carrega os parâmetros da parede selecionada no painel de paredes da barra lateral."""
         if hasattr(self, "_ensure_form_built"):
             self._ensure_form_built()

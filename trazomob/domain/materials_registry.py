@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass
@@ -274,9 +274,9 @@ _DEFAULT_MATERIALS: list[MaterialDefinition] = [
 class MaterialsRegistry:
     """Gerenciador central de catálogo de materiais com persistência em JSON."""
 
-    _instance: Optional[MaterialsRegistry] = None
+    _instance: MaterialsRegistry | None = None
 
-    def __init__(self, storage_path: Optional[Path] = None) -> None:
+    def __init__(self, storage_path: Path | None = None) -> None:
         if storage_path is None:
             storage_path = Path(__file__).resolve().parent / "materials_data.json"
         self.storage_path = storage_path
@@ -344,7 +344,7 @@ class MaterialsRegistry:
         except Exception:
             pass
 
-    def get_material(self, name: str) -> Optional[MaterialDefinition]:
+    def get_material(self, name: str) -> MaterialDefinition | None:
         """Busca a definição do material pelo nome exato ou normalizado sem sufixo de espessura."""
         if not name:
             return None
@@ -374,7 +374,7 @@ class MaterialsRegistry:
         # Se for um material desconhecido não cadastrado, por segurança estrutural não gira
         return False
 
-    def list_materials(self, categoria: Optional[str] = None) -> list[MaterialDefinition]:
+    def list_materials(self, categoria: str | None = None) -> list[MaterialDefinition]:
         """Lista os materiais cadastrados, opcionalmente filtrados por categoria."""
         items = list(self._materials.values())
         if categoria:

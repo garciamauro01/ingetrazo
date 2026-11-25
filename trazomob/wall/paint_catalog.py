@@ -2,10 +2,8 @@
 """Paleta de Tintas e Cores de Paredes para o TrazoMob e Renderizador Foto-Realista."""
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
-
 # ── Catálogo de Cores Arquitetônicas / Suvinil / Coral / Tendências ──
-WALL_PAINT_CATALOG: Dict[str, List[Dict[str, any]]] = {
+WALL_PAINT_CATALOG: dict[str, list[dict[str, any]]] = {
     "Brancos & Neutros": [
         {"nome": "Branco Neve / Puro", "hex": "#FFFFFF", "rgb": (1.0, 1.0, 1.0), "tipo": "fosco"},
         {"nome": "Algodão Egípcio", "hex": "#EFECE1", "rgb": (0.937, 0.925, 0.882), "tipo": "fosco"},
@@ -39,7 +37,7 @@ WALL_PAINT_CATALOG: Dict[str, List[Dict[str, any]]] = {
 # exportador GLB resolva finish="satin" (roughness 0.45) mesmo com nome em
 # português, que o inferidor de finish classificaria como "matte".
 DEFAULT_WALL_PAINT = "Pintura de parede fosco acetinado"
-DEFAULT_WALL_COLOR: Tuple[float, float, float] = (1.0, 1.0, 1.0)
+DEFAULT_WALL_COLOR: tuple[float, float, float] = (1.0, 1.0, 1.0)
 
 
 def default_wall_material() -> dict:
