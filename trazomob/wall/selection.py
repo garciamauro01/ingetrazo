@@ -1015,7 +1015,7 @@ class WallSelectionManager:
         ]
         if not mep_grps:
             return
-        proj_fn = getattr(vp, "world_to_screen", None) or getattr(vp, "project", None)
+        proj_fn = getattr(vp, "world_to_pixel", None) or getattr(vp, "world_to_screen", None) or getattr(vp, "project", None)
         if not callable(proj_fn):
             return
         painter.save()
