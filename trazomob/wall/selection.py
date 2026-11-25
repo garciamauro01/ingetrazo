@@ -1047,7 +1047,7 @@ class WallSelectionManager:
             painter.drawLine(qt_top, qt_floor)
             mid_y = int((qt_top.y() + qt_floor.y()) * 0.5)
             mid_x = int((qt_top.x() + qt_floor.x()) * 0.5)
-            self._draw_mep_badge(painter, mid_x + 8, mid_y, f"Alt: {h_m:.2f}m", QColor(255, 215, 0))
+            self._draw_mep_badge(painter, mid_x + 8, mid_y, f"Alt: {int(round(h_m * 1000))} mm", QColor(255, 215, 0))
 
             # 2. Cota horizontal (Distância até o canto mais próximo da parede)
             corner_pt = self._find_mep_nearest_corner_3d(scene, mep_data, cx, cy, cz)
@@ -1059,7 +1059,7 @@ class WallSelectionManager:
                     painter.drawLine(qt_top, qt_corner)
                     hx = int((qt_top.x() + qt_corner.x()) * 0.5)
                     hy = int((qt_top.y() + qt_corner.y()) * 0.5) - 6
-                    self._draw_mep_badge(painter, hx, hy, f"Dist: {off_m:.2f}m", QColor(0, 210, 255))
+                    self._draw_mep_badge(painter, hx, hy, f"Dist: {int(round(off_m * 1000))} mm", QColor(0, 210, 255))
         painter.restore()
 
     @staticmethod

@@ -1200,16 +1200,16 @@ class SidebarModuleLoaderMixin:
 
         form = QFormLayout()
         self.sp_mep_alt = QDoubleSpinBox(self.card_mep)
-        self.sp_mep_alt.setRange(0.0, 3.50)
-        self.sp_mep_alt.setSingleStep(0.05)
-        self.sp_mep_alt.setDecimals(2)
-        self.sp_mep_alt.setSuffix(" m")
+        self.sp_mep_alt.setRange(0.0, 3500.0)
+        self.sp_mep_alt.setSingleStep(10.0)
+        self.sp_mep_alt.setDecimals(0)
+        self.sp_mep_alt.setSuffix(" mm")
 
         self.sp_mep_dist = QDoubleSpinBox(self.card_mep)
-        self.sp_mep_dist.setRange(0.0, 50.0)
-        self.sp_mep_dist.setSingleStep(0.05)
-        self.sp_mep_dist.setDecimals(2)
-        self.sp_mep_dist.setSuffix(" m")
+        self.sp_mep_dist.setRange(0.0, 50000.0)
+        self.sp_mep_dist.setSingleStep(10.0)
+        self.sp_mep_dist.setDecimals(0)
+        self.sp_mep_dist.setSuffix(" mm")
 
         form.addRow("Altura do Piso:", self.sp_mep_alt)
         form.addRow("Distância da Parede:", self.sp_mep_dist)
@@ -1233,8 +1233,8 @@ class SidebarModuleLoaderMixin:
         kind = str(mep_data.get("kind", "tomada_110v"))
         label = MEP_KINDS.get(kind, {}).get("label", kind)
         self.lbl_mep_title.setText(f"<b>{label}</b>")
-        self.sp_mep_alt.setValue(float(mep_data.get("height_m", 0.30)))
-        self.sp_mep_dist.setValue(float(mep_data.get("offset_m", 0.0)))
+        self.sp_mep_alt.setValue(round(float(mep_data.get("height_m", 0.30)) * 1000.0))
+        self.sp_mep_dist.setValue(round(float(mep_data.get("offset_m", 0.0)) * 1000.0))
 
         for attr in ("card_paredes", "scroll_paredes", "card_interact", "scroll_area", "actions_bar"):
             w = getattr(self, attr, None)
@@ -1252,8 +1252,8 @@ class SidebarModuleLoaderMixin:
         if not isinstance(mep_data, dict):
             return
         old_h = float(mep_data.get("height_m", 0.30))
-        new_h = float(self.sp_mep_alt.value())
-        new_off = float(self.sp_mep_dist.value())
+        new_h = float(self.sp_mep_alt.value()) / 1000.0
+        new_off = float(self.sp_mep_dist.value()) / 1000.0
         dz = new_h - old_h
         mep_data["height_m"] = new_h
         mep_data["offset_m"] = new_off
