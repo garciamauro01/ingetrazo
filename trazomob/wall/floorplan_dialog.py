@@ -1203,9 +1203,10 @@ class WallFloorplanDialog(QDialog):
                 if wall_grp is not None:
                     from ..wall.builder import WallBuilderTool
                     subs = WallBuilderTool.split_wall_group_into_segments(wall_grp)
-                    for child in getattr(wall_grp, "children", []) or []:
-                        if (getattr(child, "ext", None) or {}).get("trazomob_mep_point") is not None:
-                            subs.append(child)
+                    mep_groups = [
+                        child for child in (getattr(wall_grp, "children", []) or [])
+                        if (getattr(child, "ext", None) or {}).get("trazomob_mep_point") is not None
+                    ]
 
                     # Preserva cor/textura das paredes antes de substituí-las.
                     old_walls = list(getattr(self, "existing_walls", []) or [])
@@ -1262,6 +1263,13 @@ class WallFloorplanDialog(QDialog):
                     else:
                         for g in subs:
                             scene.groups.append(g)
+
+                    if mep_groups:
+                        scene.groups[:] = [
+                            g for g in scene.groups
+                            if (getattr(g, "ext", None) or {}).get("trazomob_mep_point") is None
+                        ]
+                        scene.groups.extend(mep_groups)
 
                     # Identifica ciclos fechados (cômodos) formados pelas paredes
                     cycles = self.graph.find_closed_cycles()
