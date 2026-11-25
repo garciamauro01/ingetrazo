@@ -53,3 +53,18 @@ def test_wall_graph_add_and_remove_mep_point():
     assert g.mep_points[pid].height_m == 0.30
     assert g.remove_mep_point(pid) is True
     assert pid not in g.mep_points
+
+
+def test_wall_graph_mep_points_persist_in_to_dict_and_from_dict():
+    from trazomob.wall.plan_2d import WallGraph2D
+
+    g = WallGraph2D()
+    s1 = g.add_segment(0.0, 0.0, 4.0, 0.0)
+    pid = g.add_mep_point(s1, "agua_quente", offset_m=1.5, height_m=0.65, label="Aquecedor")
+
+    data = g.to_dict()
+    g2 = WallGraph2D.from_dict(data)
+    assert pid in g2.mep_points
+    assert g2.mep_points[pid].kind == "agua_quente"
+    assert g2.mep_points[pid].offset_m == 1.5
+    assert g2.mep_points[pid].label == "Aquecedor"

@@ -384,6 +384,27 @@ class Plan2DGeometryMixin:
                 "z_base": float(z_base),
             }
         }
+        mep_points = getattr(self, "mep_points", None)
+        if mep_points:
+            from ..domain.mep_points import build_mep_point_group
+            for pt in mep_points.values():
+                seg = self.segments.get(pt.seg_id)
+                if seg is None:
+                    continue
+                na = self.nodes.get(seg.node_a_id)
+                nb = self.nodes.get(seg.node_b_id)
+                if na is None or nb is None:
+                    continue
+                dx, dy = nb.x - na.x, nb.y - na.y
+                seg_len = math.hypot(dx, dy)
+                if seg_len <= 1e-6:
+                    continue
+                t = max(0.0, min(1.0, pt.offset_m / seg_len))
+                wx = na.x + dx * t
+                wy = na.y + dy * t
+                wz = float(z_base) + float(pt.height_m)
+                mep_grp = build_mep_point_group(pt, world_pos=(wx, wy, wz))
+                grp.children.append(mep_grp)
         return grp
 
     def build_ambiente_group(

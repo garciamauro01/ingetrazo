@@ -1555,6 +1555,7 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
                 for d in self.dimensions.values()
             ],
             "room_names": dict(self.room_names),
+            "mep_points": [p.to_dict() for p in self.mep_points.values()],
         }
 
     @classmethod
@@ -1602,6 +1603,14 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
         if graph.dimensions:
             graph._next_dim_id = max(graph.dimensions.keys()) + 1
         graph.room_names = dict(data.get("room_names", {}))
+        mep_raw = data.get("mep_points") or []
+        if mep_raw:
+            from ..domain.mep_points import MEPPoint
+            for md in mep_raw:
+                pt = MEPPoint.from_dict(md)
+                graph.mep_points[pt.id] = pt
+            if graph.mep_points:
+                graph._next_mep_id = max(graph.mep_points.keys()) + 1
         # Normaliza referências e pontas (inclui a migração de cotas antigas
         # criadas sobre cantos mitrados) ao carregar um plano salvo.
         graph.sync_all_dimensions()
