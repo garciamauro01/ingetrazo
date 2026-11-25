@@ -116,4 +116,4 @@ def test_draw_mep_selection_overlay_handles_tuple_world_to_pixel():
 
     assert len(drawn_lines) == 1
     assert len(drawn_texts) == 1
-    assert "Alt: 0.30m | Dist: 1.20m" in drawn_texts[0][2]
+    assert "Alt: 0.30m" in drawn_texts[0][2]

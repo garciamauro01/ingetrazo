@@ -1038,10 +1038,47 @@ class WallSelectionManager:
                 continue
             qt_top = QPointF(p_top[0], p_top[1]) if isinstance(p_top, (tuple, list)) else QPointF(p_top)
             qt_floor = QPointF(p_floor[0], p_floor[1]) if isinstance(p_floor, (tuple, list)) else QPointF(p_floor)
+            # 1. Cota vertical (Altura do piso)
             painter.setPen(QPen(QColor(255, 215, 0), 2.0, Qt.DashLine))
             painter.drawLine(qt_top, qt_floor)
             mid_y = int((qt_top.y() + qt_floor.y()) * 0.5)
             mid_x = int((qt_top.x() + qt_floor.x()) * 0.5)
             painter.setPen(QPen(QColor(255, 255, 255), 1))
-            painter.drawText(mid_x + 8, mid_y, f"Alt: {h_m:.2f}m | Dist: {off_m:.2f}m")
+            painter.drawText(mid_x + 8, mid_y, f"Alt: {h_m:.2f}m")
+
+            # 2. Cota horizontal (Distância até o canto mais próximo da parede)
+            corner_pt = self._find_mep_nearest_corner_3d(scene, mep_data, cx, cy, cz)
+            if corner_pt is not None:
+                p_corner = proj_fn(corner_pt)
+                if p_corner is not None:
+                    qt_corner = QPointF(p_corner[0], p_corner[1]) if isinstance(p_corner, (tuple, list)) else QPointF(p_corner)
+                    painter.setPen(QPen(QColor(0, 210, 255), 2.0, Qt.DashLine))
+                    painter.drawLine(qt_top, qt_corner)
+                    hx = int((qt_top.x() + qt_corner.x()) * 0.5)
+                    hy = int((qt_top.y() + qt_corner.y()) * 0.5) - 6
+                    painter.setPen(QPen(QColor(255, 255, 255), 1))
+                    painter.drawText(hx, hy, f"Dist: {off_m:.2f}m")
         painter.restore()
+
+    @staticmethod
+    def _find_mep_nearest_corner_3d(scene, mep_data: dict, cx: float, cy: float, cz: float) -> QVector3D | None:
+        """Encontra o ponto 3D do canto mais próximo da parede hospedeira na mesma altura Z."""
+        seg_id = mep_data.get("seg_id")
+        for g in getattr(scene, "groups", []) or []:
+            wp = (getattr(g, "ext", None) or {}).get("trazomob_wall")
+            if not isinstance(wp, dict):
+                continue
+            g2d = wp.get("graph_2d")
+            if isinstance(g2d, dict):
+                segs = {s["id"]: s for s in g2d.get("segments", []) if "id" in s}
+                nodes = {n["id"]: n for n in g2d.get("nodes", []) if "id" in n}
+                seg = segs.get(seg_id)
+                if seg and seg.get("node_a_id") in nodes and seg.get("node_b_id") in nodes:
+                    na = nodes[seg["node_a_id"]]
+                    nb = nodes[seg["node_b_id"]]
+                    pa = QVector3D(float(na["x"]), float(na["y"]), cz)
+                    pb = QVector3D(float(nb["x"]), float(nb["y"]), cz)
+                    da = (pa.x() - cx) ** 2 + (pa.y() - cy) ** 2
+                    db = (pb.x() - cx) ** 2 + (pb.y() - cy) ** 2
+                    return pa if da <= db else pb
+        return None
