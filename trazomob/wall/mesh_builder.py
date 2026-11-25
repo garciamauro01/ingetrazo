@@ -737,7 +737,8 @@ class WallMeshBuilder:
         def _log(elapsed_walls: int = 0, changed: bool = False) -> None:
             if not _perf:
                 return
-            from core.history import _plog
+            from ..integrations import platform as host
+            _plog = host.plog
             _plog("trazomob.wall_sync", (_time.perf_counter() - _t0) * 1000.0,
                   f"walls={elapsed_walls} changed={changed}", floor=0.0)
 

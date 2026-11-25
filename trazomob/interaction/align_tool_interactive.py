@@ -82,9 +82,9 @@ class AlignSnapTool(Tool):
         if hasattr(viewport, "setCursor"):
             viewport.setCursor(Qt.CrossCursor)
 
-        if hasattr(viewport, "_ext_overlays") and self._draw_align_overlay not in viewport._ext_overlays:
-            viewport._ext_overlays.append(self._draw_align_overlay)
-            self._overlay_installed = True
+        from ..integrations import platform as host
+        host.register_viewport_overlay(viewport, self._draw_align_overlay)
+        self._overlay_installed = True
 
         # Se houver objeto já selecionado, pode pré-definir como objeto de origem
         scene = getattr(viewport, "scene", None)
@@ -107,12 +107,9 @@ class AlignSnapTool(Tool):
         self.hovered_point = None
         if hasattr(viewport, "unsetCursor"):
             viewport.unsetCursor()
-        if hasattr(viewport, "_ext_overlays") and self._draw_align_overlay in viewport._ext_overlays:
-            try:
-                viewport._ext_overlays.remove(self._draw_align_overlay)
-            except ValueError:
-                pass
-            self._overlay_installed = False
+        from ..integrations import platform as host
+        host.unregister_viewport_overlay(viewport, self._draw_align_overlay)
+        self._overlay_installed = False
         viewport.update()
 
     def claims_key(self, key: int, modifiers: Qt.KeyboardModifiers) -> bool:

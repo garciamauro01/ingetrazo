@@ -29,7 +29,8 @@ def _timed_apply(step: str):
     try:
         yield
     finally:
-        from core.history import _plog
+        from ..integrations import platform as host
+        _plog = host.plog
         _plog(f"trazomob.apply.{step}", (_time.perf_counter() - t0) * 1000.0, floor=0.0)
 
 

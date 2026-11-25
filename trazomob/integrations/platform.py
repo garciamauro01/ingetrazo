@@ -111,6 +111,49 @@ def register_viewport_overlay(viewport: Any, fn: Any) -> None:
         viewport._ext_overlays.append(fn)
 
 
+def unregister_viewport_overlay(viewport: Any, fn: Any) -> None:
+    """Remove um callback de overlay da lista do viewport."""
+    if viewport is None:
+        return
+    overlays = getattr(viewport, "_ext_overlays", None)
+    if isinstance(overlays, list) and fn in overlays:
+        overlays.remove(fn)
+
+
+def viewport_model_diag(viewport: Any, default: float = 1.0) -> float:
+    """Retorna a diagonal do modelo no viewport de forma segura."""
+    fn = getattr(viewport, "_model_diag", None)
+    if callable(fn):
+        try:
+            return max(1.0, float(fn()))
+        except Exception:
+            pass
+    return default
+
+
+def clear_viewport_zoom_focus(viewport: Any) -> None:
+    """Limpa o foco de zoom interno do viewport."""
+    if viewport is not None and hasattr(viewport, "_zoom_focus"):
+        viewport._zoom_focus = None
+
+
+def viewport_context_pixel(viewport: Any) -> Any:
+    """Retorna a posição do último clique de menu de contexto no viewport."""
+    return getattr(viewport, "_context_pixel", None)
+
+
+def local_points(*args: Any, **kwargs: Any) -> Any:
+    """Wrapper público para ``core.group._local_points``."""
+    from core.group import _local_points
+    return _local_points(*args, **kwargs)
+
+
+def plog(*args: Any, **kwargs: Any) -> Any:
+    """Wrapper público para ``core.history._plog``."""
+    from core.history import _plog
+    return _plog(*args, **kwargs)
+
+
 def invalidate_transform_viewport_caches(viewport: Any) -> None:
     """Invalida caches de posicionamento/silhueta após transformações."""
     if viewport is None:

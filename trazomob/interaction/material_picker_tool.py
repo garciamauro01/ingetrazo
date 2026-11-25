@@ -63,18 +63,18 @@ class MaterialPickerTool(Tool):
         if hasattr(viewport, "setCursor"):
             viewport.setCursor(Qt.CrossCursor)
 
-        if hasattr(viewport, "_ext_overlays") and self._draw_hover_overlay not in viewport._ext_overlays:
-            viewport._ext_overlays.append(self._draw_hover_overlay)
-            self._overlay_installed = True
+        from ..integrations import platform as host
+        host.register_viewport_overlay(viewport, self._draw_hover_overlay)
+        self._overlay_installed = True
 
         flash = getattr(viewport, "flash_status", None)
         if callable(flash):
             flash("🎨 Conta-gotas PBR ativo: Clique em uma face para carregar seu material")
 
     def on_deactivate(self, viewport) -> None:
-        if hasattr(viewport, "_ext_overlays") and self._draw_hover_overlay in viewport._ext_overlays:
-            viewport._ext_overlays.remove(self._draw_hover_overlay)
-            self._overlay_installed = False
+        from ..integrations import platform as host
+        host.unregister_viewport_overlay(viewport, self._draw_hover_overlay)
+        self._overlay_installed = False
 
         if hasattr(viewport, "unsetCursor"):
             viewport.unsetCursor()

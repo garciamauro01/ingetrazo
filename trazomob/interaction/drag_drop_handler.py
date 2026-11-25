@@ -34,7 +34,8 @@ def compute_drop_placement(
        - Projeta a interse??o do raio do cursor com o plano Z = default_z (ou Z = 0);
        - Mant?m rot_z padr?o (0.0).
     """
-    orig, dirc = viewport._pixel_to_ray(pos.x(), pos.y())
+    from ..integrations import platform as host
+    orig, dirc = host.viewport_pixel_to_ray(viewport, pos.x(), pos.y())
     default_z = float(mod_data.get("default_z", 0.0))
     larg_m = float(mod_data.get("largura", 800.0)) / 1000.0
     prof_m = float(mod_data.get("profundidade", 550.0)) / 1000.0

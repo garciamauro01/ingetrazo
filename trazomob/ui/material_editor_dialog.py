@@ -408,15 +408,13 @@ class MaterialEditorDialog(QDialog):
         if not self._highlight_active:
             return
         if self.viewport is not None:
-            if not hasattr(self.viewport, "_ext_overlays"):
-                self.viewport._ext_overlays = []
-            if self._draw_material_highlight not in self.viewport._ext_overlays:
-                self.viewport._ext_overlays.append(self._draw_material_highlight)
+            from trazomob.integrations.platform import register_viewport_overlay
+            register_viewport_overlay(self.viewport, self._draw_material_highlight)
 
     def _cleanup_viewport_overlay(self):
         if self.viewport is not None and hasattr(self.viewport, "_ext_overlays"):
-            if self._draw_material_highlight in self.viewport._ext_overlays:
-                self.viewport._ext_overlays.remove(self._draw_material_highlight)
+            from trazomob.integrations.platform import unregister_viewport_overlay
+            unregister_viewport_overlay(self.viewport, self._draw_material_highlight)
             self.viewport.update()
 
     def _cleanup_eyedropper(self):

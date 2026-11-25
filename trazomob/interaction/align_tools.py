@@ -35,7 +35,8 @@ def _mesh_local_bounds(mesh) -> Optional[Tuple[float, float, float, float, float
         if cached is not None and cached[0] == key:
             return cached[1]
         try:
-            from core.group import _local_points
+            from ..integrations import platform as host
+            _local_points = host.local_points
             pts = _local_points(mesh)
         except Exception:
             pts = None

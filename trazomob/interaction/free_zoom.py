@@ -96,12 +96,8 @@ class FreeZoomManager:
         # Quando à frente do objeto: passo suave proporcional à distância (fração ~15% por notch)
         # Quando muito perto (<= 5cm) ou já tendo ultrapassado o foco/dentro do sólido:
         # mantém um passo contínuo constante (ex: 5cm a 10cm) para nunca parar nem empacar.
-        diag = 10.0
-        if hasattr(viewport, "_model_diag") and callable(viewport._model_diag):
-            try:
-                diag = max(1.0, float(viewport._model_diag()))
-            except Exception:
-                diag = 10.0
+        from ..integrations import platform as host
+        diag = host.viewport_model_diag(viewport, default=10.0)
 
         step_base = max(0.04, min(0.15 * diag, 0.12))
 
@@ -118,8 +114,8 @@ class FreeZoomManager:
         cam.move_eye(delta)
 
         # Invalida o cache de zoom interno do viewport para evitar conflitos na volta ao modo nativo
-        if hasattr(viewport, "_zoom_focus"):
-            viewport._zoom_focus = None
+        from ..integrations import platform as host
+        host.clear_viewport_zoom_focus(viewport)
 
         # Redesenha a cena
         viewport.update()

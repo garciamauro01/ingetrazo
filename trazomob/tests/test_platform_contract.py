@@ -218,22 +218,10 @@ def test_trazomob_has_no_runtime_hooks():
 # Cada número é dívida conhecida: o alvo é chegar a zero e mover o acesso para
 # platform.py. Se este teste falhar, o código novo tocou um ``_privado`` do host
 # fora da camada anticorrupção.
-PRIVATE_ATTR_BASELINE = {
-    "bootstrap.py": 1,
-    "context_menu.py": 1,
-    "interaction/align_tool_interactive.py": 4,
-    "interaction/drag_drop_handler.py": 1,
-    "interaction/free_zoom.py": 3,
-    "interaction/magnetic_drag.py": 4,
-    "interaction/material_picker_tool.py": 4,
-    "ui/material_editor_dialog.py": 5,
-}
+PRIVATE_ATTR_BASELINE = {}
 
 PRIVATE_IMPORT_BASELINE = {
-    "interaction/align_tools.py": 1,
     "render/lighting.py": 1,
-    "ui/sidebar_apply_controller.py": 1,
-    "wall/mesh_builder.py": 1,
 }
 
 _ATTR_RE = re.compile(r"\b(main_window|window|app|viewport)\s*\._[A-Za-z]")

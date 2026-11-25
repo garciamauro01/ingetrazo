@@ -40,12 +40,15 @@ def build_context_menu(menu, selection, app, sidebar_panel, tool_cls) -> None:
         seg_index = None
         params = wall.ext.get("trazomob_wall") or {}
         face_map = params.get("face_segment_map", {})
-        if hasattr(app, "viewport") and hasattr(app.viewport, "_context_pixel"):
-            px, py = app.viewport._context_pixel
-            hit_face, hit_grp = app.viewport.pick_face_any(px, py)
-            if hit_grp is wall and hit_face in getattr(wall.mesh, "faces", []):
-                f_idx = wall.mesh.faces.index(hit_face)
-                seg_index = face_map.get(f_idx)
+        if hasattr(app, "viewport"):
+            from .integrations import platform as host
+            ctx_px = host.viewport_context_pixel(app.viewport)
+            if ctx_px is not None:
+                px, py = ctx_px
+                hit_face, hit_grp = app.viewport.pick_face_any(px, py)
+                if hit_grp is wall and hit_face in getattr(wall.mesh, "faces", []):
+                    f_idx = wall.mesh.faces.index(hit_face)
+                    seg_index = face_map.get(f_idx)
 
         is_seg = bool(params.get("is_segmented", False))
         pts_count = len(params.get("pontos", []))

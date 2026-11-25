@@ -108,10 +108,8 @@ class MagneticModuleDragFilter(
 
     def _install_overlay(self) -> None:
         """Garante que a função de pintura das cotas seja chamada durante a renderização do Viewport."""
-        if not hasattr(self.viewport, "_ext_overlays") or self.viewport._ext_overlays is None:
-            self.viewport._ext_overlays = []
-        if self._draw_cota_overlay not in self.viewport._ext_overlays:
-            self.viewport._ext_overlays.append(self._draw_cota_overlay)
+        from ..integrations import platform as host
+        host.register_viewport_overlay(self.viewport, self._draw_cota_overlay)
 
         # Conecta a mudanças na cena para atualizar cotas automaticamente
         if hasattr(self.viewport, "sceneVersionChanged"):
