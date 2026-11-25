@@ -9,9 +9,6 @@ from pathlib import Path
 from typing import Any
 
 
-from .dxf_cnc import export_cut_sheet_dxf, export_piece_dxf
-
-
 def format_trazomob_text(parts: list[dict[str, Any]]) -> str:
     """Gera texto tab-separado (TSV) pronto para colar no TrazoMob (Ctrl+V)."""
     lines = []

@@ -8,44 +8,23 @@
 
 from __future__ import annotations
 
-
-
 from PySide6.QtCore import QSize, Qt
-
 from PySide6.QtWidgets import (
-
     QCheckBox,
-
     QComboBox,
-
     QFrame,
-
     QGroupBox,
-
     QHBoxLayout,
-
     QLabel,
-
     QLineEdit,
-
     QListWidget,
-
     QPushButton,
-
     QSpinBox,
-
     QVBoxLayout,
-
 )
 
-
-
 from ..domain.catalog import MODULE_CATALOG, USER_MODULE_CATEGORY
-
 from ..ui.icons import make_perfil_diagram_pixmap
-
-
-
 
 
 class ModuleDialogSectionsMixin:

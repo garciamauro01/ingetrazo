@@ -3,33 +3,27 @@
 """Visualizador interativo 2D de Plano de Corte e Aproveitamento de Chapas."""
 from __future__ import annotations
 
-import math
 from typing import Any
 
-from PySide6.QtCore import QPointF, QRectF, QSize, Qt
+from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import (
     QBrush,
     QColor,
     QFont,
     QPainter,
-    QPainterPath,
     QPen,
     QPixmap,
 )
 from PySide6.QtWidgets import (
-    QApplication,
     QComboBox,
     QDialog,
     QDoubleSpinBox,
     QFileDialog,
-    QFrame,
-    QGraphicsDropShadowEffect,
     QGroupBox,
     QHBoxLayout,
     QLabel,
     QMessageBox,
     QPushButton,
-    QScrollArea,
     QSizePolicy,
     QSpinBox,
     QVBoxLayout,

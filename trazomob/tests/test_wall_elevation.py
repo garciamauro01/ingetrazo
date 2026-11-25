@@ -3,7 +3,7 @@
 """Testes unitários para o módulo de Elevação Técnica 2D de Paredes (Wall Elevation 2D)."""
 import pytest
 from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import QPointF, QRectF
+
 from trazomob.wall.elevation_dialog import WallElevationCanvas
 
 

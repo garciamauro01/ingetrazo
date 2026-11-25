@@ -16,6 +16,7 @@ from typing import Any
 from PySide6.QtGui import QVector3D
 
 from core.group import Group
+
 from ..builders.chapa_builder import build_chapa_mm
 from ..builders.chapa_spec import ChapaSpec, ModuloMaterialContext, PapelChapa
 from ..production.machining import MachiningOp
@@ -1038,10 +1039,6 @@ class CamaBuilder:
         **kwargs: Any,
     ) -> list[Group]:
         """Cama plataforma com base tipo colmeia estrutural, apoio parametrizado e estrado bipartido."""
-        from ..production.machining import (
-            make_cabinet_joint_holes,
-            make_horizontal_board_edge_holes,
-        )
         E = float(esp_mm)
         L = float(largura_mm)
         P = float(prof_mm)

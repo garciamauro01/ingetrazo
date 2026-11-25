@@ -4,9 +4,9 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+
 import numpy as np
 import pytest
-
 from PySide6.QtCore import QPointF
 from PySide6.QtGui import QImage, QMatrix4x4, QPainter, QVector3D
 from PySide6.QtWidgets import QApplication, QWidget
@@ -16,7 +16,6 @@ from core.mesh import Mesh
 from core.scene import Scene
 from trazomob.wall.guides import (
     WallGuideRulerManager,
-    filter_occluded_segments,
     is_wall_face_visible_to_camera,
 )
 from trazomob.wall.selection import WallFaceInfo, WallSelectionManager
@@ -258,6 +257,7 @@ def test_selection_outline_and_guides_respect_foreground_and_lazy_occlusion(qapp
 def test_placement_frame_disappears_on_module_and_non_wall_click(qapp):
     from PySide6.QtCore import QEvent, Qt
     from PySide6.QtGui import QMouseEvent
+
     from trazomob.interaction.magnetic_drag import MagneticModuleDragFilter
 
     WallSelectionManager._instance = None

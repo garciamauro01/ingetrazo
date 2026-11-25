@@ -11,15 +11,15 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Optional, Tuple, List, Dict, Any
+from typing import Any, Dict, List, Optional, Tuple
 
-from PySide6.QtCore import QPointF, Qt, QRectF
-from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF, QVector3D
+from PySide6.QtCore import QPointF, Qt
+from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF, QVector3D
 
 from core.group import Group
 from core.mesh import Face
-from ..integrations import platform as host
 
+from ..integrations import platform as host
 
 logger = logging.getLogger("trazomob.wall_selection")
 
@@ -108,10 +108,8 @@ class WallSelectionManager:
         """Garante registro do callback de overlay na passagem de pintura do viewport."""
         if self.viewport is None:
             return
-        if not hasattr(self.viewport, "_ext_overlays") or self.viewport._ext_overlays is None:
-            self.viewport._ext_overlays = []
-        if self.draw_selection_overlay not in self.viewport._ext_overlays:
-            self.viewport._ext_overlays.append(self.draw_selection_overlay)
+        from ..integrations import platform as host
+        host.register_viewport_overlay(self.viewport, self.draw_selection_overlay)
         self._overlay_installed = True
 
     def uninstall_overlay(self) -> None:
@@ -141,7 +139,7 @@ class WallSelectionManager:
             # Notifica a cena para atualizar os chunks de malha no OpenGL
             if self.viewport is not None and hasattr(self.viewport, "scene"):
                 try:
-                    from core.history import _dirty_group_chunks
+                    from trazomob.integrations.platform import dirty_group_chunks as _dirty_group_chunks
                     _dirty_group_chunks(self.viewport.scene)
                 except Exception as exc:
                     logger.debug("falha ao marcar chunks da parede como sujos: %s", exc)
@@ -243,7 +241,7 @@ class WallSelectionManager:
         # Marca os chunks como sujos para o OpenGL atualizar a malha 3D com a nova cor da face
         if self.viewport is not None and hasattr(self.viewport, "scene"):
             try:
-                from core.history import _dirty_group_chunks
+                from trazomob.integrations.platform import dirty_group_chunks as _dirty_group_chunks
                 _dirty_group_chunks(self.viewport.scene)
             except Exception as exc:
                 logger.debug("falha ao marcar chunks após pintar a face: %s", exc)
@@ -365,7 +363,8 @@ class WallSelectionManager:
             return False
 
         # Obtém o raio da câmera para as coordenadas de tela clicadas
-        ray_orig, ray_dir = self.viewport._pixel_to_ray(px, py)
+        from ..integrations import platform as host
+        ray_orig, ray_dir = host.viewport_pixel_to_ray(self.viewport, px, py)
         if ray_orig is None or ray_dir is None:
             return False
 
@@ -375,7 +374,7 @@ class WallSelectionManager:
         c_world = xf.map(info.center) if xf is not None else info.center
         n_world = info.normal
 
-        hit_pt = self.viewport._ray_plane(ray_orig, ray_dir, c_world, n_world)
+        hit_pt = host.viewport_ray_plane(self.viewport, ray_orig, ray_dir, c_world, n_world)
         if hit_pt is None:
             return False
 
@@ -729,7 +728,7 @@ class WallSelectionManager:
             self.viewport.history.execute(HideCommand(entities_to_hide, hidden=True))
             setattr(self.viewport, "_trazomob_auto_hidden_entities", entities_to_hide)
             try:
-                from core.history import _dirty_group_chunks
+                from trazomob.integrations.platform import dirty_group_chunks as _dirty_group_chunks
                 _dirty_group_chunks(scene)
             except Exception as exc:
                 logger.debug("falha ao marcar chunks após ocultar a parede: %s", exc)

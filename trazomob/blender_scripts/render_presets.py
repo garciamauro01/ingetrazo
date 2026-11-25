@@ -6,7 +6,6 @@ from __future__ import annotations
 
 def apply_render_preset(mat, preset_id: str, obj=None) -> None:
     """Configura os nós do material ``mat`` no Blender para o ``preset_id`` escolhido."""
-    import bpy
 
     if not mat or preset_id in ("", "original"):
         return

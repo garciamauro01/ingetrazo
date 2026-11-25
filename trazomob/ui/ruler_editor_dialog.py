@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional, Tuple
 
-from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QComboBox,
@@ -30,9 +29,10 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
 from views.color_dialog import get_color
 
-from ..wall.guides import WallGuideRulerManager, DEFAULT_RULER_PRESETS
+from ..wall.guides import DEFAULT_RULER_PRESETS, WallGuideRulerManager
 
 
 class RulerEditorDialog(QDialog):

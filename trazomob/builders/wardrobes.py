@@ -1,11 +1,14 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 from __future__ import annotations
+
 from typing import Any
+
 from core.group import Group
-from ..builders.mesh_utils import create_board_group
+
 from ..builders.chapa_builder import build_chapa
-from ..builders.chapa_spec import ChapaSpec, PapelChapa, ModuloMaterialContext
+from ..builders.chapa_spec import ChapaSpec, ModuloMaterialContext, PapelChapa
 from ..builders.fronts import FrentesKitBuilder
+from ..builders.mesh_utils import create_board_group
 
 
 def _chapa(
@@ -1261,8 +1264,8 @@ class ArmarioBuilder:
         tamponamento lateral de 18mm até o chão e recuo frontal de 70mm
         para posterior encaixe de portas de correr.
         """
-        from .parts import CustomPartsBuilder
         from .cabinet_caixa import CaixaMixin
+        from .parts import CustomPartsBuilder
 
         ox, oy, oz = offset
         L = largura_mm / 1000.0

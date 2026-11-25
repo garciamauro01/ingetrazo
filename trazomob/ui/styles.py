@@ -4,8 +4,9 @@
 from __future__ import annotations
 
 from typing import Dict
-from PySide6.QtWidgets import QApplication
+
 from PySide6.QtGui import QPalette
+from PySide6.QtWidgets import QApplication
 
 
 def get_theme_palette() -> Dict[str, str]:

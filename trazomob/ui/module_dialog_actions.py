@@ -258,7 +258,10 @@ class ModuleDialogActionsMixin:
                 offset = self._get_module_position(self._editing_module)
         else:
             # ── HERANÇA DE MEDIDAS DA MESMA CATEGORIA ────────────────────────
-            from ..domain.module_geometry import get_module_category, is_compatible_category
+            from ..domain.module_geometry import (
+                get_module_category,
+                is_compatible_category,
+            )
             cat_novo = get_module_category(tipo, default_z)
             ref_b = None
             ref_cc = {}
@@ -397,8 +400,11 @@ class ModuleDialogActionsMixin:
                 n_dir = QVector3D(norm.x(), norm.y(), 0.0)
                 if n_dir.length() > 1e-4:
                     n_dir.normalize()
-                    from ..interaction.magnetic_drag import get_module_bounds, get_bounds_min_projection
                     from ..domain.module_geometry import get_module_carcass_bounds
+                    from ..interaction.magnetic_drag import (
+                        get_bounds_min_projection,
+                        get_module_bounds,
+                    )
                     b = get_module_carcass_bounds(new_module_group) or get_module_bounds(new_module_group)
                     if b is not None:
                         cur_min_n = get_bounds_min_projection(b, n_dir)
@@ -430,8 +436,11 @@ class ModuleDialogActionsMixin:
             # Ao editar módulo existente, preserva o alinhamento espacial e rotação
             if self._editing_module is not None:
                 rot_z_eff = float(params.get("rot_z", 0.0))
+                from ..domain.module_geometry import (
+                    get_module_carcass_bounds,
+                    preserve_module_back_alignment,
+                )
                 from ..interaction.magnetic_drag import get_module_bounds
-                from ..domain.module_geometry import get_module_carcass_bounds, preserve_module_back_alignment
                 b_old = get_module_carcass_bounds(self._editing_module) or get_module_bounds(self._editing_module)
                 b_new = get_module_carcass_bounds(new_module_group) or get_module_bounds(new_module_group)
                 has_3d_rot = isinstance(params.get("rot_matrix_3d"), (list, tuple)) and len(params["rot_matrix_3d"]) == 16

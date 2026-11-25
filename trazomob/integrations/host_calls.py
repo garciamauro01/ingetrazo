@@ -110,8 +110,9 @@ def prepare_copied_group(group: Any) -> None:
     """
     if not _is_trazomob_module(group):
         return
-    from core.group import transformed_mesh
     from PySide6.QtGui import QMatrix4x4
+
+    from core.group import transformed_mesh
 
     identity = QMatrix4x4()
 
@@ -280,8 +281,9 @@ def scale_factor_override(scale_tool: Any, ctx: Any, viewport: Any,
     if grip is None or 2 not in grip.mask or anchor is None:
         return default
     try:
-        from ..wall.guides import WallGuideRulerManager
         from PySide6.QtGui import QVector3D
+
+        from ..wall.guides import WallGuideRulerManager
 
         ruler_mgr = WallGuideRulerManager.get_instance()
         if not (ruler_mgr.visible and ruler_mgr.snap_enabled):
@@ -319,8 +321,10 @@ def promote_selection_modules(viewport: Any) -> None:
 def prateleiras_bounds(scale_tool: Any, viewport: Any):
     """Caixa do vão de prateleiras avulsas, ou ``None`` para a caixa nativa."""
     import math
-    from core.group import Group
+
     from PySide6.QtGui import QVector3D
+
+    from core.group import Group
 
     scene = getattr(viewport, "scene", None)
     selection = list(getattr(scene, "selection", [])) if scene else []
@@ -443,6 +447,7 @@ def prateleiras_obb(group: Any):
     if str(params.get("tipo", "")) != "peca_prateleiras_avulsas":
         return None
     import math
+
     from PySide6.QtGui import QVector3D
 
     width = float(params.get("largura", 800.0)) / 1000.0

@@ -7,16 +7,15 @@ e selecioná-lo/editá-lo instantaneamente na janela de Materiais PBR.
 """
 from __future__ import annotations
 
-from typing import Optional
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QPointF
-from PySide6.QtGui import QColor, QPen, QBrush, QPainter, QPolygonF, QCursor
+from PySide6.QtCore import QPointF, Qt
+from PySide6.QtGui import QBrush, QColor, QPainter, QPen, QPolygonF
 
-from tools.base import Tool, ToolContext
-from tools.paint import clicked_back_side
 from core.group import effective_material
 from core.materials import effective_attrs
+from tools.base import Tool, ToolContext
+from tools.paint import clicked_back_side
 
 
 def resolve_material_name_from_attrs(attrs: dict) -> str:

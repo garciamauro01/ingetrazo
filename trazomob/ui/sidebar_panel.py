@@ -3,25 +3,17 @@
 """Painel lateral (Dock Widget) de edição de módulos dinâmicos do TrazoMob."""
 from __future__ import annotations
 
-import math
-from typing import Any
-
-from PySide6.QtCore import QSize, Qt, QTimer
-from PySide6.QtGui import QIcon, QVector3D
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QCheckBox,
     QComboBox,
     QDockWidget,
     QDoubleSpinBox,
     QFormLayout,
     QFrame,
-    QGroupBox,
     QHBoxLayout,
     QLabel,
-    QMessageBox,
     QPushButton,
     QScrollArea,
-    QSizePolicy,
     QSlider,
     QSpinBox,
     QTabWidget,
@@ -31,41 +23,27 @@ from PySide6.QtWidgets import (
 )
 
 from core.group import Group
-from core.history import SnapshotImport
-from core.mesh import Mesh
 
-from ..builders.cabinet import CabinetBuilder, RotateTrazoMobModuleCommand
-from ..domain.catalog import MODULE_CATALOG
 from ..domain.i18n import tr
 from ..integrations import platform as host
-from ..ui.icons import (
-    get_module_thumbnail,
-    make_cabinet_icon,
-    make_trazomob_icon,
-    make_interact_icon,
-    make_rotate_ccw_icon,
-    make_rotate_cw_icon,
-    make_perfil_diagram_pixmap,
-)
-from ..interaction.interact import CabinetInteract, CabinetInteractTool
-from ..profiles import library as perfis_lib
-from ..profiles.editor import PerfilLibraryDialog, fill_profile_combo
-from ..ui.sidebar_walls_ui import SidebarWallsUIMixin
-from ..ui.sidebar_adjustments_controller import SidebarAdjustmentsMixin as SidebarAjustesMixin
-from ..ui.sidebar_module_loader import SidebarModuleLoaderMixin
-from ..ui.sidebar_apply_controller import SidebarApplyMixin
-from ..ui.sidebar_scene_controller import SidebarSceneMixin
 from ..ui.sidebar_actions_controller import SidebarActionsMixin
-from ..ui.sidebar_fronts_controller import SidebarFrontsMixin as SidebarFrentesMixin
-from ..ui.sidebar_materials_controller import SidebarMaterialsMixin as SidebarMateriaisMixin
-from ..ui.sidebar_handles_controller import SidebarHandlesMixin as SidebarPuxadoresMixin
-from ..ui.sidebar_dimensions_controller import SidebarDimensionsMixin as SidebarMedidasMixin
-from ..ui.sidebar_wall_controller import SidebarWallMixin
+from ..ui.sidebar_adjustments_controller import (
+    SidebarAdjustmentsMixin as SidebarAjustesMixin,
+)
+from ..ui.sidebar_apply_controller import SidebarApplyMixin
 from ..ui.sidebar_collapsible import CollapsibleSection
-from ..domain.param_mapper import extract_ui_module_params, populate_ui_from_module
-from ..domain.schema import module_params
-from ..domain.module_geometry import get_module_category
-
+from ..ui.sidebar_dimensions_controller import (
+    SidebarDimensionsMixin as SidebarMedidasMixin,
+)
+from ..ui.sidebar_fronts_controller import SidebarFrontsMixin as SidebarFrentesMixin
+from ..ui.sidebar_handles_controller import SidebarHandlesMixin as SidebarPuxadoresMixin
+from ..ui.sidebar_materials_controller import (
+    SidebarMaterialsMixin as SidebarMateriaisMixin,
+)
+from ..ui.sidebar_module_loader import SidebarModuleLoaderMixin
+from ..ui.sidebar_scene_controller import SidebarSceneMixin
+from ..ui.sidebar_wall_controller import SidebarWallMixin
+from ..ui.sidebar_walls_ui import SidebarWallsUIMixin
 
 # Categorias do catálogo que são compatíveis para "Trocar Tipo" (Swap).
 _SWAP_COMPATIBLE_CATEGORIES = {
@@ -86,11 +64,11 @@ def _get_swap_categories(current_cat: str) -> set[str]:
     return _SWAP_COMPATIBLE_CATEGORIES.get(current_cat, {current_cat})
 
 
+from ..ui.sidebar_align_controller import SidebarAlignMixin
 from ..ui.sidebar_esquadria_controller import SidebarEsquadriaMixin
 from ..ui.sidebar_fit_controller import SidebarFitMixin
 from ..ui.sidebar_interact_controller import SidebarInteractBatchMixin
 from ..ui.sidebar_light_controller import SidebarLightMixin
-from ..ui.sidebar_align_controller import SidebarAlignMixin
 
 
 class TrazoMobSidebarPanel(QWidget, SidebarWallMixin, SidebarWallsUIMixin, SidebarAjustesMixin, SidebarModuleLoaderMixin, SidebarApplyMixin, SidebarSceneMixin, SidebarActionsMixin, SidebarFrentesMixin, SidebarMateriaisMixin, SidebarPuxadoresMixin, SidebarMedidasMixin, SidebarEsquadriaMixin, SidebarFitMixin, SidebarInteractBatchMixin, SidebarLightMixin, SidebarAlignMixin):

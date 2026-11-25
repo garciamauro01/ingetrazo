@@ -22,6 +22,104 @@ import importlib
 import logging
 from typing import Any
 
+
+def face_attrs_from_json(raw: Any) -> Any:
+    """Wrapper público para ``formats.igz._face_attrs_from_json``."""
+    from formats.igz import _face_attrs_from_json
+    return _face_attrs_from_json(raw)
+
+
+def dirty_group_chunks(scene: Any) -> None:
+    """Wrapper público para ``core.history._dirty_group_chunks``."""
+    from core.history import _dirty_group_chunks
+    _dirty_group_chunks(scene)
+
+
+def remap_uvws(*args: Any, **kwargs: Any) -> Any:
+    """Wrapper público para ``core.group._remap_uvws``."""
+    from core.group import _remap_uvws
+    return _remap_uvws(*args, **kwargs)
+
+
+def invalidate_viewport_caches(viewport: Any) -> None:
+    """Invalida caches internos de renderização e picking do viewport."""
+    if viewport is None:
+        return
+    if hasattr(viewport, "_group_chunks"):
+        viewport._group_chunks.clear()
+    if hasattr(viewport, "_inst_chunks"):
+        viewport._inst_chunks.clear()
+    if hasattr(viewport, "_placement_proxies"):
+        viewport._placement_proxies.clear()
+    viewport._placements_memo = None
+    viewport._pick_block = None
+    viewport._pick_memo = None
+    viewport._face_any_memo = None
+    if hasattr(viewport, "_dirty"):
+        viewport._dirty = True
+
+
+def topology_key(*args: Any, **kwargs: Any) -> Any:
+    """Wrapper público para ``core.topology._key``."""
+    from core.topology import _key
+    return _key(*args, **kwargs)
+
+
+def paint_of(*args: Any, **kwargs: Any) -> Any:
+    """Wrapper público para ``views.viewport._paint_of``."""
+    from views.viewport import _paint_of
+    return _paint_of(*args, **kwargs)
+
+
+def proto_wrapper(*args: Any, **kwargs: Any) -> Any:
+    """Wrapper público para ``views.viewport._proto_wrapper``."""
+    from views.viewport import _proto_wrapper
+    return _proto_wrapper(*args, **kwargs)
+
+
+def viewport_build_ctx(viewport: Any, event: Any) -> Any:
+    """Wrapper público para ``viewport._build_ctx(event)``."""
+    return viewport._build_ctx(event)
+
+
+def viewport_pixel_to_ray(viewport: Any, x: float, y: float) -> Any:
+    """Wrapper público para ``viewport._pixel_to_ray(x, y)``."""
+    return viewport._pixel_to_ray(x, y)
+
+
+def viewport_ray_plane(viewport: Any, orig: Any, dirc: Any, c_world: Any, n_world: Any) -> Any:
+    """Wrapper público para ``viewport._ray_plane(...)``."""
+    return viewport._ray_plane(orig, dirc, c_world, n_world)
+
+
+def clear_viewport_box_selection(viewport: Any) -> None:
+    """Limpa estado de seleção em caixa no viewport."""
+    if viewport is None:
+        return
+    viewport._box_active = False
+    viewport._box_start = None
+    viewport._box_cur = None
+
+
+def register_viewport_overlay(viewport: Any, fn: Any) -> None:
+    """Registra um callback de overlay na lista do viewport."""
+    if viewport is None:
+        return
+    if not hasattr(viewport, "_ext_overlays") or viewport._ext_overlays is None:
+        viewport._ext_overlays = []
+    if fn not in viewport._ext_overlays:
+        viewport._ext_overlays.append(fn)
+
+
+def invalidate_transform_viewport_caches(viewport: Any) -> None:
+    """Invalida caches de posicionamento/silhueta após transformações."""
+    if viewport is None:
+        return
+    viewport._placements_memo = None
+    viewport._epoch_same = None
+    viewport._static_occl_memo = None
+    viewport._sil_table = None
+
 logger = logging.getLogger("trazomob.platform")
 
 

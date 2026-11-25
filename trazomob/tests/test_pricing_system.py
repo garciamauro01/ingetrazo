@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Testes do sistema híbrido de precificação, linhas de ferragens, cálculo de chapas e PIN."""
 import pytest
+
 from trazomob.domain.preferences import TrazoMobPreferencesManager
 from trazomob.production.pricing import (
     calcular_orcamento_cutlist,

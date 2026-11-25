@@ -4,50 +4,21 @@
 from __future__ import annotations
 
 import math
-from typing import Dict, Optional, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
-from PySide6.QtCore import Qt, QPointF, QRectF, Signal
+from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import (
+    QBrush,
+    QColor,
+    QFont,
     QPainter,
     QPen,
-    QColor,
-    QBrush,
-    QFont,
     QPolygonF,
-    QWheelEvent,
-    QMouseEvent,
-    QKeyEvent,
-    QPixmap,
-    QTransform,
-)
-from PySide6.QtWidgets import (
-    QDialog,
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QDoubleSpinBox,
-    QCheckBox,
-    QFrame,
-    QSplitter,
-    QToolButton,
-    QButtonGroup,
-    QInputDialog,
-    QComboBox,
-    QSlider,
-    QFileDialog,
-    QGroupBox,
-    QScrollArea,
-    QMessageBox,
 )
 
-from PySide6.QtGui import QVector3D
-from core.image_plane import ImagePlane
-from core.units import format_length, model_unit, model_precision, bare_number_scale
-from ..wall.plan_2d import WallGraph2D, WallNode2D, dist_2d
-from ..wall.mesh_builder import WallMeshBuilder
+from core.units import format_length, model_precision, model_unit
 
+from ..wall.plan_2d import dist_2d
 
 
 class DrawingMixin:

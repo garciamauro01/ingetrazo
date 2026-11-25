@@ -8,7 +8,6 @@ from PySide6.QtGui import QVector3D
 
 from core.group import Group
 from core.mesh import Mesh, Vertex
-
 from trazomob.builders import esquadrias_common
 from trazomob.domain import module_geometry, module_utils
 from trazomob.interaction.magnetic_drag_snap import is_esquadria_group

@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-import pytest
-from trazomob.builders.registry import get_module_builder
-from trazomob.builders.corner_cabinets import CantoEspecialBuilder
 from trazomob.builders.base_wall_cabinets import BalcaoAereoBuilder
+from trazomob.builders.corner_cabinets import CantoEspecialBuilder
+from trazomob.builders.registry import get_module_builder
 
 
 def test_build_terminal_chanfrado_direita_e_esquerda():

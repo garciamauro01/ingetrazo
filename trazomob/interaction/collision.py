@@ -8,7 +8,7 @@ marcos de portas, paredes ou outros móveis adjacentes (ex: balcão de canto).
 from __future__ import annotations
 
 from typing import Any
-from PySide6.QtGui import QVector3D
+
 from core.group import Group
 
 

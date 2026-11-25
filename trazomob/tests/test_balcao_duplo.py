@@ -1,11 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Testes unitários para o módulo Balcão Ilha Bilateral (balcao_duplo)."""
-import pytest
 from core.group import Group
 from trazomob.builders.cabinet import CabinetBuilder
-from trazomob.interaction.interact import CabinetInteract
 from trazomob.domain.hardware import infer_module_hardware
 from trazomob.domain.module_geometry import get_module_category
+from trazomob.interaction.interact import CabinetInteract
 
 
 def test_balcao_duplo_catalog_and_category():

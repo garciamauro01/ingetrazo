@@ -14,8 +14,8 @@ from core.group import Group
 from core.mesh import Mesh
 from trazomob.builders.cabinet import CabinetBuilder
 from trazomob.builders.esquadrias import EsquadriaBuilder
-from trazomob.domain.entity import get_trazomob
 from trazomob.domain import schema
+from trazomob.domain.entity import get_trazomob
 
 
 @pytest.fixture(scope="session")

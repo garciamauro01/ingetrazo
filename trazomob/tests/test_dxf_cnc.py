@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
 """Testes de exportação de usinagens e plano de corte em formato DXF CNC."""
-import os
 import tempfile
 from pathlib import Path
 

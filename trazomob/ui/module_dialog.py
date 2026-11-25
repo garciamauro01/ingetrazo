@@ -13,13 +13,13 @@ from ..integrations import platform as host
 from ..interaction.module_aligner import ModuleAlignerMixin
 from ..production.cutlist_tab import CutListTabMixin
 from ..ui.module_gallery import DialogGalleryMixin
+from .module_dialog_actions import ModuleDialogActionsMixin
 from .module_dialog_build import ModuleDialogBuildMixin
 from .module_dialog_form import ModuleDialogFormMixin
-from .module_dialog_actions import ModuleDialogActionsMixin
-from .module_dialog_style import ModuleDialogStyleMixin
-from .module_dialog_sections import ModuleDialogSectionsMixin
-from .module_dialog_options import ModuleDialogOptionsMixin
 from .module_dialog_hardware import ModuleDialogHardwareMixin
+from .module_dialog_options import ModuleDialogOptionsMixin
+from .module_dialog_sections import ModuleDialogSectionsMixin
+from .module_dialog_style import ModuleDialogStyleMixin
 
 if TYPE_CHECKING:
     from core.group import Group

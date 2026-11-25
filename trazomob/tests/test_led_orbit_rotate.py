@@ -6,7 +6,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
-from PySide6.QtCore import QPoint, QPointF, Qt
+from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QImage, QMatrix4x4, QPainter, QVector3D
 from PySide6.QtWidgets import QApplication, QMenu, QWidget
 
@@ -14,7 +14,6 @@ from core.group import Group
 from core.history import History
 from core.mesh import Mesh
 from core.scene import Scene
-from trazomob.builders.cabinet import RotateTrazoMobModuleCommand
 from trazomob.context_menu import build_context_menu
 from trazomob.domain.i18n import tr
 
@@ -294,6 +293,7 @@ def test_orbit_frames_reuse_cota_cache_when_module_selected(qapp, monkeypatch):
 
 def test_wall_occluder_context_caches_mask_on_unchanged_scene_and_camera():
     import numpy as np
+
     from trazomob.wall.guides import _OCCLUDER_MASK_CACHE
 
     wall = Group(_make_box_mesh(0.0, 4.0, 0.0, 0.15, 0.0, 2.6), name="Parede")

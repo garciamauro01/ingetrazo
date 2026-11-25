@@ -6,11 +6,8 @@ from __future__ import annotations
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
-    QHBoxLayout,
     QLabel,
-    QPushButton,
     QSpinBox,
-    QVBoxLayout,
 )
 
 from ..domain.materials_catalog import MDF_MATERIALS

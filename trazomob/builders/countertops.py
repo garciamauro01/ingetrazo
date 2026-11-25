@@ -1,16 +1,19 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 from __future__ import annotations
+
 from typing import Any
+
 from core.group import Group
+
+from ..builders.chapa_builder import build_chapa
+from ..builders.chapa_spec import ChapaSpec, ModuloMaterialContext, PapelChapa
 from ..builders.mesh_utils import (
-    _get_material_texture,
     _contorno_retangular_xy,
-    _make_slab_with_holes_mesh,
+    _get_material_texture,
     _make_bowl_mesh,
     _make_gourmet_faucet_mesh,
+    _make_slab_with_holes_mesh,
 )
-from ..builders.chapa_builder import build_chapa
-from ..builders.chapa_spec import ChapaSpec, PapelChapa, ModuloMaterialContext
 
 
 def _chapa(

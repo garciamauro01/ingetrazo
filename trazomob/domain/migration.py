@@ -11,13 +11,9 @@ Garante que qualquer arquivo ou modelo construído em versões anteriores do plu
 """
 from __future__ import annotations
 
-import math
-from typing import Any, Optional
+from typing import Any
 
-from PySide6.QtGui import QVector3D
 from core.group import Group, iter_placements
-from ..domain.catalog import MODULE_CATALOG
-
 
 CURRENT_SCHEMA_VERSION = 2
 
@@ -177,7 +173,12 @@ def migrate_legacy_lights(scene, viewport=None) -> int:
     if viewport is None or scene is None:
         return 0
 
-    from ..render.lighting import _lights_app, _clean_trazomob_lights, create_light_scene_group, sync_scene_lights_to_document
+    from ..render.lighting import (
+        _clean_trazomob_lights,
+        _lights_app,
+        create_light_scene_group,
+        sync_scene_lights_to_document,
+    )
     app = _lights_app(viewport)
     raw = app.document_data({}) or {}
     if not isinstance(raw, dict):

@@ -22,9 +22,8 @@ from typing import Any, Dict, List, Tuple
 
 from PySide6.QtGui import QVector3D
 
-from core.group import Group, iter_placements
+from core.group import Group
 from core.mesh import Mesh
-from ..domain.hardware import HARDWARE_CATALOG
 
 logger = logging.getLogger("trazomob.hardware_geometry")
 
@@ -640,7 +639,6 @@ def _make_feet(name: str, key: str, bounds: tuple[float, ...], n: int,
     if count == 0:
         return None
     min_x, max_x, min_y, max_y, min_z, max_z = bounds
-    from itertools import repeat
     if count <= 4:
         positions = [(min_x + 0.06, min_y + 0.06), (max_x - 0.06, min_y + 0.06),
                      (min_x + 0.06, max_y - 0.06), (max_x - 0.06, max_y - 0.06)]

@@ -3,14 +3,12 @@
 """Mixin para gerenciamento da galeria visual de cartões de módulos TrazoMob (DialogGalleryMixin)."""
 from __future__ import annotations
 
-from typing import Any, Optional
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtWidgets import QListWidgetItem
 
 from ..domain.catalog import MODULE_CATALOG, USER_MODULE_CATEGORY, modulos_usuario
-from ..ui.thumbnails import get_module_thumbnail
-from ..domain.param_mapper import populate_ui_from_module
 from ..domain.ui_contract import should_show_config_gaveteiro
+from ..ui.thumbnails import get_module_thumbnail
 
 
 class DialogGalleryMixin:
@@ -206,7 +204,7 @@ class DialogGalleryMixin:
         elif mod_data.get("id") in ("balcao", "aereo"):
             # Balcão e Aéreo com portas: 1 a 4 portas de 400 mm e divisória
             # estrutural automática a partir da 3ª.
-            from ..domain.module_geometry import MIN_DOORS, MAX_DOORS
+            from ..domain.module_geometry import MAX_DOORS, MIN_DOORS
             self.lbl_qtd_elem.setText("Portas (400 mm cada):")
             self.sp_qtd_elem.setRange(MIN_DOORS, MAX_DOORS)
             self.sp_qtd_elem.setValue(int(mod_data.get("num_portas", 2)))

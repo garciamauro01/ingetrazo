@@ -5,8 +5,8 @@
 from __future__ import annotations
 
 from PySide6.QtGui import QVector3D
-from core.scene import Scene
 
+from core.scene import Scene
 from trazomob.builders.cabinet import CabinetBuilder
 from trazomob.builders.hardware_geometry import is_hardware_group
 from trazomob.domain.hardware import deserialize_hardware

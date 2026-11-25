@@ -13,8 +13,7 @@ import copy
 import pytest
 
 from trazomob.domain import module_geometry
-from trazomob.domain.preferences import (DEFAULT_PREFERENCES,
-                                          TrazoMobPreferencesManager)
+from trazomob.domain.preferences import DEFAULT_PREFERENCES, TrazoMobPreferencesManager
 
 
 @pytest.fixture()

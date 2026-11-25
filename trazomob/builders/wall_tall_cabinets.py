@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 from __future__ import annotations
-import math
+
 from typing import Any
+
 from core.group import Group
-from core.mesh import Mesh
-from ..builders.mesh_utils import create_board_group
+
 from ..builders.chapa_builder import build_chapa
-from ..builders.chapa_spec import ChapaSpec, PapelChapa, ModuloMaterialContext
+from ..builders.chapa_spec import ChapaSpec, ModuloMaterialContext, PapelChapa
 from ..builders.fronts import FrentesKitBuilder
 
 
@@ -471,6 +471,7 @@ class AereoTorreBuilder:
         dispositivo_fixacao: str = "minifix_cavilha",
         mat_ctx: ModuloMaterialContext | None = None,
         lado_abertura_porta: str = "esquerda",
+        prof_gaveta_mm: float = 0.0,
     ) -> list[Group]:
         mat_frente = material_frentes or material
         E_frente = (esp_frentes_mm or esp_mm) / 1000.0

@@ -8,7 +8,7 @@ import logging
 import math
 from typing import Any, List, Optional, Tuple
 
-from PySide6.QtCore import Qt, QPointF, QRectF
+from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QVector3D
 
 from core.group import Group

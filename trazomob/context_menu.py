@@ -55,7 +55,7 @@ def build_context_menu(menu, selection, app, sidebar_panel, tool_cls) -> None:
             act_split = menu.addAction(tr("✂️ Seccionar em Paredes Individuais"))
             def _do_split(w=wall):
                 if hasattr(app, "viewport") and hasattr(app.viewport, "history"):
-                    from .wall.builder import WallBuilderTool, SplitWallGroupCommand
+                    from .wall.builder import SplitWallGroupCommand, WallBuilderTool
                     subs = WallBuilderTool.split_wall_group_into_segments(w)
                     if len(subs) > 1:
                         app.viewport.history.execute(SplitWallGroupCommand(w, subs))
@@ -91,8 +91,9 @@ def build_context_menu(menu, selection, app, sidebar_panel, tool_cls) -> None:
         def _hide_this_wall(w=wall, s_idx=seg_index):
             if hasattr(app, "viewport") and hasattr(app.viewport, "history"):
                 from core.history import HideCommand
+
+                from .wall.builder import SplitWallGroupCommand, WallBuilderTool
                 from .wall.selection import WallSelectionManager
-                from .wall.builder import WallBuilderTool, SplitWallGroupCommand
 
                 p = getattr(w, "ext", {}).get("trazomob_wall") if isinstance(getattr(w, "ext", None), dict) else {}
                 is_s = bool(p.get("is_segmented", False))
@@ -202,7 +203,10 @@ def build_context_menu(menu, selection, app, sidebar_panel, tool_cls) -> None:
     # ── Menu de Rotação 90° (qualquer objeto selecionado) ───────────────────
     vp_ctx = getattr(app, "viewport", None)
     scene_ctx = getattr(vp_ctx, "scene", None) if vp_ctx is not None else None
-    from .interaction.align_tools import resolve_rotatable_groups, rotate_groups_with_command
+    from .interaction.align_tools import (
+        resolve_rotatable_groups,
+        rotate_groups_with_command,
+    )
 
     rot_targets = resolve_rotatable_groups(scene_ctx, selection)
     if rot_targets and vp_ctx is not None:

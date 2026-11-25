@@ -11,11 +11,12 @@ Concentra:
 from __future__ import annotations
 
 import math
-from typing import Any, Tuple, Optional
+from typing import Any, Optional, Tuple
 
 from PySide6.QtGui import QVector3D
 
 from core.group import Group, iter_placements
+
 from ..domain.module_utils import is_esquadria, shift_module_geometry
 from ..domain.schema import module_params
 

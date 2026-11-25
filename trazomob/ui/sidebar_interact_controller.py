@@ -3,10 +3,9 @@
 """Mixin para o painel lateral do TrazoMob especializado em cinemática 3D interativa e operações em lote."""
 from __future__ import annotations
 
-from typing import Any
-from ..interaction.interact import CabinetInteract, CabinetInteractTool
 from ..domain.i18n import tr
 from ..domain.param_mapper import extract_ui_module_params
+from ..interaction.interact import CabinetInteract, CabinetInteractTool
 from ..interaction.module_operations import batch_update_scene_modules
 
 

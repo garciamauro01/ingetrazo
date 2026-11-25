@@ -6,9 +6,9 @@ bancadas de pedra contínuas, rodapés contínuos em lote e fechamento de vãos 
 from __future__ import annotations
 
 import math
-from typing import Any
+
 from PySide6.QtGui import QVector3D
-from core.group import Group
+
 from ..domain.i18n import tr
 from ..domain.schema import module_params
 
@@ -34,8 +34,11 @@ class SidebarFitMixin:
         n_dir = QVector3D(norm.x(), norm.y(), 0.0).normalized()
         u_dir = QVector3D(-n_dir.y(), n_dir.x(), 0.0).normalized()
 
-        from ..interaction.magnetic_drag import get_module_bounds, get_bounds_min_projection
         from ..domain.module_geometry import get_module_carcass_bounds
+        from ..interaction.magnetic_drag import (
+            get_bounds_min_projection,
+            get_module_bounds,
+        )
 
         _IDS_BALCOES = {
             "balcao", "gaveteiro", "balcao_misto", "balcao_pia",
@@ -287,8 +290,11 @@ class SidebarFitMixin:
         n_dir = QVector3D(norm.x(), norm.y(), 0.0).normalized()
         u_dir = QVector3D(-n_dir.y(), n_dir.x(), 0.0).normalized()
 
-        from ..interaction.magnetic_drag import get_module_bounds, get_bounds_min_projection
         from ..domain.module_geometry import get_module_carcass_bounds
+        from ..interaction.magnetic_drag import (
+            get_bounds_min_projection,
+            get_module_bounds,
+        )
 
         _IDS_BALCOES = {
             "balcao", "gaveteiro", "balcao_misto", "balcao_pia",
@@ -433,8 +439,8 @@ class SidebarFitMixin:
         slot = wall_mgr.active_placement_slot
         anchor_u = slot.get("anchor_u") if slot else None
 
-        from ..interaction.magnetic_drag import get_module_bounds
         from ..domain.module_geometry import get_module_carcass_bounds
+        from ..interaction.magnetic_drag import get_module_bounds
 
         last_u = anchor_u
         ref_mod_bounds = None

@@ -2,6 +2,7 @@
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
 """Testes unitários para o construtor de esquadrias (portas e janelas paramétricas)."""
 import pytest
+
 from trazomob.builders.esquadrias import EsquadriaBuilder
 
 
@@ -136,8 +137,8 @@ def test_build_janela_vertical_bandeira():
 
 def test_esquadrias_reais_igz_catalog():
     """Testa carregamento e parametrização dos modelos reais extraídos do SKP (.igz)."""
-    from trazomob.domain.catalog import MODULE_CATALOG
     from trazomob.builders.cabinet import CabinetBuilder
+    from trazomob.domain.catalog import MODULE_CATALOG
 
     items = MODULE_CATALOG.get("Portas & Janelas", [])
     assert len(items) == 34  # 14 modelos anteriores + 20 portas dos SKP repostos
@@ -164,6 +165,7 @@ def test_esquadrias_reais_igz_catalog():
 def test_recorte_parede_ao_colocar_porta():
     """Testa se a parede hospedeira é recortada automaticamente gerando o vão vazado para a porta."""
     from PySide6.QtGui import QVector3D
+
     from core.scene import Scene
     from trazomob.builders.cabinet import CabinetBuilder
     from trazomob.wall.builder import WallBuilderTool
@@ -188,7 +190,6 @@ def test_recorte_parede_ao_colocar_porta():
 
     # A parede recortada deve possuir as faces divididas da verga, montantes e bonecas do túnel
     from core.solids import is_solid
-    from core.solids import is_solid
     assert is_solid(wall) is True
     assert len(wall.mesh.faces) == 10
 
@@ -211,6 +212,7 @@ def test_recorte_parede_ao_colocar_porta():
 def test_recorte_parede_ao_colocar_janela():
     """Testa se a parede hospedeira é recortada para janela com peitoril sólido e verga superior."""
     from PySide6.QtGui import QVector3D
+
     from core.scene import Scene
     from trazomob.builders.cabinet import CabinetBuilder
     from trazomob.wall.builder import WallBuilderTool
@@ -242,6 +244,7 @@ def test_recorte_parede_ao_colocar_janela():
 def test_recorte_muda_junto_ao_mover_porta():
     """Testa se o vão na parede se desloca junto quando a porta é movida de lugar e fecha se for deletada."""
     from PySide6.QtGui import QVector3D
+
     from core.scene import Scene
     from trazomob.builders.cabinet import CabinetBuilder
     from trazomob.wall.builder import WallBuilderTool

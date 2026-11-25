@@ -4,36 +4,39 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
-from PySide6.QtCore import Qt, QTimer
+from typing import Any, Optional
+
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QDialog,
+    QDialogButtonBox,
+    QDoubleSpinBox,
+    QFormLayout,
+    QFrame,
     QHBoxLayout,
-    QLabel,
+    QLineEdit,
     QPushButton,
     QTreeWidget,
     QTreeWidgetItem,
-    QFrame,
-    QInputDialog,
-    QDoubleSpinBox,
-    QDialog,
-    QDialogButtonBox,
-    QFormLayout,
-    QLineEdit,
+    QVBoxLayout,
+    QWidget,
 )
 
 from core.group import Group
+
 from ..domain.ambiente import (
     AmbienteBuilder,
+    is_ambiente,
+    is_pavimento,
     iter_ambientes,
     iter_pavimentos,
     set_ambiente_visivel,
     set_pavimento_visivel,
-    is_ambiente,
-    is_pavimento,
 )
-from ..domain.schema import update_ambiente_data, update_pavimento_data, ambiente_params, pavimento_params
+from ..domain.schema import (
+    ambiente_params,
+    pavimento_params,
+)
 
 
 class SidebarAmbienteController(QWidget):

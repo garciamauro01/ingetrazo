@@ -5,44 +5,37 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Optional, List, Dict, Tuple, Any
+from typing import Dict, List, Optional, Tuple
 
-from PySide6.QtCore import Qt, QPointF
-from PySide6.QtGui import QColor, QFont, QKeyEvent, QVector3D
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QKeyEvent, QVector3D
 from PySide6.QtWidgets import (
-    QDialog,
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QToolButton,
-    QDoubleSpinBox,
-    QSpinBox,
+    QButtonGroup,
     QCheckBox,
     QComboBox,
-    QGroupBox,
-    QMessageBox,
-    QFrame,
-    QSplitter,
-    QLineEdit,
-    QListWidget,
-    QListWidgetItem,
-    QScrollArea,
-    QButtonGroup,
-    QSlider,
+    QDialog,
+    QDoubleSpinBox,
     QFileDialog,
+    QFrame,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QSlider,
+    QVBoxLayout,
+    QWidget,
 )
 
 from core.group import Group
-from core.history import SnapshotImport
 from core.image_plane import ImagePlane
+from core.units import bare_number_scale, model_precision, model_unit
 
 from ..wall.floorplan_canvas import WallFloorplanCanvas
-from ..wall.plan_2d import WallGraph2D, WallNode2D, dist_2d
 from ..wall.mesh_builder import WallMeshBuilder
-from core.units import format_length, model_unit, model_precision, bare_number_scale
-
+from ..wall.plan_2d import WallGraph2D
 
 logger = logging.getLogger("trazomob.wall_floorplan_dialog")
 
@@ -962,8 +955,8 @@ class WallFloorplanDialog(QDialog):
             # Salva uma cópia orientada temporária se a imagem estiver rotacionada
             eff_path = self.canvas._ref_image_path
             if self.canvas._ref_rotation % 360 != 0 and self.canvas._ref_pixmap is not None:
-                import tempfile
                 import os
+                import tempfile
                 tmp_dir = os.path.join(tempfile.gettempdir(), "trazomob_ref")
                 os.makedirs(tmp_dir, exist_ok=True)
                 rot_deg = self.canvas._ref_rotation % 360

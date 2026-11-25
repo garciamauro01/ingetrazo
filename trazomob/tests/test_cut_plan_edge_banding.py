@@ -1,6 +1,5 @@
-import pytest
-from trazomob.production.parts import calculate_cut_dimensions
 from trazomob.production.optimizer import GuillotineOptimizer, SheetConfig
+from trazomob.production.parts import calculate_cut_dimensions
 
 
 def test_calculate_cut_dimensions_with_edge_banding():

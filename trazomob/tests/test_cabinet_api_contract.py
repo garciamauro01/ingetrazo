@@ -10,7 +10,6 @@ from __future__ import annotations
 import trazomob as plugin
 from trazomob.builders import cabinet
 
-
 EXPECTED_MEMBERS = [
     "build_aereo",
     "build_aereo_basculante",

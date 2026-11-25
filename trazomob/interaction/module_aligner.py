@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 from __future__ import annotations
-from typing import Any
+
 from PySide6.QtGui import QVector3D
 from PySide6.QtWidgets import QMessageBox
-from core.group import Group, iter_placements
-from core.history import MoveGroupCommand
+
+from core.group import Group
+
 
 class ModuleAlignerMixin:
     def _get_module_bounds(self, mod: Group) -> tuple[float, float, float, float, float, float] | None:

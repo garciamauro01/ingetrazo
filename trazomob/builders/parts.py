@@ -3,12 +3,13 @@
 """Construtor especializado para peças avulsas e tampos engrossados de marcenaria."""
 from __future__ import annotations
 
-from typing import Any, Optional, List, Tuple
+from typing import Any, List, Optional, Tuple
+
 from core.group import Group
-from ..builders.mesh_utils import create_board_group
+
 from ..builders.chapa_builder import build_chapa
-from ..builders.chapa_spec import ChapaSpec, PapelChapa, ModuloMaterialContext
-from ..domain.materials_catalog import ALL_BOX_MATERIALS, MDF_MATERIALS
+from ..builders.chapa_spec import ChapaSpec, ModuloMaterialContext, PapelChapa
+from ..builders.mesh_utils import create_board_group
 
 
 def _chapa(

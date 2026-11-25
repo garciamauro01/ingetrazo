@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
 """Testes unitários para o construtor de régua de arremate / fechamento de canto."""
-import pytest
 from trazomob.builders.fechamento import FechamentoBuilder
 
 

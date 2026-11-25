@@ -2,9 +2,10 @@
 """Testes para extração e exibição de texturas no MaterialEditorDialog."""
 import pytest
 from PySide6.QtGui import QVector3D
-from core.scene import Scene
+
 from core.group import Group
 from core.mesh import Mesh
+from core.scene import Scene
 from trazomob.ui.material_editor_dialog import extract_scene_materials
 
 
@@ -59,6 +60,7 @@ def test_material_highlight_is_drawn_in_world_coordinates(qapp):
     from types import SimpleNamespace
 
     from PySide6.QtGui import QMatrix4x4
+
     from trazomob.ui.material_editor_dialog import MaterialEditorDialog
 
     scene = Scene()
@@ -123,6 +125,7 @@ def test_picker_yellow_highlight_uses_world_xform_and_dialog_skips_blue_overlay(
 
     from PySide6.QtCore import QPointF
     from PySide6.QtGui import QMatrix4x4
+
     from trazomob.interaction.material_picker_tool import MaterialPickerTool
     from trazomob.ui.material_editor_dialog import MaterialEditorDialog
 
@@ -208,6 +211,7 @@ def test_material_editor_non_modal_owners_filter_and_picker_restore(qapp):
     from types import SimpleNamespace
 
     from PySide6.QtCore import QPointF
+
     from trazomob.interaction.material_picker_tool import MaterialPickerTool
     from trazomob.ui.material_editor_dialog import open_material_editor
 

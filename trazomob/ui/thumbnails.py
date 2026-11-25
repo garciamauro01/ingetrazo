@@ -3,13 +3,12 @@
 # Miniaturas vetoriais dos m?dulos para o cat?logo TrazoMob do TrazoMob.
 from __future__ import annotations
 
-from PySide6.QtCore import QPoint, QRectF, Qt
+from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import (
     QBrush,
     QColor,
     QIcon,
     QPainter,
-    QPainterPath,
     QPen,
     QPixmap,
 )

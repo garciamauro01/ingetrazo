@@ -5,17 +5,30 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from PySide6.QtCore import Qt, QPoint, QEventLoop
-from PySide6.QtGui import QPixmap, QPainter, QWheelEvent, QMouseEvent
+
+from PySide6.QtCore import QEventLoop, Qt
+from PySide6.QtGui import QPainter, QPixmap, QWheelEvent
 from PySide6.QtWidgets import (
-    QApplication, QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, QFrame,
-    QLabel, QPushButton, QComboBox, QCheckBox, QProgressBar,
-    QFileDialog, QMessageBox, QGraphicsView, QGraphicsScene,
-    QGraphicsPixmapItem, QDoubleSpinBox
+    QApplication,
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QDoubleSpinBox,
+    QFileDialog,
+    QFormLayout,
+    QFrame,
+    QGraphicsPixmapItem,
+    QGraphicsScene,
+    QGraphicsView,
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QProgressBar,
+    QPushButton,
+    QVBoxLayout,
 )
 
 from ..render.engine import TrazoMobRenderEngine
-
 
 logger = logging.getLogger("trazomob.render_dialog")
 
@@ -487,8 +500,9 @@ class TrazoMobRenderDialog(QDialog):
         dlg.activateWindow()
 
     def _load_preferences(self):
-        from PySide6.QtCore import QSettings
         import json
+
+        from PySide6.QtCore import QSettings
         settings = QSettings()
         # Carrega índices
         p_idx = settings.value("trazomob_render/preset_index", 0, type=int)
@@ -549,8 +563,8 @@ class TrazoMobRenderDialog(QDialog):
             self.btn_materials.setStyleSheet("QPushButton { font-weight: bold; padding: 6px; }")
 
     def _save_preferences(self):
+
         from PySide6.QtCore import QSettings
-        import json
         settings = QSettings()
         settings.setValue("trazomob_render/preset_index", self.cb_preset.currentIndex())
         settings.setValue("trazomob_render/engine_index", self.cb_engine.currentIndex())

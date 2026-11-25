@@ -11,11 +11,10 @@ permitindo entrar e atravessar paredes, portas, armários e sólidos livremente.
 from __future__ import annotations
 
 import logging
-import math
 from typing import Optional
 
-from PySide6.QtCore import QEvent, QObject, QPointF
-from PySide6.QtGui import QWheelEvent, QVector3D
+from PySide6.QtCore import QObject, QPointF
+from PySide6.QtGui import QVector3D, QWheelEvent
 
 logger = logging.getLogger("trazomob.free_zoom")
 

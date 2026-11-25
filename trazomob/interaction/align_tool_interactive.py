@@ -31,14 +31,16 @@ Comportamento e Recursos:
 from __future__ import annotations
 
 import math
-from typing import Optional, List, Tuple
-from PySide6.QtCore import Qt, QPointF
-from PySide6.QtGui import QColor, QFont, QPainter, QPen, QBrush, QVector3D
+from typing import List, Optional
+
+from PySide6.QtCore import QPointF, Qt
+from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen, QVector3D
 
 from core.group import Group, copy_group
 from core.history import MoveGroupCommand
 from core.snap import face_plane_world
 from tools.base import Tool, ToolContext
+
 from .align_tools import get_entity_world_bounds
 
 

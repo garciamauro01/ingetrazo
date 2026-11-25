@@ -8,9 +8,8 @@ from PySide6.QtGui import QVector3D
 from core.group import Group
 from core.history import Command
 
-from ..builders.mesh_utils import _make_board_mesh, create_board_group
 from ..builders.chapa_builder import build_chapa, build_chapa_mm
-
+from ..builders.mesh_utils import _make_board_mesh, create_board_group
 from .cabinet_caixa import CaixaMixin
 from .cabinet_delegates import DelegatesMixin
 from .cabinet_module_group import ModuleGroupMixin

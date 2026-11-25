@@ -4,8 +4,11 @@
 from __future__ import annotations
 
 import pytest
+
 from trazomob.builders.cabinet import CabinetBuilder
-from trazomob.domain.param_mapper import extract_ui_module_params, populate_ui_from_module
+from trazomob.domain.param_mapper import (
+    extract_ui_module_params,
+)
 
 
 class _DummyWidget:

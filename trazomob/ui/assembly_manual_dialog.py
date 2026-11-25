@@ -7,7 +7,6 @@ documento HTML em ``production.assembly_manual`` e salva em arquivo.
 """
 from __future__ import annotations
 
-import os
 from typing import Any, Dict, List, Optional
 
 from PySide6.QtWidgets import (

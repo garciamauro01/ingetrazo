@@ -9,8 +9,15 @@ from types import SimpleNamespace
 import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QImage
-from PySide6.QtWidgets import (QDialog, QListView, QListWidget, QMenu,
-                               QPushButton, QTabWidget, QWidget)
+from PySide6.QtWidgets import (
+    QDialog,
+    QListView,
+    QListWidget,
+    QMenu,
+    QPushButton,
+    QTabWidget,
+    QWidget,
+)
 
 from core import user_library
 from trazomob.integrations import platform as host

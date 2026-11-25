@@ -11,19 +11,19 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Any, List, Dict, Optional
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-from ..production.pricing import (
-    calcular_orcamento_cutlist,
-    calcular_orcamento_por_ambiente,
-    gerar_proposta_dados,
-    formatar_moeda,
-)
 from ..domain.hardware import (
     consolidate_hardware,
     deserialize_hardware,
     hardware_total_preco,
+)
+from ..production.pricing import (
+    calcular_orcamento_cutlist,
+    calcular_orcamento_por_ambiente,
+    formatar_moeda,
+    gerar_proposta_dados,
 )
 
 logger = logging.getLogger("trazomob.report")
@@ -375,6 +375,7 @@ def generate_proposal_html(
         HTML da proposta como string
     """
     from datetime import datetime, timedelta
+
     from ..domain.preferences import TrazoMobPreferencesManager
 
     prefs = TrazoMobPreferencesManager.get_instance()
@@ -671,8 +672,8 @@ def generate_proposal_pdf(
 
     # 2. Geração nativa e robusta via PySide6 (sem dependências externas)
     try:
-        from PySide6.QtGui import QTextDocument, QPageLayout, QPageSize
         from PySide6.QtCore import QMarginsF
+        from PySide6.QtGui import QPageLayout, QPageSize, QTextDocument
         from PySide6.QtPrintSupport import QPrinter
 
         printer = QPrinter(QPrinter.PrinterMode.ScreenResolution)

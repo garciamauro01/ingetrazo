@@ -10,9 +10,9 @@ Permite:
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Optional, Tuple, NamedTuple
+from typing import Dict, List, Optional, Tuple
 
-from PySide6.QtCore import QPointF, Qt, QRectF
+from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QVector3D
 
 

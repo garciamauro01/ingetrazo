@@ -9,6 +9,7 @@ eliminando a necessidade de cadeias monolíticas de if/elif no CabinetBuilder.
 from __future__ import annotations
 
 from typing import Any, Callable, Dict, List, Optional, Tuple
+
 from core.group import Group
 
 # Assinatura de uma função de construção:

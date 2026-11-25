@@ -19,7 +19,7 @@ from pathlib import Path
 
 from PySide6.QtGui import QGuiApplication
 
-from trazomob.assets.catalog import get_esquadrias_catalogo, get_esquadria_files
+from trazomob.assets.catalog import get_esquadria_files, get_esquadrias_catalogo
 
 COMPONENTS_DIR = Path(__file__).resolve().parents[1] / "assets" / "components"
 THUMBS_DIR = Path(__file__).resolve().parents[1] / "assets" / "thumbs" / "esquadrias"

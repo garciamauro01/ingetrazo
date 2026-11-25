@@ -7,11 +7,11 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 
 from ..domain.i18n import tr
-from ..ui.icons import make_perfil_diagram_pixmap
 from ..domain.param_mapper import populate_ui_from_module
 from ..domain.ui_contract import should_show_config_gaveteiro
 from ..profiles import library as perfis_lib
 from ..profiles.editor import PerfilLibraryDialog, fill_profile_combo
+from ..ui.icons import make_perfil_diagram_pixmap
 
 
 class ModuleDialogFormMixin:

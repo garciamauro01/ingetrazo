@@ -34,7 +34,9 @@ def _seed_subtree_proto_chunks(node: Any, viewport: Any, visited: set[int] | Non
         src_entry = cache.get(id(node))
         if src_entry is not None:
             try:
-                from views.viewport import _paint_of, _proto_wrapper
+                from ..integrations import platform as host
+                _paint_of = host.paint_of
+                _proto_wrapper = host.proto_wrapper
                 wrapper = _proto_wrapper(viewport, mesh, _paint_of(viewport, node))
                 cache.setdefault(id(wrapper), dict(src_entry))
             except Exception:
@@ -72,14 +74,8 @@ def _invalidate_transformed_caches(
         scene.version = getattr(scene, "version", 0) + 1
 
     if viewport is not None:
-        if hasattr(viewport, "_placements_memo"):
-            viewport._placements_memo = None
-        if hasattr(viewport, "_epoch_same"):
-            viewport._epoch_same = None
-        if hasattr(viewport, "_static_occl_memo"):
-            viewport._static_occl_memo = None
-        if hasattr(viewport, "_sil_table"):
-            viewport._sil_table = None
+        from ..integrations import platform as host
+        host.invalidate_transform_viewport_caches(viewport)
 
 
 def invalidate_replaced_modules_caches(replacements, viewport) -> None:
@@ -176,7 +172,9 @@ def _rotate_group_tree(
         return
     visited.add(id(grp))
 
-    from core.group import _remap_uvws, carry_axes
+    from core.group import carry_axes
+    from ..integrations import platform as host
+    _remap_uvws = host.remap_uvws
 
     xf = getattr(grp, "xform", None)
     ext_dict = getattr(grp, "ext", None)
@@ -449,8 +447,10 @@ class CabinetTransformMixin:
         if module_group is None:
             return False
 
+        from core.group import carry_axes
+        from ..integrations import platform as host
+        _remap_uvws = host.remap_uvws
         from core.history import scale_matrix
-        from core.group import _remap_uvws, carry_axes
 
         center_vec = center if isinstance(center, QVector3D) else QVector3D(*center)
         m = scale_matrix(center_vec, factor, axes)

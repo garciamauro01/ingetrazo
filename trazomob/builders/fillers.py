@@ -14,14 +14,15 @@ Gera um conjunto profissional de arremate de canto para marcenaria sob medida:
 """
 from __future__ import annotations
 
-from typing import Optional, Tuple, List, Dict, Any
+from typing import List, Optional, Tuple
 
 from PySide6.QtGui import QVector3D
+
 from core.group import Group
 from core.mesh import Mesh
-from ..builders.mesh_utils import create_board_group
+
 from ..builders.chapa_builder import build_chapa
-from ..builders.chapa_spec import ChapaSpec, PapelChapa, ModuloMaterialContext
+from ..builders.chapa_spec import ChapaSpec, ModuloMaterialContext, PapelChapa
 
 
 class FechamentoBuilder:

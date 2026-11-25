@@ -16,8 +16,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple
 
-from PySide6.QtGui import QVector3D
-
 from core.group import Group
 from core.mesh import Mesh
 
@@ -26,22 +24,21 @@ if TYPE_CHECKING:
 
 from ..domain.schema import (
     KIND_AMBIENTE,
-    KIND_PAVIMENTO,
-    KIND_MODULE,
-    KIND_WALL,
-    KIND_FLOOR,
     KIND_CEILING,
+    KIND_FLOOR,
+    KIND_MODULE,
+    KIND_PAVIMENTO,
+    KIND_WALL,
+    ambiente_params,
     is_kind,
+    pavimento_params,
     set_ambiente_data,
+    set_ceiling_data,
+    set_floor_data,
     set_pavimento_data,
     update_ambiente_data,
     update_pavimento_data,
-    set_floor_data,
-    set_ceiling_data,
-    ambiente_params,
-    pavimento_params,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers de tipo

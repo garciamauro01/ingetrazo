@@ -4,14 +4,13 @@
 from __future__ import annotations
 
 import math
-from typing import Optional, Union, Tuple, Dict, List
+from typing import Dict, List, Optional, Tuple, Union
+
 from PySide6.QtGui import QVector3D
 
 from core.group import Group
-from core.history import Command
 from core.layers import Layer
 from core.mesh import Mesh
-from core.triangulate import triangulate
 
 
 def line_intersection_2d(p1: QVector3D, d1: QVector3D, p2: QVector3D, d2: QVector3D) -> QVector3D:

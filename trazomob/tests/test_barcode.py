@@ -26,6 +26,8 @@ from trazomob.production.qr import (
     _data_codewords,
     _rs_generator,
     _rs_remainder,
+)
+from trazomob.production.qr import (
     encode as qr_encode,
 )
 

@@ -4,51 +4,26 @@
 from __future__ import annotations
 
 import math
-from typing import Optional, List, Tuple
+from typing import List, Optional, Tuple
 
-from PySide6.QtCore import Qt, QPointF, QRectF, Signal
-from PySide6.QtGui import (
-    QPainter,
-    QPen,
-    QColor,
-    QBrush,
-    QFont,
-    QPolygonF,
-    QWheelEvent,
-    QMouseEvent,
-    QKeyEvent,
-    QPixmap,
-    QTransform,
-)
 from PySide6.QtWidgets import (
-    QDialog,
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QDoubleSpinBox,
     QCheckBox,
-    QFrame,
-    QSplitter,
-    QToolButton,
-    QButtonGroup,
-    QRadioButton,
-    QInputDialog,
     QComboBox,
-    QSlider,
-    QFileDialog,
+    QDialog,
+    QDoubleSpinBox,
     QGroupBox,
-    QScrollArea,
+    QHBoxLayout,
+    QInputDialog,
+    QLabel,
     QMessageBox,
+    QPushButton,
+    QRadioButton,
+    QVBoxLayout,
 )
 
-from PySide6.QtGui import QVector3D
-from core.image_plane import ImagePlane
-from core.units import format_length, model_unit, model_precision, bare_number_scale
-from ..wall.plan_2d import WallGraph2D, WallNode2D, dist_2d
-from ..wall.mesh_builder import WallMeshBuilder
+from core.units import bare_number_scale, model_precision, model_unit
 
+from ..wall.plan_2d import dist_2d
 
 
 class MeasurementMixin:

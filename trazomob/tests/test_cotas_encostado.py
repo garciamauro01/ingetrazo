@@ -3,8 +3,6 @@
 """Testes de regressão para ocultação de cotas em faces encostadas de módulos."""
 from __future__ import annotations
 
-from types import SimpleNamespace
-
 import pytest
 from PySide6.QtGui import QVector3D
 from PySide6.QtWidgets import QApplication, QWidget

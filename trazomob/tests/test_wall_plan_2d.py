@@ -409,8 +409,9 @@ def test_chain_wall_propagation_preserves_previous_walls_and_dimensions():
 
 def test_wall_floor_and_ceiling_not_duplicated_on_rebuild():
     """Garante que ao reconstruir ou concluir paredes sucessivamente, pisos e tetos nÃ£o se acumulam na cena."""
-    from PySide6.QtWidgets import QApplication
     import sys
+
+    from PySide6.QtWidgets import QApplication
     app = QApplication.instance() or QApplication(sys.argv)
 
     from core.scene import Scene
@@ -471,10 +472,11 @@ def test_wall_floor_and_ceiling_not_duplicated_on_rebuild():
 
 def test_reference_image_persists_in_scene_and_reloads(tmp_path):
     """Garante que a imagem de referÃªncia Ã© salva no documento e restaurada ao reabrir o diÃ¡logo."""
-    import os
     import sys
+
+    from PySide6.QtGui import QImage
     from PySide6.QtWidgets import QApplication
-    from PySide6.QtGui import QImage, QPixmap
+
     from core.scene import Scene
     from trazomob.wall.floorplan_dialog import WallFloorplanDialog
     app = QApplication.instance() or QApplication(sys.argv)
@@ -538,6 +540,7 @@ def test_escape_and_discard_changes_protection():
     """Garante que ESC cancela operaÃ§Ãµes em andamento primeiro, e solicita confirmaÃ§Ã£o antes de fechar com alteraÃ§Ãµes."""
     from PySide6.QtCore import Qt
     from PySide6.QtGui import QKeyEvent
+
     from core.scene import Scene
     from trazomob.wall.floorplan_dialog import WallFloorplanDialog
 
@@ -618,8 +621,9 @@ def test_dimension_by_face_or_center_mode():
 
 def test_dimension_logistics_click_wall_select_delete_and_undo():
     """Valida a logÃ­stica completa de cotas: clique direto na parede, seleÃ§Ã£o, exclusÃ£o com Delete e Undo."""
+    from PySide6.QtCore import Qt
     from PySide6.QtGui import QKeyEvent
-    from PySide6.QtCore import Qt, QPointF
+
     from core.scene import Scene
     from trazomob.wall.floorplan_dialog import WallFloorplanDialog
 
@@ -1176,8 +1180,8 @@ def test_all_cabinet_modules_pass_solid_inspector():
     travessas em pé/deitadas, portas com dobradiças e puxadores alça/perfil/cava/ponto,
     cubas e torneiras) são sólidos 100% estanques (watertight) e sem faces invertidas no Solid Inspector.
     """
+    from plugins.solid_inspector import _problem_text, inspect_mesh, is_sound
     from trazomob.builders.cabinet import CabinetBuilder
-    from plugins.solid_inspector import inspect_mesh, is_sound, _problem_text
 
     module_configs = [
         {"tipo": "balcao", "largura": 800, "altura": 720, "profundidade": 550},
@@ -1207,10 +1211,12 @@ def test_sidebar_config_tabs_organization():
     e alterna dinamicamente a visibilidade das abas conforme o tipo de módulo carregado.
     """
     import sys
+
     from PySide6.QtWidgets import QApplication, QTabWidget
+
     from core.scene import Scene
-    from trazomob.ui.sidebar_panel import TrazoMobSidebarPanel
     from trazomob.builders.cabinet import CabinetBuilder
+    from trazomob.ui.sidebar_panel import TrazoMobSidebarPanel
 
     _app = QApplication.instance() or QApplication(sys.argv)
     scene = Scene()
@@ -1262,8 +1268,8 @@ def test_balcao_misto_lado_gaveteiro():
     """Garante que o Balcão Misto permite escolher o lado do gaveteiro (esquerda ou direita),
     posicionando corretamente as frentes de gaveta, portas, divisória e prateleiras.
     """
-    from trazomob.builders.cabinet import CabinetBuilder
     from plugins.solid_inspector import inspect_mesh, is_sound
+    from trazomob.builders.cabinet import CabinetBuilder
 
     # 1. Gaveteiro à esquerda (padrão)
     grp_esq = CabinetBuilder.build_module_group({
@@ -1303,10 +1309,12 @@ def test_wall_floorplan_reconciles_position_after_3d_move():
     exatamente na nova posição do plano cartesiano onde foram deixadas na cena.
     """
     import sys
-    from PySide6.QtWidgets import QApplication
+
     from PySide6.QtGui import QVector3D
-    from core.scene import Scene
+    from PySide6.QtWidgets import QApplication
+
     from core.history import MoveGroupCommand
+    from core.scene import Scene
     from trazomob.wall.floorplan_dialog import WallFloorplanDialog
     from trazomob.wall.plan_2d import dist_2d
 
@@ -1399,7 +1407,9 @@ def test_reconcile_ignores_asymmetric_opening_vertices():
     """Vãos assimétricos adicionam vértices à malha; o reconcile não pode usar a
     média desses vértices como centro, senão inclina as paredes vizinhas."""
     from math import atan2, degrees
+
     from PySide6.QtGui import QVector3D
+
     from core.scene import Scene
     from trazomob.wall.builder import WallBuilderTool
     from trazomob.wall.plan_2d import WallGraph2D
@@ -1440,6 +1450,7 @@ def test_calibrate_ref_two_clicks_invokes_prompt():
     """O modo calibrar_ref deve coletar dois cliques e chamar a calibração de escala."""
     from PySide6.QtCore import Qt
     from PySide6.QtGui import QPixmap
+
     from core.scene import Scene
     from trazomob.wall.floorplan_dialog import WallFloorplanDialog
 
@@ -1780,8 +1791,9 @@ def test_dimension_chain_rejects_gaps_and_partial_but_accepts_inner_segment():
 
 def test_partial_dimension_never_stretches_the_whole_wall():
     """Editar uma cota interna de parede longa não deve redimensionar a parede inteira."""
-    from trazomob.wall.floorplan_canvas import WallFloorplanCanvas
     from unittest.mock import patch
+
+    from trazomob.wall.floorplan_canvas import WallFloorplanCanvas
 
     graph = WallGraph2D(default_thickness=0.2)
     s1 = graph.add_segment(0, 0, 10, 0)

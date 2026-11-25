@@ -6,8 +6,8 @@ from __future__ import annotations
 import json
 import os
 
-from trazomob.domain.i18n import clear_i18n_cache, get_lang, tr
 from trazomob.domain.catalog import MODULE_CATALOG
+from trazomob.domain.i18n import clear_i18n_cache, get_lang, tr
 
 
 def test_i18n_json_files_valid():
@@ -73,7 +73,7 @@ def test_catalog_categories_and_modules_translated(monkeypatch):
     import core.i18n as core_i18n
 
     for lang in ("es", "en"):
-        monkeypatch.setattr(core_i18n, "current_language", lambda: lang)
+        monkeypatch.setattr(core_i18n, "current_language", lambda lang=lang: lang)
         clear_i18n_cache()
         for cat_name, items in MODULE_CATALOG.items():
             # Categoria traduzida não deve ser vazia
@@ -100,10 +100,11 @@ def test_build_all_catalog_modules_smoke():
 def test_tower_insertion_floor_to_top_guide():
     """Garante que as Torres de Eletros vão do chão (Z=0) até a guia Topo Aéreos / Torres da régua ativa."""
     from PySide6.QtGui import QVector3D
+
+    from trazomob.domain.module_geometry import get_module_carcass_bounds
+    from trazomob.ui.module_ribbon import TrazoMobModuleRibbonBar
     from trazomob.wall.guides import WallGuideRulerManager
     from trazomob.wall.selection import WallSelectionManager
-    from trazomob.ui.module_ribbon import TrazoMobModuleRibbonBar
-    from trazomob.domain.module_geometry import get_module_carcass_bounds
 
     ruler_mgr = WallGuideRulerManager.get_instance()
     orig_preset = ruler_mgr.active_preset_name

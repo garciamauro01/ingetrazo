@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Testes para cinemática contínua de abertura e detecção de colisões visuais."""
-import pytest
 from PySide6.QtGui import QVector3D
-from core.scene import Scene
+
 from core.group import Group
 from core.mesh import Mesh
+from core.scene import Scene
+from trazomob.interaction.collision import check_opening_collisions
 from trazomob.interaction.interact import CabinetInteract
-from trazomob.interaction.collision import check_opening_collisions, aabb_intersect, get_piece_aabb
 
 
 def _create_box_mesh(min_x, max_x, min_y, max_y, min_z, max_z):

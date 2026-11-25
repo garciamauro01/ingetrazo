@@ -23,9 +23,8 @@ sys.path.insert(0, str(HOST_ROOT))
 _TMP = tempfile.TemporaryDirectory(prefix="trazomob-bake-bench-")
 os.environ.setdefault("INGETRAZO_COMPONENTS", str(Path(_TMP.name) / "components"))
 
-from views import component_loader  # noqa: E402
-
 from trazomob.integrations import decor_bake  # noqa: E402
+from views import component_loader  # noqa: E402
 
 
 def write_obj(path: Path, n: int) -> Path:

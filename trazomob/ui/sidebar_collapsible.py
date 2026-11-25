@@ -8,15 +8,16 @@ e controle de visibilidade e tooltip da aba no QTabWidget pai, sem cabeçalho re
 from __future__ import annotations
 
 from typing import Optional
+
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
     QFormLayout,
-    QLabel,
     QFrame,
+    QLabel,
     QLayout,
     QTabWidget,
+    QVBoxLayout,
+    QWidget,
 )
 
 

@@ -21,7 +21,6 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
     QFrame,
-    QHBoxLayout,
     QHeaderView,
     QLabel,
     QSpinBox,

@@ -7,11 +7,15 @@ from core.group import Group
 
 from ..domain.catalog import MODULE_CATALOG
 from ..domain.i18n import tr
-from ..domain.module_geometry import get_module_carcass_bounds, get_module_category
+from ..domain.module_geometry import get_module_carcass_bounds
 from ..domain.param_mapper import populate_ui_from_module
 from ..domain.schema import module_params
 from ..domain.snap_contract import SNAP_PAREDE_OPCOES, normalize_snap_parede
-from ..domain.ui_contract import DEFAULT_RECUO_FUNDO_MM, should_show_config_gaveteiro, should_show_lado_porta_armario
+from ..domain.ui_contract import (
+    DEFAULT_RECUO_FUNDO_MM,
+    should_show_config_gaveteiro,
+    should_show_lado_porta_armario,
+)
 
 
 class SidebarModuleLoaderMixin:
@@ -107,8 +111,11 @@ class SidebarModuleLoaderMixin:
             self.frame_perfil.setVisible(params.get("puxador_tipo", "alca") == "perfil")
 
             # Portas / Gavetas
-            from ..domain.module_geometry import (MIN_DOORS, MAX_DOORS,
-                                          auto_divisoes_for_doors)
+            from ..domain.module_geometry import (
+                MAX_DOORS,
+                MIN_DOORS,
+                auto_divisoes_for_doors,
+            )
             self._portas_400mm = False
 
             _mod_cat = next(

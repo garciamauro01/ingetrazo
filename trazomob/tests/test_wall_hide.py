@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import os
+
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QVector3D
+from PySide6.QtWidgets import QApplication
+
 _app = QApplication.instance() or QApplication([])
 
+from core.history import HideCommand, History
 from core.scene import Scene
-from core.history import History, HideCommand
 from trazomob.wall.builder import WallBuilderTool
 from trazomob.wall.mesh_builder import WallMeshBuilder
 

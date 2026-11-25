@@ -1,10 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
 """Testes de validação da sincronização automática de furações e juntas (JointResolver)."""
-import pytest
-from core.group import Group
 from trazomob.builders.cabinet import CabinetBuilder
-from trazomob.production.joint_resolver import JointResolver
 
 
 def test_joint_resolver_caixa_geladeira_dobradicas_e_juntas():

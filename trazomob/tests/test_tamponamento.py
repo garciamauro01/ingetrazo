@@ -1,6 +1,7 @@
 from trazomob.builders.cabinet import CabinetBuilder
 from trazomob.domain.catalog import MODULE_CATALOG
 
+
 def test_tamponamento_vertical_build():
     # Verifica que o módulo está catalogado em Peças Avulsas
     catalog_items = MODULE_CATALOG["Peças Avulsas / Componentes"]

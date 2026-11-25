@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import copy
+
 import pytest
 from PySide6.QtWidgets import (
     QApplication,

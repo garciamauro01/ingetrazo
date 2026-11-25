@@ -3,9 +3,9 @@
 """Mixin para o painel lateral do TrazoMob especializado na edição de luminárias e iluminação 3D."""
 from __future__ import annotations
 
-from typing import Any
 from PySide6.QtGui import QVector3D
 from PySide6.QtWidgets import QMessageBox
+
 from core.group import Group
 
 
@@ -24,7 +24,11 @@ class SidebarLightMixin:
 
         self._selected_light_grp = light_grp
         vp = self._get_viewport()
-        from ..render.lighting import _get_document_lights, sync_scene_lights_to_document, TrazoMobLightVisualizer
+        from ..render.lighting import (
+            TrazoMobLightVisualizer,
+            _get_document_lights,
+            sync_scene_lights_to_document,
+        )
         if vp is not None:
             sync_scene_lights_to_document(vp)
         lights = _get_document_lights(vp) if vp else []
@@ -240,7 +244,12 @@ class SidebarLightMixin:
         self.lbl_status.setText(f"Distribuição: {'SPOT (Foco direcionado)' if is_spot else 'OMNI (360° todas as direções)'}")
 
     def _on_sidebar_light_prop_changed(self) -> None:
-        from ..render.lighting import kelvin_to_rgb, sync_scene_lights_to_document, _get_document_lights, _save_document_lights
+        from ..render.lighting import (
+            _get_document_lights,
+            _save_document_lights,
+            kelvin_to_rgb,
+            sync_scene_lights_to_document,
+        )
         vp = self._get_viewport()
         k = int(self.sl_luz_kelvin.value())
         pwr = float(self.sp_luz_power.value())
@@ -377,7 +386,10 @@ class SidebarLightMixin:
                 _remove_light_group(scene)
 
         if vp is not None:
-            from ..render.lighting import sync_scene_lights_to_document, TrazoMobLightVisualizer
+            from ..render.lighting import (
+                TrazoMobLightVisualizer,
+                sync_scene_lights_to_document,
+            )
             sync_scene_lights_to_document(vp)
             TrazoMobLightVisualizer.set_selected_index(None, vp)
             vp.update()
@@ -401,7 +413,7 @@ class SidebarLightMixin:
         scene = self._get_scene()
 
         if scene is not None and vp is not None:
-            from ..render.lighting import _apply_light_change, TrazoMobLightVisualizer
+            from ..render.lighting import TrazoMobLightVisualizer, _apply_light_change
             light_grps = [
                 g for g in getattr(scene, "groups", [])
                 if getattr(g, "ext", None) and isinstance(g.ext, dict) and "trazomob_light" in g.ext

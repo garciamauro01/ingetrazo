@@ -3,58 +3,25 @@
 """Diálogo 2D de Planta Baixa para desenho de paredes e geração 3D automática."""
 from __future__ import annotations
 
-import math
-from typing import Any, Dict, Optional, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
-from PySide6.QtCore import Qt, QPointF, QRectF, Signal
+from PySide6.QtCore import QPointF, Qt, Signal
 from PySide6.QtGui import (
-    QPainter,
-    QPen,
-    QColor,
-    QBrush,
-    QFont,
-    QPolygonF,
-    QWheelEvent,
-    QMouseEvent,
-    QKeyEvent,
     QPixmap,
-    QTransform,
 )
 from PySide6.QtWidgets import (
-    QDialog,
     QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QDoubleSpinBox,
-    QCheckBox,
-    QFrame,
-    QSplitter,
-    QToolButton,
-    QButtonGroup,
-    QInputDialog,
-    QComboBox,
-    QSlider,
-    QFileDialog,
-    QGroupBox,
-    QScrollArea,
-    QMessageBox,
 )
 
-from PySide6.QtGui import QVector3D
-from core.image_plane import ImagePlane
-from core.units import format_length, model_unit, model_precision, bare_number_scale
-from ..wall.plan_2d import WallGraph2D, WallNode2D, dist_2d
-from ..wall.mesh_builder import WallMeshBuilder
-
-from .mixin_navigation import NavigationMixin
+from ..wall.plan_2d import WallGraph2D
+from .mixin_calibrate import CalibrateMixin
+from .mixin_dialogs import DialogsMixin
+from .mixin_drawing import DrawingMixin
 from .mixin_history import HistoryMixin
 from .mixin_input import InputHandlingMixin
-from .mixin_drawing import DrawingMixin
 from .mixin_measurement import MeasurementMixin
-from .mixin_dialogs import DialogsMixin
-from .mixin_calibrate import CalibrateMixin
+from .mixin_navigation import NavigationMixin
+
 
 class WallFloorplanCanvas(NavigationMixin, HistoryMixin, InputHandlingMixin, DrawingMixin, MeasurementMixin, DialogsMixin, CalibrateMixin, QWidget):
     """Canvas 2D interativo com grid, zoom, pan e cotas dinâmicas em tempo real."""

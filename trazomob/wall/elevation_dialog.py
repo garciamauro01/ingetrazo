@@ -16,38 +16,35 @@ Projeta a vista ortogonal frontal de uma parede selecionada exibindo:
 from __future__ import annotations
 
 import math
-from typing import Optional, List, Dict, Tuple, Any
+from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import Qt, QPointF, QRectF
+from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import (
+    QBrush,
     QColor,
     QFont,
     QPainter,
     QPen,
-    QBrush,
     QPixmap,
-    QPainterPath,
     QVector3D,
 )
 from PySide6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
     QDialog,
-    QWidget,
-    QVBoxLayout,
+    QFileDialog,
+    QFrame,
     QHBoxLayout,
     QLabel,
-    QPushButton,
-    QToolBar,
-    QFileDialog,
     QMessageBox,
-    QFrame,
-    QComboBox,
-    QCheckBox,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
 )
 
-from core.group import Group
-from ..wall.selection import WallFaceInfo, WallSelectionManager
-from ..interaction.magnetic_drag import get_module_bounds, get_bounds_min_projection
 from ..domain.module_geometry import get_module_carcass_bounds
+from ..interaction.magnetic_drag import get_module_bounds
+from ..wall.selection import WallSelectionManager
 
 
 class WallElevationCanvas(QWidget):

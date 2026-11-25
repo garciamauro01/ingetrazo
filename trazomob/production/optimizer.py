@@ -7,7 +7,6 @@ refilo perimetral da chapa de MDF e respeito rigoroso ao sentido do veio da made
 """
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass, field
 from typing import Any
 

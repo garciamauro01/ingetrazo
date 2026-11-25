@@ -15,7 +15,7 @@ import unicodedata
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from ..domain.preferences import TrazoMobPreferencesManager, get_preferences_file_path
+from ..domain.preferences import TrazoMobPreferencesManager
 
 
 @dataclass

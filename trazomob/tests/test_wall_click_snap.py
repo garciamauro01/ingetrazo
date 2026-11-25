@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import pytest
-
 from PySide6.QtGui import QVector3D
 
 from core.group import Group

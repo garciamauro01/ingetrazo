@@ -9,7 +9,7 @@ Fornece modelos padronizados de operações:
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Literal
 
 FaceType = Literal["frontal", "traseira", "topo", "base", "esquerda", "direita"]

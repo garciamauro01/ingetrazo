@@ -8,13 +8,26 @@ Permite listar todos os materiais da cena atual e configurar:
 """
 from __future__ import annotations
 
-from typing import Dict, Any, List
+from typing import Any, Dict, List
+
 from PySide6.QtCore import QEvent, QObject, Qt, Signal
-from PySide6.QtGui import QColor, QPixmap, QImage, QPainter, QIcon
+from PySide6.QtGui import QColor, QIcon, QImage, QPainter, QPixmap
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QSplitter, QListWidget, QListWidgetItem,
-    QGroupBox, QLabel, QComboBox, QSlider, QDoubleSpinBox, QPushButton,
-    QWidget, QFrame, QFormLayout, QLineEdit
+    QComboBox,
+    QDialog,
+    QFormLayout,
+    QFrame,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QPushButton,
+    QSlider,
+    QSplitter,
+    QVBoxLayout,
+    QWidget,
 )
 
 # Presets predefinidos de shaders PBR
@@ -362,8 +375,9 @@ class MaterialEditorDialog(QDialog):
             self.setWindowTitle("🎨 TrazoMob — Configuração de Materiais & Shaders PBR (Blender)")
         self.setMinimumSize(780, 520)
 
-        from PySide6.QtCore import QSettings
         import json
+
+        from PySide6.QtCore import QSettings
         settings = QSettings()
         raw_globals = settings.value("trazomob_render/global_material_defaults", "{}")
         try:
@@ -432,7 +446,6 @@ class MaterialEditorDialog(QDialog):
         self.activateWindow()
 
     def _finish_eyedropper(self, px: int, py: int):
-        from pathlib import Path
         from core.group import effective_material
         from core.materials import effective_attrs
 
@@ -493,9 +506,10 @@ class MaterialEditorDialog(QDialog):
         """Extrai anéis externos em coordenadas do mundo de ``DeferredMesh`` sem materializá-la."""
         import numpy as np
         from PySide6.QtGui import QVector3D
+
         from core.group import np_affine
         from core.materials import effective_attrs
-        from formats.igz import _face_attrs_from_json
+        from trazomob.integrations.platform import face_attrs_from_json
 
         src = mesh.__dict__.get("_deferred_source")
         if not isinstance(src, dict):
@@ -503,7 +517,7 @@ class MaterialEditorDialog(QDialog):
         table = src["meta"].get("face_attrs") or []
         matching_ids: set[int] = set()
         for k, raw in enumerate(table):
-            parsed = _face_attrs_from_json(raw) or {}
+            parsed = face_attrs_from_json(raw) or {}
             eff = effective_attrs(parsed, paint) if paint else parsed
             if eff.get("hidden") or eff.get("igz_link_placeholder"):
                 continue
@@ -626,8 +640,8 @@ class MaterialEditorDialog(QDialog):
         if not self._highlight_active or not self._current_mat or self.scene is None:
             return
 
-        from PySide6.QtGui import QPen, QBrush, QColor, QPolygonF
         from PySide6.QtCore import QPointF
+        from PySide6.QtGui import QBrush, QColor, QPen, QPolygonF
 
         painter.save()
         painter.setRenderHint(QPainter.Antialiasing)
@@ -1244,9 +1258,10 @@ class MaterialEditorDialog(QDialog):
             self._on_material_selected(row)
 
     def _save_as_global_default(self):
+        import json
+
         from PySide6.QtCore import QSettings
         from PySide6.QtWidgets import QMessageBox
-        import json
         settings = QSettings()
         # Mescla com as globais existentes
         self._global_defaults.update(self._overrides)
@@ -1334,9 +1349,9 @@ class MaterialEditorDialog(QDialog):
             return
 
         from core.group import iter_painted_placements
-        from core.history import _dirty_group_chunks
         from core.materials import has_own_material
         from core.mesh import face_attrs
+        from trazomob.integrations.platform import dirty_group_chunks
 
         changed = False
         registry = getattr(self.scene, "materials", None)
@@ -1410,7 +1425,7 @@ class MaterialEditorDialog(QDialog):
                 changed = True
 
         if changed:
-            _dirty_group_chunks(self.scene)
+            dirty_group_chunks(self.scene)
             if self.viewport is not None:
                 if hasattr(self.viewport, "notify_scene_changed"):
                     self.viewport.notify_scene_changed()

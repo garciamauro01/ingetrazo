@@ -11,7 +11,9 @@ geometria 3D, que é a unidade do espaço de cena.
 from __future__ import annotations
 
 from typing import List, Optional, Tuple
+
 from core.group import Group
+
 from ..builders.chapa_spec import ModuloMaterialContext
 
 

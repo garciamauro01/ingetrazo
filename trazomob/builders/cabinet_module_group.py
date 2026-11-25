@@ -10,8 +10,9 @@ from PySide6.QtGui import QVector3D
 
 from core.group import Group
 from core.mesh import Mesh
+
 from .chapa_builder import build_chapa
-from .chapa_spec import ChapaSpec, ModuloMaterialContext, PapelChapa
+from .chapa_spec import ChapaSpec, PapelChapa
 
 logger = logging.getLogger("trazomob.cabinet_module_group")
 
@@ -104,8 +105,8 @@ class ModuleGroupMixin:
             "dispositivo_fixacao": str(params.get("dispositivo_fixacao", "minifix_cavilha")),
         }
 
-        from ..builders.registry import get_module_builder
         from ..builders.chapa_spec import ModuloMaterialContext
+        from ..builders.registry import get_module_builder
         builder_fn = get_module_builder(tipo)
         if builder_fn is not None:
             mat_ctx = ModuloMaterialContext.from_dict(params)
@@ -187,7 +188,6 @@ class ModuleGroupMixin:
 
         lado_ab_porta = str(params.get("lado_abertura_porta", "")).strip().lower()
         if lado_ab_porta.startswith(("dir", "right")):
-            from ..builders.mesh_utils import create_board_group
             new_pieces = []
             for p in pieces:
                 p_meta = getattr(p, "ext", {}).get("trazomob", {}) if getattr(p, "ext", None) else {}

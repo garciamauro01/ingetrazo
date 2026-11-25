@@ -2,19 +2,16 @@
 """Testes de integração para Ambientes, Pavimentos, Filtro no Cutlist e Offset Z."""
 
 import pytest
-from core.scene import Scene
-from core.group import Group
 from PySide6.QtGui import QVector3D
+
+from core.group import Group
+from core.scene import Scene
 from trazomob.domain.ambiente import (
     AmbienteBuilder,
-    iter_ambientes,
-    iter_pavimentos,
     set_ambiente_visivel,
-    set_pavimento_visivel,
 )
-from trazomob.wall.plan_2d import WallGraph2D
 from trazomob.wall.mesh_builder import WallMeshBuilder
-from trazomob.production.parts import extract_parts
+from trazomob.wall.plan_2d import WallGraph2D
 
 
 def test_wall_mesh_offset_z_pavimento():

@@ -12,19 +12,21 @@ garantindo que:
 """
 from __future__ import annotations
 
-import math
 from typing import Any
+
 from PySide6.QtGui import QVector3D
+
 from core.group import Group
+
 from .machining import (
     MachiningOp,
-    make_shelf_side_holes,
-    make_shelf_joint_holes,
-    make_hinge_plate_holes,
     make_cabinet_joint_holes,
-    make_horizontal_board_edge_holes,
-    make_stretcher_joint_holes,
     make_drawer_box_joint_holes,
+    make_hinge_plate_holes,
+    make_horizontal_board_edge_holes,
+    make_shelf_joint_holes,
+    make_shelf_side_holes,
+    make_stretcher_joint_holes,
 )
 
 

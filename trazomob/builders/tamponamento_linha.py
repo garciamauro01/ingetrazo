@@ -12,8 +12,6 @@ contínua de balcões ou armários adjacentes na cena.
 """
 from __future__ import annotations
 
-from typing import Any
-from PySide6.QtGui import QVector3D
 from core.group import Group
 
 from .chapa_builder import build_chapa

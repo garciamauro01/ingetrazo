@@ -3,8 +3,8 @@
 """Mixin para o painel lateral do TrazoMob especializado em alinhamento, distribuição e centralização 3D."""
 from __future__ import annotations
 
-from typing import Any
 from PySide6.QtGui import QVector3D
+
 from core.group import Group
 
 
@@ -74,7 +74,7 @@ class SidebarAlignMixin:
 
         gap = max(0.0, (total_span - sum_widths) / num_gaps)
 
-        from core.history import MoveGroupCommand, CompoundCommand
+        from core.history import CompoundCommand, MoveGroupCommand
         cmds = []
         cur_left = first_b[0]
 

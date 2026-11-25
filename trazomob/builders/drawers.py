@@ -7,14 +7,15 @@ e suportando espessuras dinâmicas (15mm, 18mm, 25mm, etc.).
 
 from __future__ import annotations
 
-from typing import Any, Optional, Tuple
+from typing import Tuple
+
 from core.group import Group
+from trazomob.builders.chapa_builder import build_chapa
 from trazomob.builders.chapa_spec import (
     ChapaSpec,
     ModuloMaterialContext,
     PapelChapa,
 )
-from trazomob.builders.chapa_builder import build_chapa
 
 
 class CanonicalDrawerBuilder:

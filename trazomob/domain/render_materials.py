@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Tuple
 
-
 RENDER_PRESETS: List[Tuple[str, str]] = [
     ("original", "Manter Original"),
     ("aco_escovado", "Aço Escovado (Inox)"),

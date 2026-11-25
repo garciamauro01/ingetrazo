@@ -3,8 +3,6 @@
 """Testes de regressão da Fase 1 da auditoria de esquadrias/integração."""
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 from PySide6.QtGui import QVector3D
 
@@ -98,8 +96,12 @@ def test_janelas_do_catalogo_tem_peitoril_mm():
 def test_novas_portas_tem_folha_e_linked_pieces_corretos(nome, w, h, p):
     group = EsquadriaBuilder.load_esquadria_igz(nome, w, h, p)
     children = group.children or []
-    folhas = [c for c in children if (c.ext or {}).get("hinge_pivot")]
-    assert folhas, f"{nome} sem folha com hinge_pivot"
+    folhas = [
+        c for c in children
+        if (c.ext or {}).get("hinge_pivot") is not None
+        or (c.ext or {}).get("slide_axis") is not None
+    ]
+    assert folhas, f"{nome} sem folha com hinge_pivot ou slide_axis"
 
     nomes = [c.name for c in children]
     assert len(nomes) == len(set(nomes)), f"{nome} tem nomes de peça duplicados: {nomes}"

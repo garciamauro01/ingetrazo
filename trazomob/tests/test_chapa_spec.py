@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-import pytest
-from trazomob.builders.chapa_spec import ChapaSpec, PapelChapa, ModuloMaterialContext
+from trazomob.builders.chapa_spec import ChapaSpec, ModuloMaterialContext, PapelChapa
 
 
 def test_chapa_spec_inheritance_caixa():

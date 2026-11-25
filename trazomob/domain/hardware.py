@@ -25,7 +25,6 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
-
 # Código estável -> (tipo, nome amigável, preço unitário padrão em R$)
 # O tipo controla a seção do relatório: dobradiça | trilho | corredica | puxador | fixacao | outro
 HARDWARE_CATALOG: Dict[str, Dict[str, Any]] = {

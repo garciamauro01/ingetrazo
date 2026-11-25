@@ -5,8 +5,8 @@
 from __future__ import annotations
 
 from trazomob.domain.hardware import (
-    HardwareItem,
     HARDWARE_CATALOG,
+    HardwareItem,
     consolidate_hardware,
     deserialize_hardware,
     hardware_total_preco,

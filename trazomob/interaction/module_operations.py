@@ -12,17 +12,20 @@ from __future__ import annotations
 import math
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from PySide6.QtCore import Qt
 from PySide6.QtGui import QVector3D
 from PySide6.QtWidgets import QMessageBox, QWidget
 
 from core.group import Group
 from core.history import SnapshotImport
-from ..domain.assembly import is_module, iter_module_groups
+
 from ..builders.cabinet import CabinetBuilder
-from ..interaction.magnetic_drag import get_module_bounds
-from ..domain.module_geometry import get_module_carcass_bounds, preserve_module_back_alignment
+from ..domain.assembly import is_module, iter_module_groups
+from ..domain.module_geometry import (
+    get_module_carcass_bounds,
+    preserve_module_back_alignment,
+)
 from ..domain.schema import module_params
+from ..interaction.magnetic_drag import get_module_bounds
 
 
 def duplicate_contiguous_module(

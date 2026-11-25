@@ -1,7 +1,8 @@
 import pytest
+
 from core.group import Group
-from trazomob.builders.camas import CamaBuilder
 from trazomob.builders.cabinet import CabinetBuilder
+from trazomob.builders.camas import CamaBuilder
 
 
 def _bbox_mm(pieces):
@@ -424,6 +425,7 @@ def test_bicama_cama_cabeceira_e_beliche_estruturais():
 
 def test_sp_prof_ui_range_suporta_camas():
     from PySide6.QtWidgets import QApplication, QFormLayout
+
     from trazomob.ui.module_dialog_sections import ModuleDialogSectionsMixin
     from trazomob.ui.sidebar_panel import TrazoMobSidebarPanel
 

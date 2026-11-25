@@ -4,9 +4,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtWidgets import QComboBox, QListWidget
-
-from ..ui.styles import get_theme_palette, get_dialog_stylesheet
+from ..ui.styles import get_dialog_stylesheet, get_theme_palette
 
 
 class ModuleDialogStyleMixin:

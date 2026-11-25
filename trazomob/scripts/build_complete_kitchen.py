@@ -2,10 +2,10 @@
 """Script para construção do ambiente de Cozinha Completa Humanizada (.igz e render Blender)."""
 from __future__ import annotations
 
-import os
-import sys
 import json
 import math
+import os
+import sys
 from pathlib import Path
 
 # TrazoMob é first-party: a raiz do fork é dois níveis acima deste script.
@@ -13,16 +13,15 @@ _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from core.scene import Scene
+from PySide6.QtGui import QVector3D
+
 from core.group import Group
 from core.mesh import Mesh
-from PySide6.QtGui import QVector3D, QMatrix4x4
-
-from trazomob.builders.cabinet import CabinetBuilder
-from trazomob.builders.countertops import BancadaBuilder
-from trazomob.wall.plan_2d import WallGraph2D
-from formats.igz import save_scene, load_into
+from core.scene import Scene
 from formats.gltf import save_glb
+from formats.igz import load_into, save_scene
+from trazomob.builders.cabinet import CabinetBuilder
+from trazomob.wall.plan_2d import WallGraph2D
 
 
 def create_box_mesh(

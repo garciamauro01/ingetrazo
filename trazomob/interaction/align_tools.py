@@ -7,11 +7,12 @@ Suporta Groups de marcenaria, peças soltas, e entidades em geral com histórico
 """
 from __future__ import annotations
 
-from typing import Optional, Tuple, List
-from PySide6.QtGui import QVector3D
-from core.group import Group, iter_placements
-from core.history import MoveGroupCommand, CompoundCommand
+from typing import Optional, Tuple
 
+from PySide6.QtGui import QVector3D
+
+from core.group import Group, iter_placements
+from core.history import CompoundCommand, MoveGroupCommand
 
 _MESH_LOCAL_BOUNDS_CACHE: dict[int, tuple] = {}
 _MAX_MESH_BOUNDS_CACHE = 4096
@@ -414,7 +415,7 @@ def resolve_rotatable_groups(scene, candidates=None) -> list[Group]:
         if item is None:
             continue
         target = None
-        upward_chain: list[Any] = []
+        upward_chain: list = []
         cur = item
         visited_up: set[int] = set()
         while cur is not None and id(cur) not in visited_up:

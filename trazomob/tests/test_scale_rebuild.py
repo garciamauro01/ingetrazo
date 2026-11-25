@@ -1,10 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Testes de rearranjo paramétrico dos módulos de marcenaria após uso do Scale (ferramenta S)."""
-import pytest
 from PySide6.QtGui import QVector3D
 
-from core.scene import Scene
 from core.history import History, ScaleGroupCommand
+from core.scene import Scene
 from tools.scale import ScaleTool
 from trazomob.builders.cabinet import CabinetBuilder
 

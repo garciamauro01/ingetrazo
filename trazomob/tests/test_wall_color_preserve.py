@@ -3,8 +3,8 @@
 ao atualizar parâmetros da parede e exportada fielmente para o render.
 """
 from PySide6.QtGui import QVector3D
+
 from core.scene import Scene
-from core.history import History
 from formats.meshexport import collect_geometry, export_names
 from trazomob.wall.builder import WallBuilderTool
 
@@ -59,9 +59,9 @@ def test_wall_color_preserved_on_update():
 
 def test_wall_color_exported_to_render_clean_scene():
     """Garante que a cor aplicada à parede é assada nas faces e entra nos materiais do render."""
+    from core.group import Group
     from core.materials import effective_attrs
     from core.mesh import Mesh
-    from core.group import Group
 
     scene = Scene()
     pts = [QVector3D(0, 0, 0), QVector3D(3, 0, 0), QVector3D(3, 3, 0), QVector3D(0, 3, 0)]

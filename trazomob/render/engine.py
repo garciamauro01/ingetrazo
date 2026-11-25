@@ -6,16 +6,15 @@ exclusivo do TrazoMob (`blender_scripts/photoreal_render.py`).
 """
 from __future__ import annotations
 
+import glob
 import json
 import os
 import sys
-import glob
 import time
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional
 
-from PySide6.QtCore import QObject, QProcess, QThread, Signal, Slot, QSettings
-from PySide6.QtGui import QVector3D
+from PySide6.QtCore import QObject, QProcess, QSettings, QThread, Signal, Slot
 
 
 def _set_process_low_priority(pid: int) -> bool:
@@ -87,11 +86,12 @@ class _ExportWorker(QObject):
             work_dir = self.work_dir
 
             glb_path = work_dir / "scene.glb"
-            from formats.gltf import save_glb
-            from core.scene import Scene
             from core.group import Group, effective_material
             from core.materials import effective_attrs
             from core.mesh import Mesh, face_attrs, face_count
+            from core.scene import Scene
+            from formats.gltf import save_glb
+
             from ..wall.paint_catalog import DEFAULT_WALL_PAINT
 
             def _is_light_group(g):
@@ -171,13 +171,13 @@ class _ExportWorker(QObject):
             }
             samples = samples_map.get(self.quality, 128)
 
-            from core.render_blender import sun_toward, camera_dict
+            from core.render_blender import camera_dict, sun_toward
             sun_vec = sun_toward(scene) if self.preset in ("dia", "tarde") else None
 
             from ..render.lighting import (
+                _clean_trazomob_lights,
                 _get_scene_lights,
                 _lights_from_any_window,
-                _clean_trazomob_lights,
             )
             raw_lights = _get_scene_lights(scene)
             if not raw_lights:
@@ -377,8 +377,9 @@ class TrazoMobRenderEngine(QObject):
         # Garante que o QProcess não receba pai de outra thread se executado fora da thread principal
         parent_obj = self if self.thread() == QThread.currentThread() else None
         self._process = QProcess(parent_obj)
-        from core.render_blender import clean_env
         from PySide6.QtCore import QProcessEnvironment
+
+        from core.render_blender import clean_env
         q_env = QProcessEnvironment()
         for k, v in clean_env().items():
             q_env.insert(k, v)

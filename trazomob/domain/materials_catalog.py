@@ -3,8 +3,8 @@
 """Catálogo centralizado de materiais e texturas de MDF e Marmoraria do TrazoMob."""
 from __future__ import annotations
 
-from pathlib import Path
-from .materials_registry import MaterialsRegistry, MaterialDefinition
+from .materials_registry import MaterialsRegistry
+
 
 # Obtém a lista dinâmica a partir do registro oficial de materiais
 def get_available_mdf_materials() -> list[str]:

@@ -32,14 +32,20 @@ from .builders.cabinet import (
 )
 from .domain.catalog import MODULE_CATALOG
 from .integrations import platform as host
+from .interaction.align_tool_interactive import AlignSnapTool
 from .interaction.interact import (
     CabinetInteract,
+)
+from .interaction.interact import (
     CabinetInteractTool as _CabinetInteractToolImpl,
 )
-from .interaction.align_tool_interactive import AlignSnapTool
 from .interaction.material_picker_tool import MaterialPickerTool
 from .production.cut_plan_viewer import CutPlanViewerDialog
-from .production.export import export_trazomob_csv, export_trazomob_json, format_trazomob_text
+from .production.export import (
+    export_trazomob_csv,
+    export_trazomob_json,
+    format_trazomob_text,
+)
 from .production.parts import _get_entity_bbox, extract_parts, group_similar_parts
 from .ui.icons import (
     get_module_thumbnail,
@@ -56,7 +62,6 @@ from .ui.icons import (
 from .ui.module_dialog import TrazoMobDialog
 from .ui.ruler_editor_dialog import RulerEditorDialog
 from .ui.sidebar_panel import TrazoMobSidebarPanel
-
 
 logger = logging.getLogger("trazomob")
 

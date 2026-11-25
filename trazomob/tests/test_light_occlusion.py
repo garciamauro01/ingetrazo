@@ -12,9 +12,10 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 from PySide6.QtGui import QVector3D
-from core.scene import Scene
-from core.mesh import Mesh
+
 from core.group import Group
+from core.mesh import Mesh
+from core.scene import Scene
 from formats.gltf import save_glb
 from trazomob.render.lighting import create_light_scene_group
 
@@ -73,8 +74,8 @@ class TestLightOcclusionExclusion(unittest.TestCase):
         with open(tmp_glb, "rb") as f_glb:
             header = f_glb.read(12)
             chunk0_hdr = f_glb.read(8)
-            import struct
             import json
+            import struct
             c_len = struct.unpack("<I", chunk0_hdr[0:4])[0]
             gltf_json = json.loads(f_glb.read(c_len).decode("utf-8"))
             mat_names = [m.get("name") for m in gltf_json.get("materials", [])]

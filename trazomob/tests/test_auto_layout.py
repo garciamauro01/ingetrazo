@@ -7,11 +7,11 @@ import pytest
 from PySide6.QtGui import QVector3D
 from PySide6.QtWidgets import QApplication
 
+from trazomob.builders.cabinet import CabinetBuilder
 from trazomob.domain.auto_layout import (
     place_group_on_wall,
     plan_wall_fill,
 )
-from trazomob.builders.cabinet import CabinetBuilder
 from trazomob.domain.catalog import MODULE_CATALOG
 from trazomob.domain.module_geometry import (
     auto_divisoes_for_doors,

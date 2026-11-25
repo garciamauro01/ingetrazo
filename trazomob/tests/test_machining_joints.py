@@ -5,11 +5,10 @@
 from __future__ import annotations
 
 import pytest
+
 from trazomob.builders.balcoes_aereos import BalcaoAereoBuilder
 from trazomob.production.machining import (
     make_cabinet_joint_holes,
-    make_horizontal_board_edge_holes,
-    make_shelf_joint_holes,
 )
 
 
@@ -253,9 +252,9 @@ def test_divisoria_vertical_cavilha_cima_e_baixo():
     - Configurável: ambos, apenas cima, apenas baixo, nenhum
     - Malha watertight / sólida (manifold) verificada pelo solid_volume
     """
+    from core.solids import is_solid, solid_volume
     from trazomob.builders.parts import CustomPartsBuilder
     from trazomob.production.machining import make_vertical_divider_joint_holes
-    from core.solids import is_solid, solid_volume
 
     # 1. Teste do gerador com 'ambos'
     ops_ambos = make_vertical_divider_joint_holes(

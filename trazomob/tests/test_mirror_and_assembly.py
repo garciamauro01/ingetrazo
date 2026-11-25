@@ -14,6 +14,8 @@ from PySide6.QtWidgets import QApplication
 from core.group import Group, iter_placements
 from core.mesh import Mesh
 from core.scene import Scene
+from trazomob.builders.cabinet import CabinetBuilder
+from trazomob.builders.mirror import MIRROR_PARAM, is_mirrored, mirror_module_geometry
 from trazomob.domain import schema
 from trazomob.domain.ambiente import (
     AmbienteBuilder,
@@ -31,8 +33,6 @@ from trazomob.domain.assembly import (
     is_assembly,
     iter_module_groups,
 )
-from trazomob.builders.cabinet import CabinetBuilder
-from trazomob.builders.mirror import MIRROR_PARAM, is_mirrored, mirror_module_geometry
 from trazomob.production.parts import extract_parts
 
 
@@ -380,8 +380,11 @@ def _mesh_center(mesh):
 
 def _build_ambiente_simples(qapp, nome="Cozinha", pavimento="Térreo"):
     """Cria um ambiente simples com paredes, piso, teto (mock)."""
-    from trazomob.domain.ambiente import set_ambiente_data, set_floor_data, set_ceiling_data
     from trazomob.domain import schema
+    from trazomob.domain.ambiente import (
+        set_ceiling_data,
+        set_floor_data,
+    )
 
     # Paredes (mock - grupo com mesh retangular)
     parede = Group(_box_mesh((0.0, 0.0, 0.0), (4.0, 0.15, 2.7)), name="Parede")

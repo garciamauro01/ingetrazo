@@ -8,12 +8,14 @@ import logging
 import math
 from typing import List, Optional, Tuple
 
-from PySide6.QtCore import QObject, QEvent, Qt, QPointF, QRectF
-from PySide6.QtGui import QDragEnterEvent, QDragMoveEvent, QDropEvent
-from PySide6.QtGui import QColor, QFont, QPainter, QPen, QVector3D, QMouseEvent
+from PySide6.QtCore import QEvent, QObject, QPointF, Qt
+from PySide6.QtGui import (
+    QMouseEvent,
+    QVector3D,
+)
 
 from core.group import Group
-from core.history import Command, MoveGroupCommand, CompoundCommand
+from core.history import Command, CompoundCommand
 
 from .magnetic_drag_snap import get_module_bounds, get_module_reference_bounds
 
@@ -124,9 +126,12 @@ class FastTranslateGroupCommand(Command):
 
         mesh = getattr(g, "mesh", None)
         if mesh is not None and getattr(mesh, "vertices", None):
-            from core.topology import _key
-            from core.group import _remap_uvws, carry_axes
             from PySide6.QtGui import QMatrix4x4
+
+            from core.group import carry_axes
+            from ..integrations import platform as host
+            _remap_uvws = host.remap_uvws
+            _key = host.topology_key
             dx, dy, dz = delta.x(), delta.y(), delta.z()
             for v in mesh.vertices:
                 p = v.position
@@ -206,7 +211,10 @@ class MagneticDragInputMixin:
                 wall_mgr = WallSelectionManager.get_instance(self.viewport)
                 pos_x, pos_y = event.position().x(), event.position().y()
                 # 0. Tenta primeiro verificar se clicou numa fonte de luz física (spot, cone, lâmpada ou fita LED)
-                from ..render.lighting import TrazoMobLightVisualizer, _get_document_lights
+                from ..render.lighting import (
+                    TrazoMobLightVisualizer,
+                    _get_document_lights,
+                )
                 light_pick = TrazoMobLightVisualizer.pick_light_or_target(self.viewport, pos_x, pos_y)
                 if light_pick is not None:
                     action, light_idx = light_pick
@@ -349,7 +357,11 @@ class MagneticDragInputMixin:
 
         # ── EVENTOS DE DRAG & DROP DA BARRA DE MÓDULOS (RIBBON) ──
         elif etype in (QEvent.DragEnter, QEvent.DragMove):
-            from .drag_drop_handler import TRAZOMOB_MIME_MODULE, TRAZOMOB_MIME_DECORATION, compute_drop_placement
+            from .drag_drop_handler import (
+                TRAZOMOB_MIME_DECORATION,
+                TRAZOMOB_MIME_MODULE,
+                compute_drop_placement,
+            )
             mime = event.mimeData() if hasattr(event, "mimeData") else None
             if mime and (mime.hasFormat(TRAZOMOB_MIME_MODULE) or mime.hasFormat(TRAZOMOB_MIME_DECORATION)):
                 event.acceptProposedAction()
@@ -378,7 +390,11 @@ class MagneticDragInputMixin:
             return False
 
         elif etype == QEvent.Drop:
-            from .drag_drop_handler import TRAZOMOB_MIME_MODULE, TRAZOMOB_MIME_DECORATION, compute_drop_placement
+            from .drag_drop_handler import (
+                TRAZOMOB_MIME_DECORATION,
+                TRAZOMOB_MIME_MODULE,
+                compute_drop_placement,
+            )
             mime = event.mimeData() if hasattr(event, "mimeData") else None
             if mime and (mime.hasFormat(TRAZOMOB_MIME_MODULE) or mime.hasFormat(TRAZOMOB_MIME_DECORATION)):
                 pos = event.position() if hasattr(event, "position") else event.pos()
@@ -398,9 +414,12 @@ class MagneticDragInputMixin:
                         if ribbon is not None and hasattr(ribbon, "insert_module_into_scene"):
                             ribbon.insert_module_into_scene(mod_data_placed, explicit_offset=offset, explicit_rot_z=rot_z, explicit_wall=wall)
                         else:
-                            from ..builders.cabinet import CabinetBuilder
-                            from ..domain.module_defaults import build_default_module_params
                             from core.history import SnapshotImport
+
+                            from ..builders.cabinet import CabinetBuilder
+                            from ..domain.module_defaults import (
+                                build_default_module_params,
+                            )
                             params = build_default_module_params(mod_data_placed)
                             params["rot_z"] = rot_z
                             new_mod = CabinetBuilder.build_module_group(params, offset=offset)
@@ -460,8 +479,9 @@ class MagneticDragInputMixin:
         else:
             self._affected_groups = [module]
 
-        ctx = self.viewport._build_ctx(event)
-        orig, dirc = self.viewport._pixel_to_ray(pos_x, pos_y)
+        from ..integrations import platform as host
+        ctx = host.viewport_build_ctx(self.viewport, event)
+        orig, dirc = host.viewport_pixel_to_ray(self.viewport, pos_x, pos_y)
 
         # Se o módulo for uma esquadria (porta/janela), usamos sempre os limites estáveis do marco/caixaria
         # (get_module_reference_bounds), pois a folha aberta gira para fora da parede e não deve
@@ -544,9 +564,8 @@ class MagneticDragInputMixin:
         if not self._drag_active:
             if dist_px >= self.DRAG_THRESHOLD_PX:
                 self._drag_active = True
-                self.viewport._box_active = False
-                self.viewport._box_start = None
-                self.viewport._box_cur = None
+                from ..integrations import platform as host
+                host.clear_viewport_box_selection(self.viewport)
 
                 for g in self._affected_groups:
                     if g not in self.viewport.scene.selection:
@@ -577,7 +596,8 @@ class MagneticDragInputMixin:
         if not self._target_module or self._start_world_pt is None:
             return False
 
-        orig, dirc = self.viewport._pixel_to_ray(pos.x(), pos.y())
+        from ..integrations import platform as host
+        orig, dirc = host.viewport_pixel_to_ray(self.viewport, pos.x(), pos.y())
         if orig is None or dirc is None:
             return True
 
@@ -628,6 +648,7 @@ class MagneticDragInputMixin:
         self._current_delta = snapped_delta
         if abs(getattr(self, "_auto_rot_deg", 0.0)) > 1e-3 and self._module_orig_bounds:
             from PySide6.QtGui import QMatrix4x4
+
             from core.history import rotation_matrix
             b = self._module_orig_bounds
             c_orig = QVector3D((b[0] + b[1]) * 0.5, (b[2] + b[3]) * 0.5, (b[4] + b[5]) * 0.5)

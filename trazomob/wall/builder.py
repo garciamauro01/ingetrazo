@@ -19,11 +19,9 @@ from core.group import Group
 from core.history import Command
 from core.layers import Layer
 from core.mesh import Mesh
-from core.triangulate import triangulate
 from tools.base import Tool, ToolContext
 
-
-from ..wall.mesh_builder import line_intersection_2d, WallMeshBuilder
+from ..wall.mesh_builder import WallMeshBuilder
 
 
 class AddWallGroupCommand(Command):
@@ -1016,7 +1014,6 @@ class WallBuilderTool(Tool):
 
         # Guarda metadados paramétricos no container para permitir edição dinâmica
         pts_serialized = [[p.x(), p.y(), p.z()] for p in pts]
-        from ..domain.entity import set_trazomob
         wall_dict = {
             "pontos": pts_serialized,
             "is_closed": bool(is_closed),

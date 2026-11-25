@@ -15,9 +15,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import List, Tuple
 
-from PySide6.QtGui import QVector3D, QMatrix4x4
 from core.group import Group
-from core.mesh import Mesh
 
 from . import esquadrias_native as _native
 from . import esquadrias_parametric as _parametric
@@ -27,7 +25,6 @@ from .esquadrias_common import (
     NOVAS_PORTAS_CINEMATICA,
     NOVAS_PORTAS_FOLHAS,
     PORTA_PROTO_CACHE,
-    resolve_igz_path,
 )
 
 

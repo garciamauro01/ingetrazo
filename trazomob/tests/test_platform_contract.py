@@ -220,28 +220,20 @@ def test_trazomob_has_no_runtime_hooks():
 # fora da camada anticorrupção.
 PRIVATE_ATTR_BASELINE = {
     "bootstrap.py": 1,
-    "builders/cabinet_transform.py": 4,
     "context_menu.py": 1,
     "interaction/align_tool_interactive.py": 4,
     "interaction/drag_drop_handler.py": 1,
     "interaction/free_zoom.py": 3,
-    "interaction/interact.py": 16,
     "interaction/magnetic_drag.py": 4,
-    "interaction/magnetic_drag_input.py": 6,
     "interaction/material_picker_tool.py": 4,
     "ui/material_editor_dialog.py": 5,
-    "wall/selection.py": 6,
 }
 
 PRIVATE_IMPORT_BASELINE = {
-    "builders/cabinet_transform.py": 3,
     "interaction/align_tools.py": 1,
-    "interaction/interact.py": 1,
-    "interaction/magnetic_drag_input.py": 2,
     "render/lighting.py": 1,
     "ui/sidebar_apply_controller.py": 1,
     "wall/mesh_builder.py": 1,
-    "wall/selection.py": 3,
 }
 
 _ATTR_RE = re.compile(r"\b(main_window|window|app|viewport)\s*\._[A-Za-z]")

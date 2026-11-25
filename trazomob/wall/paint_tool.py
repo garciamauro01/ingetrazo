@@ -2,16 +2,24 @@
 """Ferramenta e Diálogo de Tintas & Cores de Parede do TrazoMob."""
 from __future__ import annotations
 
-from typing import Optional, Dict, Any, List
-from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QColor, QPixmap, QPainter, QBrush, QPen, QCursor
+from typing import Any, List
+
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QTabWidget, QWidget, QGridLayout, QScrollArea, QColorDialog,
-    QFrame, QMessageBox
+    QColorDialog,
+    QDialog,
+    QFrame,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QScrollArea,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
 )
 
-from core.mesh import Face
 from core.group import Group
 from core.history import Command
 from tools.base import Tool, ToolContext

@@ -1,6 +1,5 @@
-import pytest
-from trazomob.builders.corner_cabinets import CantoEspecialBuilder
 from trazomob.builders.cabinet import CabinetBuilder
+from trazomob.builders.corner_cabinets import CantoEspecialBuilder
 from trazomob.builders.registry import get_module_builder
 
 

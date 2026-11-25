@@ -5,11 +5,10 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import (
     QComboBox,
-    QHBoxLayout,
     QLabel,
     QPushButton,
-    QVBoxLayout,
 )
+
 from ..domain.i18n import tr
 
 
@@ -157,8 +156,11 @@ class SidebarMateriaisMixin:
 
     def _on_open_materials_manager(self) -> None:
         """Abre a janela de cadastro e gerenciamento de materiais."""
+        from ..domain.materials_catalog import (
+            get_all_materials,
+            get_available_mdf_materials,
+        )
         from .materials_dialog import MaterialsManagerDialog
-        from ..domain.materials_catalog import get_all_materials, get_available_mdf_materials
         dlg = MaterialsManagerDialog(parent=self)
         if dlg.exec():
             # Atualiza dinamicamente as opções em todos os comboboxes da aba de materiais

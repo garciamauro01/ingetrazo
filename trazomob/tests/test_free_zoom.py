@@ -1,10 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
 """Testes de validação para o Zoom Livre / Atravessar Sólidos (FreeZoomManager)."""
-import pytest
-from PySide6.QtCore import QPoint, QPointF, Qt, QObject
-from PySide6.QtGui import QWheelEvent, QVector3D
-from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QObject, QPoint, QPointF, Qt
+from PySide6.QtGui import QVector3D, QWheelEvent
 
 from trazomob.interaction.free_zoom import FreeZoomManager
 from trazomob.interaction.magnetic_drag import MagneticModuleDragFilter

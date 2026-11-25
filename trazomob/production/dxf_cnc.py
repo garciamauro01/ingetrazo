@@ -8,7 +8,6 @@ organizando furações, contornos e rasgos em layers dedicados padronizados.
 """
 from __future__ import annotations
 
-import math
 from pathlib import Path
 from typing import Any
 

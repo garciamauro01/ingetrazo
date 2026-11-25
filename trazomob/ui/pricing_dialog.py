@@ -4,15 +4,30 @@
 from __future__ import annotations
 
 import copy
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
+
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox,
-    QTabWidget, QWidget, QTableWidget, QTableWidgetItem, QHeaderView,
-    QDoubleSpinBox, QSpinBox, QLineEdit, QFormLayout, QGroupBox,
-    QMessageBox, QRadioButton,
+    QComboBox,
+    QDialog,
     QDialogButtonBox,
+    QDoubleSpinBox,
+    QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QRadioButton,
+    QSpinBox,
+    QTableWidget,
+    QTableWidgetItem,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
 )
 
 from ..domain.preferences import TrazoMobPreferencesManager, _hash_pin

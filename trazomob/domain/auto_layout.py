@@ -240,8 +240,8 @@ def place_group_on_wall(
     z_base: float,
 ) -> None:
     """Move ``group`` para encostar na parede e começar em ``start_u``."""
-    from ..interaction.magnetic_drag import get_bounds_min_projection, get_module_bounds
     from ..domain.module_geometry import get_module_carcass_bounds
+    from ..interaction.magnetic_drag import get_bounds_min_projection, get_module_bounds
 
     b = get_module_carcass_bounds(group) or get_module_bounds(group)
     if b is None:

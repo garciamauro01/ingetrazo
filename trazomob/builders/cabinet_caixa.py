@@ -7,9 +7,8 @@ from typing import Any
 
 from core.group import Group
 
-from ..builders.mesh_utils import create_board_group
 from ..builders.chapa_builder import build_chapa
-from ..builders.chapa_spec import ChapaSpec, PapelChapa, ModuloMaterialContext
+from ..builders.chapa_spec import ChapaSpec, ModuloMaterialContext, PapelChapa
 from ..domain.materials_catalog import get_material_color
 
 
@@ -688,7 +687,6 @@ class CaixaMixin:
         """Objeto canônico universal: Porta Basculante (abertura superior com pistão a gás, puxador na base inferior)."""
         ops = list(operacoes) if operacoes is not None else []
         if gerar_furacao and not ops:
-            from ..production.machining import MachiningOp
             larg_porta_mm = size[0] * 1000.0
             alt_porta_mm = size[2] * 1000.0
             # Canecos no topo da porta basculante (100mm das pontas laterais, 21.5mm da borda superior)
@@ -949,8 +947,8 @@ class CaixaMixin:
 
         if gerar_furacao:
             from ..production.machining import (
-                make_cabinet_joint_holes,
                 make_back_panel_groove,
+                make_cabinet_joint_holes,
                 make_horizontal_board_edge_holes,
             )
             usar_mini = ("minifix" in str(dispositivo_fixacao).lower())

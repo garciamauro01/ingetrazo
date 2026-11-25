@@ -6,7 +6,6 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,

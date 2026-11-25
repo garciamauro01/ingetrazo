@@ -24,16 +24,22 @@ import os
 import zlib
 from typing import Any, List
 
-from PySide6.QtCore import Qt, QRectF
-from PySide6.QtGui import QPainter, QPixmap, QColor, QFont, QPen, QBrush
+from PySide6.QtCore import QRectF, Qt
+from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
-    QDialog, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QScrollArea, QFileDialog, QMessageBox,
+    QDialog,
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
 )
 
 from .barcode import code128_bar_widths
 from .qr import encode as qr_encode
-
 
 #: Campos de dimensão normalizados no código estável (evita que ``700`` e
 #: ``700.0`` gerem códigos diferentes para a mesma peça).

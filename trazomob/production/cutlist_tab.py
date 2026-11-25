@@ -1,27 +1,39 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 from __future__ import annotations
+
 import math
-import os
-from typing import Any
+
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QCheckBox, QSpinBox,
-    QTableWidget, QTableWidgetItem, QHeaderView, QFileDialog, QMessageBox, QMenu, QApplication,
-    QGroupBox, QComboBox
+    QApplication,
+    QCheckBox,
+    QComboBox,
+    QFileDialog,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QSpinBox,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
-from core.group import Group, iter_placements
 
+from ..domain.ambiente import iter_ambientes
+from ..production.cut_plan_viewer import CutPlanViewerDialog
 from ..production.export import (
     export_trazomob_csv,
     export_trazomob_hellomob,
     export_trazomob_json,
     format_trazomob_text,
 )
-from ..production.cut_plan_viewer import CutPlanViewerDialog
-from ..ui.icons import make_cut_plan_icon
 from ..production.parts import extract_parts, group_similar_parts
-from ..domain.ambiente import iter_ambientes, iter_pavimentos
+from ..ui.icons import make_cut_plan_icon
+
 
 class CutListTabMixin:
     def _build_cutlist_tab(self, parent_widget):
@@ -637,7 +649,7 @@ class CutListTabMixin:
             return
 
         # Pergunta se quer incluir orçamento
-        from PySide6.QtWidgets import QCheckBox, QDialogButtonBox
+        from PySide6.QtWidgets import QCheckBox
         dlg = QMessageBox(self)
         dlg.setWindowTitle("Opções do Relatório")
         dlg.setText("Deseja incluir a seção de orçamento/preços no relatório?")

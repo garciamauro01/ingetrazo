@@ -15,12 +15,15 @@ recebidas aqui por parâmetro.
 from __future__ import annotations
 
 import logging
+import weakref
 
-from PySide6.QtCore import QSize, Qt, QTimer
+_LIGHT_DLGS: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
+_RENDER_DLGS: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
+
+from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QToolBar
 
-from .builders.cabinet import RotateTrazoMobModuleCommand
 from .domain.i18n import tr
 from .integrations import platform as host
 from .production.cut_plan_viewer import CutPlanViewerDialog
@@ -414,7 +417,10 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
             if vp is None or not hasattr(vp, "scene"):
                 return
             from .domain.assembly import is_module
-            from .interaction.align_tools import resolve_rotatable_groups, rotate_groups_with_command
+            from .interaction.align_tools import (
+                resolve_rotatable_groups,
+                rotate_groups_with_command,
+            )
 
             sel = list(getattr(vp.scene, "selection", []) or [])
             targets = resolve_rotatable_groups(vp.scene, sel)
@@ -516,8 +522,8 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
         tb.addAction(act_plan)
 
         # ── BOTÃO DROPDOWN DE ESTILOS DE VISUALIZAÇÃO (SUPLANTA A BARRA POLUÍDA) ──
-        from PySide6.QtWidgets import QToolButton, QMenu, QWidgetAction
         from PySide6.QtGui import QActionGroup
+        from PySide6.QtWidgets import QMenu, QToolButton
 
         btn_styles = QToolButton(tb)
         btn_styles.setIcon(make_style_palette_icon())
@@ -529,7 +535,7 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
         menu_styles = QMenu(btn_styles)
 
         # 1. Modos de Estilo de Faces
-        from core.style import BUILTIN_STYLES, style_by_name
+        from core.style import BUILTIN_STYLES
         group_styles = QActionGroup(menu_styles)
 
         lbl_section1 = menu_styles.addAction(tr("── Modos de Face ──"))
@@ -671,7 +677,8 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
         def _open_light_manager():
             from .render.lighting import LightManagerDialog
             dlg = LightManagerDialog(_vp(), parent=main_window)
-            main_window._trazomob_light_dlg = dlg  # non-modal: viewport must get clicks
+            if main_window is not None:
+                _LIGHT_DLGS[main_window] = dlg  # non-modal: viewport must get clicks
             dlg.show()
         act_light.triggered.connect(_open_light_manager)
         tb.addAction(act_light)
@@ -683,14 +690,14 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
         def _open_render_dialog():
             from .render.dialog import TrazoMobRenderDialog
             cur_vp = _vp()
-            dlg = getattr(main_window, "_trazomob_render_dlg", None) if main_window is not None else None
+            dlg = _RENDER_DLGS.get(main_window) if main_window is not None else None
             if dlg is None or not dlg.isVisible() or getattr(dlg, "viewport", None) is not cur_vp:
                 if dlg is not None and dlg.isVisible():
                     dlg.close()
                 dlg = TrazoMobRenderDialog(cur_vp, parent=main_window)
                 dlg.setModal(False)
                 if main_window is not None:
-                    main_window._trazomob_render_dlg = dlg
+                    _RENDER_DLGS[main_window] = dlg
                 dlg.show()
             else:
                 dlg.raise_()

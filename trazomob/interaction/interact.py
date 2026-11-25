@@ -6,26 +6,14 @@
 
 from __future__ import annotations
 
-
-
 import math
-
 from typing import Any
 
-
-
 from PySide6.QtCore import Qt
-
 from PySide6.QtGui import QMatrix4x4, QVector3D
 
-
-
 from core.group import Group
-
 from tools.base import Tool, ToolContext
-
-
-
 
 
 class CabinetInteract:
@@ -273,7 +261,8 @@ class CabinetInteract:
 
 
 
-        from core.group import _remap_uvws
+        from ..integrations import platform as host
+        _remap_uvws = host.remap_uvws
 
 
 
@@ -988,30 +977,8 @@ class CabinetInteract:
 
         if viewport is not None:
 
-            if hasattr(viewport, "_group_chunks"):
-
-                viewport._group_chunks.clear()
-
-            if hasattr(viewport, "_inst_chunks"):
-
-                viewport._inst_chunks.clear()
-
-            if hasattr(viewport, "_placement_proxies"):
-
-                viewport._placement_proxies.clear()
-
-            viewport._placements_memo = None
-
-            viewport._pick_block = None
-
-            viewport._pick_memo = None
-
-            viewport._face_any_memo = None
-
-            if hasattr(viewport, "_dirty"):
-
-                viewport._dirty = True
-
+            from ..integrations import platform as host
+            host.invalidate_viewport_caches(viewport)
             if hasattr(viewport, "notify_scene_changed"):
 
                 viewport.notify_scene_changed()
@@ -1094,30 +1061,8 @@ class CabinetInteract:
 
         if viewport is not None:
 
-            if hasattr(viewport, "_group_chunks"):
-
-                viewport._group_chunks.clear()
-
-            if hasattr(viewport, "_inst_chunks"):
-
-                viewport._inst_chunks.clear()
-
-            if hasattr(viewport, "_placement_proxies"):
-
-                viewport._placement_proxies.clear()
-
-            viewport._placements_memo = None
-
-            viewport._pick_block = None
-
-            viewport._pick_memo = None
-
-            viewport._face_any_memo = None
-
-            if hasattr(viewport, "_dirty"):
-
-                viewport._dirty = True
-
+            from ..integrations import platform as host
+            host.invalidate_viewport_caches(viewport)
             if hasattr(viewport, "notify_scene_changed"):
 
                 viewport.notify_scene_changed()

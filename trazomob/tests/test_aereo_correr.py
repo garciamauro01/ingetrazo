@@ -1,8 +1,9 @@
 import pytest
+
 from core.scene import Scene
 from trazomob.builders.cabinet import CabinetBuilder
 from trazomob.production.parts import extract_parts
-from trazomob.domain.schema import module_params
+
 
 @pytest.mark.parametrize("n_vaos", [2, 3, 4])
 def test_aereo_portas_correr_vaos(n_vaos):

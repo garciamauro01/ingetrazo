@@ -45,8 +45,8 @@ def test_prateleiras_avulsas_build_module_group():
 
 
 def test_gaveta_avulsa_canonica():
-    from trazomob.builders.parts import CustomPartsBuilder
     from trazomob.builders.drawers import CanonicalDrawerBuilder
+    from trazomob.builders.parts import CustomPartsBuilder
 
     # 1. Teste via CanonicalDrawerBuilder direto
     pecas = CanonicalDrawerBuilder.build_gaveta_completa(

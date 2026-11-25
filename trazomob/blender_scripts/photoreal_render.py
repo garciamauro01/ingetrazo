@@ -15,8 +15,9 @@ import math
 import os
 import re
 import sys
-import bpy
+
 import bmesh
+import bpy
 from mathutils import Matrix, Vector
 
 

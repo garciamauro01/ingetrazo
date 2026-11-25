@@ -18,27 +18,23 @@ from __future__ import annotations
 import json
 import logging
 import math
-from pathlib import Path
 from typing import Any, Optional
 
-from PySide6.QtCore import QPoint, QSize, Qt, QTimer, Signal, QMimeData
-from PySide6.QtGui import (QDrag, QIcon, QKeySequence, QMouseEvent, QPixmap,
-                           QVector3D)
+from PySide6.QtCore import QMimeData, QPoint, QSize, Qt, QTimer
+from PySide6.QtGui import QDrag, QIcon, QMouseEvent, QPixmap, QVector3D
 from PySide6.QtWidgets import (
     QApplication,
-    QButtonGroup,
     QDialog,
     QFrame,
     QHBoxLayout,
     QLabel,
     QListView,
-    QMenu,
     QListWidget,
     QListWidgetItem,
+    QMenu,
     QMessageBox,
     QPushButton,
     QScrollArea,
-    QSizePolicy,
     QTabWidget,
     QToolBar,
     QToolButton,
@@ -46,14 +42,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from core.group import Group, iter_placements
 from core.history import SnapshotImport
-from ..integrations import platform as host
+
 from ..builders.cabinet import CabinetBuilder
 from ..domain.catalog import MODULE_CATALOG, USER_MODULE_CATEGORY, modulos_usuario
 from ..domain.i18n import tr
+from ..integrations import platform as host
 from ..ui.icons import get_module_thumbnail
-
 
 logger = logging.getLogger("trazomob.module_ribbon")
 
@@ -64,13 +59,11 @@ LIBRARY_CELL = QSize(LIBRARY_ICON + 28, LIBRARY_ICON + 38)
 
 # Re-exporta utilitários geométricos canônicos movidos para module_geometry.py
 from ..domain.module_geometry import (
-    get_module_carcass_bounds,
-    get_module_back_normal,
-    preserve_module_back_alignment,
-    get_reference_module,
-    get_module_category,
-    is_compatible_category,
     build_default_module_params,
+    get_module_carcass_bounds,
+    get_module_category,
+    get_reference_module,
+    is_compatible_category,
 )
 
 
@@ -1148,7 +1141,10 @@ class TrazoMobModuleRibbonBar(QToolBar):
             # Constrói temporariamente em (0, 0, 0) para calcular bounds reais pós-rotação
             new_module_group = CabinetBuilder.build_module_group(params, offset=(0.0, 0.0, 0.0))
 
-            from ..interaction.magnetic_drag import get_module_bounds, get_bounds_min_projection
+            from ..interaction.magnetic_drag import (
+                get_bounds_min_projection,
+                get_module_bounds,
+            )
             b = get_module_carcass_bounds(new_module_group) or get_module_bounds(new_module_group)
             if b is not None:
                 p_wall = active_slot["center_pt"]
@@ -1273,7 +1269,10 @@ class TrazoMobModuleRibbonBar(QToolBar):
 
                 new_module_group = CabinetBuilder.build_module_group(params, offset=offset)
 
-                from ..interaction.magnetic_drag import get_module_bounds, get_bounds_min_projection
+                from ..interaction.magnetic_drag import (
+                    get_bounds_min_projection,
+                    get_module_bounds,
+                )
                 b = get_module_carcass_bounds(new_module_group) or get_module_bounds(new_module_group)
                 if b is not None:
                     cur_min_n = get_bounds_min_projection(b, n_dir)

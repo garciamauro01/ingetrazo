@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-import pytest
-from trazomob.builders.frentes import FrentesKitBuilder
 from trazomob.builders.chapa_spec import ModuloMaterialContext
+from trazomob.builders.frentes import FrentesKitBuilder
 
 
 def test_kit_portas_giro_dimensoes_e_folgas():

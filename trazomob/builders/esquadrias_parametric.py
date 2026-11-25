@@ -6,7 +6,8 @@ from __future__ import annotations
 import math
 from typing import List, Tuple
 
-from PySide6.QtGui import QVector3D, QMatrix4x4
+from PySide6.QtGui import QMatrix4x4, QVector3D
+
 from core.group import Group
 from core.mesh import Mesh
 

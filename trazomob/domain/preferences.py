@@ -13,13 +13,11 @@ import hashlib
 import hmac
 import json
 import logging
-import os
 import secrets
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 from core.paths import user_log_dir
-
 
 PREFERENCES_FILENAME = "trazomob_preferences.json"
 

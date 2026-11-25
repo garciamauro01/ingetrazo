@@ -288,6 +288,7 @@ def test_placeholder_frame_is_selectable_in_front_of_a_wall(library_root, tmp_pa
     """Clicar no interior da caixa translúcida seleciona o vínculo, não a parede atrás."""
     import math
     import os
+
     from PySide6.QtWidgets import QApplication
 
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")

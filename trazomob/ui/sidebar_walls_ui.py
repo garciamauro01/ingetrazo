@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QSpinBox,
     QVBoxLayout,
 )
+
 from ..domain.i18n import tr
 
 
@@ -419,6 +420,7 @@ class SidebarWallsUIMixin:
             if not (w and vp and hasattr(vp, "history")):
                 return
             from core.history import HideCommand
+
             from ..wall.builder import SplitWallGroupCommand, WallBuilderTool
 
             params = getattr(w, "ext", {}).get("trazomob_wall") if isinstance(getattr(w, "ext", None), dict) else {}

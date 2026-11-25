@@ -4,20 +4,12 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import math
 from typing import Any, Optional, Tuple
 
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QVector3D
-
-from core.group import Group
-from core.history import SnapshotImport
-
-from ..builders.cabinet import CabinetBuilder
-from ..domain.module_geometry import build_default_module_params, get_module_category
-from .magnetic_drag_snap import draw_snap_dimension_segment, get_bounds_min_projection, get_module_bounds
 
 logger = logging.getLogger("trazomob.drag_drop")
 

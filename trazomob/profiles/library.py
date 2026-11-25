@@ -310,7 +310,15 @@ def _det(a, b, c) -> float:
 def render_profile_pixmap(perfil: dict[str, Any], width: int = 115, height: int = 80, cotas: bool = True):
     """Desenha a seção do perfil (com a chapa de MDF tracejada e cotas)."""
     from PySide6.QtCore import QPointF, QRectF, Qt
-    from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPainterPath, QPen, QPixmap
+    from PySide6.QtGui import (
+        QBrush,
+        QColor,
+        QFont,
+        QPainter,
+        QPainterPath,
+        QPen,
+        QPixmap,
+    )
 
     pm = QPixmap(width, height)
     pm.fill(QColor("#F1F5F9"))

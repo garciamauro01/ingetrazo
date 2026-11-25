@@ -1,8 +1,10 @@
 import pytest
 from PySide6.QtWidgets import QApplication
-from trazomob.production.labels import render_label_pixmap, ProductionLabelsDialog
+
+from trazomob.production.labels import render_label_pixmap
 from trazomob.production.report import generate_project_html_report
 from trazomob.wall.elevation_dialog import WallElevationDialog
+
 
 @pytest.fixture(scope="session")
 def qapp():

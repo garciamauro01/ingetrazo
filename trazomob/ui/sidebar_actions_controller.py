@@ -3,8 +3,6 @@
 """Acoes de edicao e manutencao de modulos na barra lateral."""
 from __future__ import annotations
 
-from core.group import Group
-
 from ..builders.cabinet import RotateTrazoMobModuleCommand
 from ..domain.i18n import tr
 from ..domain.param_mapper import extract_ui_module_params
@@ -218,7 +216,10 @@ class SidebarActionsMixin:
             self.load_module(mod)
             return
 
-        from ..interaction.align_tools import resolve_rotatable_groups, rotate_groups_with_command
+        from ..interaction.align_tools import (
+            resolve_rotatable_groups,
+            rotate_groups_with_command,
+        )
 
         targets = resolve_rotatable_groups(self._get_scene())
         if targets:

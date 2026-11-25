@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import math
 from typing import Any
+
 from PySide6.QtGui import QVector3D
-from ..domain.i18n import tr
 from PySide6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
@@ -15,7 +15,10 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSpinBox,
 )
+
 from core.group import Group
+
+from ..domain.i18n import tr
 
 
 def peitoril_do_catalogo(item: dict) -> float:

@@ -50,6 +50,7 @@ def test_tampao_engrossado_pedra_bloco_unico_e_material(qapp):
 
 def test_tampao_pedra_sem_snap_magnetico(qapp):
     from PySide6.QtCore import QObject
+
     from core.scene import Scene
     from trazomob.interaction.magnetic_drag import MagneticModuleDragFilter
     from trazomob.wall.builder import WallBuilderTool

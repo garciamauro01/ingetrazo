@@ -75,6 +75,7 @@ def test_extract_e_mapeamento_multiplos_materiais(qapp):
 
 def test_material_editor_preserves_deferred_mesh_and_updates_without_reloading(qapp, tmp_path, monkeypatch):
     from PySide6.QtGui import QMatrix4x4
+
     from core import _native
     from core.mesh import DeferredMesh
     from core.scene import Scene
@@ -156,7 +157,10 @@ def test_tapete_carpete_felpudo_e_sem_pelos_pbr_e_blender(qapp, monkeypatch):
     from types import SimpleNamespace
 
     from core.scene import Scene
-    from trazomob.ui.material_editor_dialog import MATERIAL_PBR_TYPES, MaterialEditorDialog
+    from trazomob.ui.material_editor_dialog import (
+        MATERIAL_PBR_TYPES,
+        MaterialEditorDialog,
+    )
 
     assert "tapete" in MATERIAL_PBR_TYPES
     subtypes = MATERIAL_PBR_TYPES["tapete"]["subtypes"]
@@ -368,6 +372,7 @@ def test_render_dialog_shows_wait_cursor_immediately_and_restores(qapp, tmp_path
     """Ao iniciar o render, o diálogo mostra WaitCursor imediatamente e restaura ao concluir ou cancelar."""
     from PySide6.QtCore import Qt
     from PySide6.QtWidgets import QApplication
+
     from core import _native
     from core.camera import OrbitCamera
     from core.mesh import DeferredMesh

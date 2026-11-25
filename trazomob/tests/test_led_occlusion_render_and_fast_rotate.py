@@ -19,7 +19,10 @@ from core.group import Group
 from core.mesh import Mesh
 from core.scene import Scene
 from trazomob.builders.cabinet import RotateTrazoMobModuleCommand
-from trazomob.interaction.align_tools import get_entity_world_bounds, resolve_rotatable_groups
+from trazomob.interaction.align_tools import (
+    get_entity_world_bounds,
+    resolve_rotatable_groups,
+)
 from trazomob.render.lighting import (
     TrazoMobLightVisualizer,
     _compute_led_strip_direction,
@@ -251,6 +254,7 @@ def test_led_strip_direction_and_flush_mesh_profile():
 def test_scene_light_collection_and_native_write_job_expansion(tmp_path, monkeypatch):
     """Engine coleta luzes direto da scene e write_job expande fita LED para render nativo."""
     import json
+
     from core import render_blender as rb
     from core.camera import OrbitCamera
 
@@ -413,6 +417,7 @@ def test_led_strip_resizes_when_physical_mesh_group_is_scaled_or_stretched():
 def test_eevee_room_confinement_blocks_sky_and_sun_unless_opening_or_glass(monkeypatch):
     """EEVEE deve conter luz externa em ambiente fechado (como no Cycles) e permitir atravessar vidros."""
     import importlib.util
+
     import pytest
 
     class _FakeVec:

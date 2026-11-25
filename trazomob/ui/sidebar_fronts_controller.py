@@ -6,12 +6,10 @@ from __future__ import annotations
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
-    QHBoxLayout,
     QLabel,
-    QPushButton,
     QSpinBox,
-    QVBoxLayout,
 )
+
 from ..domain.i18n import tr
 from ..domain.ui_contract import (
     DEFAULT_PROF_RASGO_MM,

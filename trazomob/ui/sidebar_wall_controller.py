@@ -4,10 +4,13 @@
 from __future__ import annotations
 
 from typing import Any, Optional
+
 from PySide6.QtGui import QVector3D
+
 from core.group import Group
+
 from ..domain.i18n import tr
-from ..wall.builder import WallBuilderTool, ReplaceWallGroupCommand
+from ..wall.builder import ReplaceWallGroupCommand, WallBuilderTool
 
 
 class SidebarWallMixin:

@@ -10,7 +10,6 @@ from PySide6.QtWidgets import (
     QLabel,
     QPushButton,
     QSpinBox,
-    QVBoxLayout,
 )
 
 from ..domain.catalog import MODULE_CATALOG

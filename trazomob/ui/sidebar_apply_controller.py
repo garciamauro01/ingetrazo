@@ -332,12 +332,12 @@ class SidebarApplyMixin:
             offset = (0.0, 0.0, 0.0)
         offset = tuple(float(v) for v in offset)
 
-        from ..interaction.magnetic_drag import get_module_bounds
         from ..domain.module_geometry import (
             get_module_carcass_bounds,
             preserve_module_back_alignment,
             shift_module_geometry,
         )
+        from ..interaction.magnetic_drag import get_module_bounds
         is_esq_mod = bool(
             (getattr(mod, "ext", None) and isinstance(mod.ext, dict) and ("trazomob_esquadria" in mod.ext or mod.ext.get("trazomob", {}).get("kind") == "esquadria"))
             or getattr(mod, "layer", "") == "ESQUADRIAS"

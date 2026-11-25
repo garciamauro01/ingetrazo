@@ -2,11 +2,12 @@
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
 """Testes de inserção de módulos em slots de réguas guia com e sem rodapé."""
 import pytest
-from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QVector3D
+from PySide6.QtWidgets import QApplication
+
 from trazomob.builders.cabinet import CabinetBuilder
 from trazomob.ui.module_ribbon import TrazoMobModuleRibbonBar, get_module_carcass_bounds
-from trazomob.wall.selection import WallSelectionManager, WallFaceInfo
+from trazomob.wall.selection import WallFaceInfo, WallSelectionManager
 
 
 class MockScene:

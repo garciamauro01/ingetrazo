@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
 
 from ..domain.i18n import tr
 from ..profiles import library as perfis_lib
-from ..profiles.editor import fill_profile_combo, PerfilLibraryDialog
+from ..profiles.editor import PerfilLibraryDialog, fill_profile_combo
 from ..ui.icons import make_perfil_diagram_pixmap
 
 

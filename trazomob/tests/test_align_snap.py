@@ -6,9 +6,10 @@ from __future__ import annotations
 import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QVector3D
+
 from core.group import Group
 from core.mesh import Mesh, Vertex
-from trazomob.interaction.align_tool_interactive import AlignSnapTool, NotablePoint
+from trazomob.interaction.align_tool_interactive import AlignSnapTool
 
 
 def _create_mock_box(name: str, x0: float, x1: float, y0: float, y1: float, z0: float, z1: float) -> Group:

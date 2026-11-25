@@ -8,6 +8,7 @@ o Dialog (inserção/edição modal) e o Sidebar (painel lateral de edição ao 
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
+
 from ..profiles import library as perfis_lib
 
 

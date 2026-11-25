@@ -7,12 +7,12 @@ import math
 from pathlib import Path
 from typing import Tuple
 
-from PySide6.QtGui import QVector3D, QMatrix4x4
+from PySide6.QtGui import QMatrix4x4, QVector3D
+
 from core.group import Group
 from core.mesh import Mesh
 
 from .esquadrias_common import (
-    ESQUADRIA_FILES,
     NOVAS_PORTAS_CINEMATICA,
     NOVAS_PORTAS_FOLHAS,
     PORTA_PROTO_CACHE,
@@ -28,8 +28,9 @@ def get_porta_prototype(igz_path):
         return cached
 
     from collections import defaultdict
-    from core.scene import Scene
+
     from core.group import transformed_mesh
+    from core.scene import Scene
     from formats import igz
 
     temp_scene = Scene()
@@ -665,7 +666,7 @@ def get_porta_prototype(igz_path):
 
             loaded_groups = [g_marco, g_fixa_esq, g_ce, p0, p1, g_cd, p2, p3, g_fixa_dir]
 
-    sub_pieces: List[Group] = []
+    sub_pieces: list[Group] = []
     def flatten_pieces(g: Group) -> None:
         if g.mesh and len(g.mesh.faces) > 0:
             sub_pieces.append(g)
@@ -779,7 +780,7 @@ def load_porta_original_usuario(igz_path: Path, item_id: str, largura_mm: float,
 
     odd_reflection = (flip_x != flip_y)
 
-    sub_pieces: List[Group] = []
+    sub_pieces: list[Group] = []
     ident = QMatrix4x4()
     d_quart = delta_w * 0.25
 

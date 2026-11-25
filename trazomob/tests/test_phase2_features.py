@@ -1,11 +1,11 @@
 import pytest
 from PySide6.QtWidgets import QApplication
-from PySide6.QtGui import QVector3D
-from core.group import Group
+
 from core.history import History
 from core.scene import Scene
-from trazomob.ui.sidebar_panel import TrazoMobSidebarPanel
 from trazomob.builders.cabinet import CabinetBuilder
+from trazomob.ui.sidebar_panel import TrazoMobSidebarPanel
+
 
 @pytest.fixture(scope="session")
 def qapp():

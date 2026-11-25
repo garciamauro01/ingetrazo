@@ -5,8 +5,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from core.group import iter_placements
-
 
 def _get_entity_bbox(entity, xform=None):
     positions = []
@@ -106,7 +104,11 @@ def extract_parts(scene, selected_only: bool = False, ambiente: Any = None) -> l
     from core.group import iter_placements
 
     from ..domain.assembly import is_module
-    from ..domain.schema import KIND_AMBIENTE, KIND_ESQUADRIA, KIND_MODULE, is_kind, kind_of
+    from ..domain.schema import (
+        KIND_ESQUADRIA,
+        KIND_MODULE,
+        kind_of,
+    )
 
     # Se ambiente foi passado, mapeia toda a árvore de nós que pertencem a ele
     ambiente_nodes: set[int] = set()
