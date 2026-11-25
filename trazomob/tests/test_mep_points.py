@@ -40,3 +40,16 @@ def test_check_mep_interferences_detects_blocked_and_ignores_clear_points():
     assert len(alerts) == 1
     assert alerts[0]["point_id"] == 1
     assert alerts[0]["module_name"] == "Torre Quente 700x2100x600"
+
+
+def test_wall_graph_add_and_remove_mep_point():
+    from trazomob.wall.plan_2d import WallGraph2D
+
+    g = WallGraph2D()
+    s1 = g.add_segment(0.0, 0.0, 3.0, 0.0)
+
+    pid = g.add_mep_point(s1, "tomada_110v", offset_m=1.2)
+    assert pid in g.mep_points
+    assert g.mep_points[pid].height_m == 0.30
+    assert g.remove_mep_point(pid) is True
+    assert pid not in g.mep_points

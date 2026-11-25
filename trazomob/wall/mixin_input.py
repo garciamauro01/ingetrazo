@@ -190,6 +190,20 @@ class InputHandlingMixin:
                     self.update()
                     return
 
+            if self.mode == "mep":
+                seg_id = self.graph.find_segment_at(wx, wy, threshold=0.35)
+                if seg_id is not None:
+                    seg = self.graph.segments[seg_id]
+                    na = self.graph.nodes[seg.node_a_id]
+                    nb = self.graph.nodes[seg.node_b_id]
+                    proj, _ = self.graph._project_point_on_segment((wx, wy), (na.x, na.y), (nb.x, nb.y))
+                    offset_m = math.hypot(proj[0] - na.x, proj[1] - na.y)
+                    kind = getattr(self, "mep_kind", "tomada_110v")
+                    self._save_history()
+                    self.graph.add_mep_point(seg_id, kind, offset_m)
+                    self.update()
+                return
+
             # Ferramenta de pontos: clique na parede divide; clique no ponto une.
             if self.mode == "pontos":
                 hit_node = self.graph.find_node_at(wx, wy, threshold=0.25)

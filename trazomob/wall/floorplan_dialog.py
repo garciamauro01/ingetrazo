@@ -319,19 +319,36 @@ class WallFloorplanDialog(QDialog):
         )
         self.btn_tool_ponto.clicked.connect(lambda: self._set_mode("pontos"))
 
+        self.btn_tool_mep = QPushButton("⚡", side_panel)
+        self.btn_tool_mep.setProperty("class", "tool-btn")
+        self.btn_tool_mep.setCheckable(True)
+        self.btn_tool_mep.setToolTip("Inserir Ponto Elétrico ou Hidráulico (clique na parede)")
+        self.btn_tool_mep.clicked.connect(lambda: self._set_mode("mep"))
+
         self.btn_group = QButtonGroup(self)
         self.btn_group.addButton(self.btn_tool_line)
         self.btn_group.addButton(self.btn_tool_rect)
         self.btn_group.addButton(self.btn_tool_select)
         self.btn_group.addButton(self.btn_tool_cota)
         self.btn_group.addButton(self.btn_tool_ponto)
+        self.btn_group.addButton(self.btn_tool_mep)
 
         tool_box.addWidget(self.btn_tool_line)
         tool_box.addWidget(self.btn_tool_rect)
         tool_box.addWidget(self.btn_tool_select)
         tool_box.addWidget(self.btn_tool_cota)
         tool_box.addWidget(self.btn_tool_ponto)
+        tool_box.addWidget(self.btn_tool_mep)
         side_layout.addLayout(tool_box)
+
+        from ..domain.mep_points import MEP_KINDS
+        self.cb_mep_kind = QComboBox(side_panel)
+        for k, meta in MEP_KINDS.items():
+            self.cb_mep_kind.addItem(meta["label"], k)
+        self.cb_mep_kind.currentIndexChanged.connect(
+            lambda: setattr(self.canvas, "mep_kind", self.cb_mep_kind.currentData() or "tomada_110v")
+        )
+        side_layout.addWidget(self.cb_mep_kind)
 
         # Unidade do documento
         u_name = model_unit()
@@ -620,6 +637,7 @@ class WallFloorplanDialog(QDialog):
             ("btn_tool_select", "selecionar"),
             ("btn_tool_cota", "cota"),
             ("btn_tool_ponto", "pontos"),
+            ("btn_tool_mep", "mep"),
         )
         for attr, btn_mode in tool_buttons:
             btn = getattr(self, attr, None)

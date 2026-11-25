@@ -157,18 +157,45 @@ class WallGraph2D(Plan2DDimensionsMixin, Plan2DGeometryMixin):
         self.segments: dict[int, WallSegment2D] = {}
         self.dimensions: dict[int, CustomDimension2D] = {}
         self.room_names: dict[str, str] = {}
+        self.mep_points: dict[int, Any] = {}
         self._next_node_id: int = 1
         self._next_seg_id: int = 1
         self._next_dim_id: int = 1
+        self._next_mep_id: int = 1
 
     def clear(self) -> None:
         self.nodes.clear()
         self.segments.clear()
         self.dimensions.clear()
         self.room_names.clear()
+        self.mep_points.clear()
         self._next_node_id = 1
         self._next_seg_id = 1
         self._next_dim_id = 1
+        self._next_mep_id = 1
+
+    def add_mep_point(
+        self,
+        seg_id: int,
+        kind: str,
+        offset_m: float,
+        height_m: float | None = None,
+        side: str = "left",
+        label: str = "",
+    ) -> int:
+        from ..domain.mep_points import MEP_KINDS, MEPPoint
+
+        pid = self._next_mep_id
+        self._next_mep_id += 1
+        h = float(height_m) if height_m is not None else float(MEP_KINDS.get(kind, {}).get("default_h", 0.30))
+        self.mep_points[pid] = MEPPoint(
+            id=pid, seg_id=int(seg_id), kind=str(kind),
+            offset_m=float(offset_m), height_m=h, side=str(side), label=str(label),
+        )
+        return pid
+
+    def remove_mep_point(self, point_id: int) -> bool:
+        return self.mep_points.pop(point_id, None) is not None
 
     def canonical_room_key(self, cycle_pts: list[Point2D]) -> str:
         """Gera uma chave topológica robusta baseada nos IDs das paredes que delimitam o cômodo.
