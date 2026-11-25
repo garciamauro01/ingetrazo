@@ -1291,6 +1291,10 @@ class SidebarModuleLoaderMixin:
             mod.xform = m_tr * xf
 
         if vp is not None:
+            if getattr(vp, "scene", None) is not None and hasattr(host, "dirty_group_chunks"):
+                host.dirty_group_chunks(vp.scene)
             if hasattr(host, "invalidate_viewport_caches"):
                 host.invalidate_viewport_caches(vp)
+            if hasattr(vp, "notify_scene_changed"):
+                vp.notify_scene_changed()
             vp.update()
