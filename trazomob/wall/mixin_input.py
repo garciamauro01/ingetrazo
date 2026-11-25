@@ -199,8 +199,9 @@ class InputHandlingMixin:
                     proj, _ = self.graph._project_point_on_segment((wx, wy), (na.x, na.y), (nb.x, nb.y))
                     offset_m = math.hypot(proj[0] - na.x, proj[1] - na.y)
                     kind = getattr(self, "mep_kind", "tomada_110v")
+                    height_m = getattr(self, "mep_height_m", None)
                     self._save_history()
-                    self.graph.add_mep_point(seg_id, kind, offset_m)
+                    self.graph.add_mep_point(seg_id, kind, offset_m, height_m=height_m)
                     self.update()
                 return
 

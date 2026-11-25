@@ -342,13 +342,32 @@ class WallFloorplanDialog(QDialog):
         side_layout.addLayout(tool_box)
 
         from ..domain.mep_points import MEP_KINDS
+        mep_row = QHBoxLayout()
         self.cb_mep_kind = QComboBox(side_panel)
         for k, meta in MEP_KINDS.items():
             self.cb_mep_kind.addItem(meta["label"], k)
-        self.cb_mep_kind.currentIndexChanged.connect(
-            lambda: setattr(self.canvas, "mep_kind", self.cb_mep_kind.currentData() or "tomada_110v")
+        self.sp_mep_height = QDoubleSpinBox(side_panel)
+        self.sp_mep_height.setRange(0.0, 3.50)
+        self.sp_mep_height.setSingleStep(0.05)
+        self.sp_mep_height.setDecimals(2)
+        self.sp_mep_height.setSuffix(" m")
+        self.sp_mep_height.setToolTip("Altura do ponto MEP em relação ao piso (m)")
+        self.sp_mep_height.setValue(float(MEP_KINDS["tomada_110v"]["default_h"]))
+
+        def _on_mep_kind_changed():
+            k = self.cb_mep_kind.currentData() or "tomada_110v"
+            self.canvas.mep_kind = k
+            self.sp_mep_height.setValue(float(MEP_KINDS.get(k, {}).get("default_h", 0.30)))
+
+        self.cb_mep_kind.currentIndexChanged.connect(_on_mep_kind_changed)
+        self.sp_mep_height.valueChanged.connect(
+            lambda v: setattr(self.canvas, "mep_height_m", float(v))
         )
-        side_layout.addWidget(self.cb_mep_kind)
+        self.canvas.mep_kind = "tomada_110v"
+        self.canvas.mep_height_m = float(self.sp_mep_height.value())
+        mep_row.addWidget(self.cb_mep_kind, 2)
+        mep_row.addWidget(self.sp_mep_height, 1)
+        side_layout.addLayout(mep_row)
 
         # Unidade do documento
         u_name = model_unit()
