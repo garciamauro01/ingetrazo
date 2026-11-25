@@ -163,7 +163,7 @@ class SidebarInteractBatchMixin:
         curr_params = extract_ui_module_params(self)
         _IDS_COZINHA_INFERIORES = {
             "balcao", "gaveteiro", "balcao_misto", "balcao_pia",
-            "balcao_canto", "balcao_canto_l", "porta_tempero", "balcao_forno"
+            "balcao_canto", "balcao_canto_l", "balcao_canto_chanfrado", "balcao_canto_gaveteiro_l", "porta_tempero", "balcao_forno"
         }
 
         def _filter(mod, params):

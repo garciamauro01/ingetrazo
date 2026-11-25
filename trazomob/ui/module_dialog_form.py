@@ -112,7 +112,7 @@ class ModuleDialogFormMixin:
             # Restaura configurações de travessas (se relevante)
             _IDS_COZINHA_INFERIORES = {
                 "balcao", "gaveteiro", "balcao_misto", "balcao_pia",
-                "balcao_canto", "balcao_canto_l", "balcao_canto_chanfrado", "porta_tempero", "balcao_forno"
+                "balcao_canto", "balcao_canto_l", "balcao_canto_chanfrado", "balcao_canto_gaveteiro_l", "porta_tempero", "balcao_forno"
             }
             if hasattr(self, "sp_larg_travessa_frontal") and tipo in _IDS_COZINHA_INFERIORES:
                 em_pe = bool(params.get("travessa_frontal_em_pe", (tipo == "balcao_pia")))
