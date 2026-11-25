@@ -22,6 +22,41 @@ logger = logging.getLogger("trazomob.context_menu")
 
 def build_context_menu(menu, selection, app, sidebar_panel, tool_cls) -> None:
     """Adiciona ao ``menu`` as ações do TrazoMob para a ``selection`` atual."""
+    mep_grp = next(
+        (item for item in selection if isinstance(getattr(item, "ext", None), dict) and "trazomob_mep_point" in item.ext),
+        None,
+    )
+    if mep_grp is not None:
+        mep_data = mep_grp.ext["trazomob_mep_point"]
+        cur_h = float(mep_data.get("height_m", 0.30))
+        act_mep = menu.addAction(f"⚡ Editar Altura MEP ({cur_h:.2f} m)…")
+
+        def _edit_mep_height():
+            from PySide6.QtGui import QMatrix4x4
+            from PySide6.QtWidgets import QInputDialog
+
+            new_h, ok = QInputDialog.getDouble(
+                app.main_window if hasattr(app, "main_window") else None,
+                "Editar Altura do Ponto MEP",
+                "Nova altura do piso (m):",
+                cur_h, 0.0, 3.50, 2,
+            )
+            if not ok or abs(new_h - cur_h) < 1e-5:
+                return
+            dz = float(new_h - cur_h)
+            mep_data["height_m"] = float(new_h)
+            xf = getattr(mep_grp, "xform", None)
+            if xf is None:
+                xf = QMatrix4x4()
+            m_tr = QMatrix4x4()
+            m_tr.translate(0.0, 0.0, dz)
+            mep_grp.xform = m_tr * xf
+            vp = getattr(app, "viewport", None)
+            if vp is not None:
+                vp.update()
+
+        act_mep.triggered.connect(_edit_mep_height)
+
     wall = None
     for item in selection:
         if hasattr(item, "ext") and isinstance(item.ext, dict) and "trazomob_wall" in item.ext:
