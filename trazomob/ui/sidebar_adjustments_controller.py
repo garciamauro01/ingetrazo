@@ -88,6 +88,21 @@ class SidebarAjustesMixin:
         self.lbl_gaveta_tem_frente = QLabel("Frente Externa:")
         self.sec_ajustes.form_layout.addRow(self.lbl_gaveta_tem_frente, self.chk_gaveta_tem_frente)
 
+        self.cb_prof_gaveta = QComboBox()
+        self.cb_prof_gaveta.addItems([
+            "Automático (Luz do Vão)",
+            "250 mm",
+            "300 mm",
+            "350 mm",
+            "400 mm",
+            "450 mm",
+            "500 mm",
+            "550 mm",
+            "600 mm",
+        ])
+        self.lbl_prof_gaveta = QLabel("Prof. Gaveta / Corrediça:")
+        self.sec_ajustes.form_layout.addRow(self.lbl_prof_gaveta, self.cb_prof_gaveta)
+
         self.cb_tipo_fundo_gaveta = QComboBox()
         self.cb_tipo_fundo_gaveta.addItems([
             "Canal / Rasgo Lateral",
@@ -137,9 +152,17 @@ class SidebarAjustesMixin:
         self.lbl_esp_fundo_gaveta = QLabel("Esp. Fundo Gav.:")
         self.sec_ajustes.form_layout.addRow(self.lbl_esp_fundo_gaveta, self.cb_esp_fundo_gaveta)
 
+        self.lbl_gaveta_util_info = QLabel("")
+        self.lbl_gaveta_util_info.setStyleSheet(
+            "QLabel { background: #F0FDF4; border: 1px solid #86EFAC; border-radius: 4px; padding: 6px 8px; font-size: 11px; color: #166534; font-weight: bold; }"
+        )
+        self.lbl_gaveta_util_info.setWordWrap(True)
+        self.sec_ajustes.form_layout.addRow(self.lbl_gaveta_util_info)
+
         self._gaveta_sidebar_widgets = [
             self.lbl_gaveta_section,
             self.lbl_gaveta_tem_frente, self.chk_gaveta_tem_frente,
+            self.lbl_prof_gaveta, self.cb_prof_gaveta,
             self.lbl_tipo_fundo_gaveta, self.cb_tipo_fundo_gaveta,
             self.lbl_folga_corredica, self.sp_folga_corredica,
             self.lbl_material_gaveta, self.cb_material_gaveta,
@@ -147,7 +170,104 @@ class SidebarAjustesMixin:
             self.lbl_material_fita_gaveta, self.cb_material_fita_gaveta,
             self.lbl_material_fundo_gaveta, self.cb_material_fundo_gaveta,
             self.lbl_esp_fundo_gaveta, self.cb_esp_fundo_gaveta,
+            self.lbl_gaveta_util_info,
         ]
+
+        def _update_gaveta_util_preview():
+            """Calcula reativamente e exibe as medidas úteis reais (L x P x A) da caixa de gaveta."""
+            if not hasattr(self, "lbl_gaveta_util_info"):
+                return
+            try:
+                from trazomob.builders.drawers import CanonicalDrawerBuilder
+                # Largura do móvel / vão interno
+                L = float(self.sp_largura.value()) if hasattr(self, "sp_largura") else 500.0
+                P = float(self.sp_prof.value()) if hasattr(self, "sp_prof") else 550.0
+                A = float(self.sp_altura.value()) if hasattr(self, "sp_altura") else 720.0
+                n_gav = max(1, int(self.sp_qtd_elem.value())) if hasattr(self, "sp_qtd_elem") else 4
+                esp_cx = 15.0
+                if hasattr(self, "cb_espessura"):
+                    txt_e = self.cb_espessura.currentText()
+                    if txt_e and txt_e[0].isdigit():
+                        esp_cx = float(txt_e.split()[0])
+
+                # Folga corrediça e espessura gaveta
+                folga_corr = float(self.sp_folga_corredica.value()) if hasattr(self, "sp_folga_corredica") else 26.0
+                esp_gav = 15.0
+                if hasattr(self, "cb_espessura_gaveta"):
+                    txt_eg = self.cb_espessura_gaveta.currentText()
+                    if txt_eg and txt_eg[0].isdigit():
+                        esp_gav = float(txt_eg.split()[0])
+
+                esp_fg = 6.0
+                if hasattr(self, "cb_esp_fundo_gaveta"):
+                    txt_efg = self.cb_esp_fundo_gaveta.currentText()
+                    if txt_efg and txt_efg[0].isdigit():
+                        esp_fg = float(txt_efg.split()[0])
+
+                tipo_fg = "rasgo"
+                if hasattr(self, "cb_tipo_fundo_gaveta"):
+                    idx_fg = self.cb_tipo_fundo_gaveta.currentIndex()
+                    tipo_fg = "sem_fundo" if idx_fg == 2 else ("por_baixo" if idx_fg == 1 else "rasgo")
+
+                # Profundidade configurada
+                pg_param = None
+                if hasattr(self, "cb_prof_gaveta"):
+                    txt_pg = self.cb_prof_gaveta.currentText()
+                    if not txt_pg.startswith("Auto"):
+                        try:
+                            pg_param = float(txt_pg.split()[0])
+                        except Exception:
+                            pass
+
+                # Largura interna do vão
+                larg_interna = max(80.0, L - (2.0 * esp_cx))
+                larg_caixa = max(60.0, larg_interna - folga_corr)
+
+                # Profundidade disponível e caixa
+                prof_disp_m = max(0.15, (P - 65.0) / 1000.0)
+                prof_caixa_m, tam_corr = CanonicalDrawerBuilder.resolve_profundidade_gaveta(
+                    prof_disponivel_m=prof_disp_m,
+                    prof_gaveta_param_mm=pg_param,
+                )
+                prof_caixa = prof_caixa_m * 1000.0
+
+                # Altura da gaveta
+                alt_disp_gav = max(100.0, A - 100.0)
+                alt_frente = (alt_disp_gav - ((n_gav + 1) * 3.0)) / n_gav
+                alt_caixa = max(50.0, alt_frente - 40.0)
+
+                uteis = CanonicalDrawerBuilder.calcular_dimensoes_uteis(
+                    larg_caixa_mm=larg_caixa,
+                    prof_caixa_mm=prof_caixa,
+                    alt_caixa_mm=alt_caixa,
+                    esp_gaveta_mm=esp_gav,
+                    esp_fundo_gaveta_mm=esp_fg,
+                    tipo_fundo_gaveta=tipo_fg,
+                )
+
+                txt_info = (
+                    f"📦 <b>Vão Útil da Gaveta (L × P × A):</b><br>"
+                    f"<b>{int(round(uteis['larg_util_mm']))}</b> × "
+                    f"<b>{int(round(uteis['prof_util_mm']))}</b> × "
+                    f"<b>{int(round(uteis['alt_util_mm']))} mm</b> "
+                    f"<span style='color: #475569;'>(Corrediça: {tam_corr} mm)</span>"
+                )
+                self.lbl_gaveta_util_info.setText(txt_info)
+            except Exception:
+                pass
+
+        self._update_gaveta_util_preview = _update_gaveta_util_preview
+
+        if hasattr(self, "cb_prof_gaveta"):
+            self.cb_prof_gaveta.currentIndexChanged.connect(_update_gaveta_util_preview)
+        if hasattr(self, "sp_folga_corredica"):
+            self.sp_folga_corredica.valueChanged.connect(_update_gaveta_util_preview)
+        if hasattr(self, "cb_tipo_fundo_gaveta"):
+            self.cb_tipo_fundo_gaveta.currentIndexChanged.connect(_update_gaveta_util_preview)
+        if hasattr(self, "cb_espessura_gaveta"):
+            self.cb_espessura_gaveta.currentIndexChanged.connect(_update_gaveta_util_preview)
+        if hasattr(self, "cb_esp_fundo_gaveta"):
+            self.cb_esp_fundo_gaveta.currentIndexChanged.connect(_update_gaveta_util_preview)
 
         # ── Configurações de Marmoraria / Bancadas de Pedra ────────────────────
         self.lbl_pedra_section = QLabel("<b>🪨 Marmoraria & Bancada:</b>")

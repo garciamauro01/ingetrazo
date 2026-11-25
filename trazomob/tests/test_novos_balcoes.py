@@ -150,3 +150,34 @@ def test_space_corner_travessa_frontal_em_pe_recuo_topo():
     # A diferença no topo das frentes deve ser exatamente 50 mm (0.050 m)
     assert abs((z_deitada - z_em_pe) - 0.050) < 1e-4
 
+
+def test_gaveta_config_profundidade_e_dimensoes_uteis():
+    from trazomob.builders.drawers import CanonicalDrawerBuilder
+
+    # 1. Resolução automática pelo vão livre
+    p_caixa, tam_corr = CanonicalDrawerBuilder.resolve_profundidade_gaveta(prof_disponivel_m=0.485)
+    assert tam_corr == 450
+    assert abs(p_caixa - 0.45) < 1e-4
+
+    # 2. Resolução com profundidade configurada pelo marceneiro (ex: 400 mm)
+    p_manual, tam_manual = CanonicalDrawerBuilder.resolve_profundidade_gaveta(
+        prof_disponivel_m=0.550,
+        prof_gaveta_param_mm=400.0,
+    )
+    assert tam_manual == 400
+    assert abs(p_manual - 0.40) < 1e-4
+
+    # 3. Cálculo de dimensões úteis internas (luz livre real)
+    uteis = CanonicalDrawerBuilder.calcular_dimensoes_uteis(
+        larg_caixa_mm=450.0,
+        prof_caixa_mm=400.0,
+        alt_caixa_mm=150.0,
+        esp_gaveta_mm=15.0,
+        esp_fundo_gaveta_mm=6.0,
+        tipo_fundo_gaveta="rasgo",
+    )
+    assert uteis["larg_util_mm"] == 420.0
+    assert uteis["prof_util_mm"] == 370.0
+    assert uteis["alt_util_mm"] == 134.0
+
+

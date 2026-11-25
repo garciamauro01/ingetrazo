@@ -84,6 +84,7 @@ class ModuleGroupMixin:
             "material_fita_gaveta": params.get("material_fita_gaveta"),
             "material_fundo_gaveta": params.get("material_fundo_gaveta"),
             "esp_fundo_gaveta_mm": float(params.get("esp_fundo_gaveta_mm", 6.0)),
+            "prof_gaveta_mm": params.get("prof_gaveta_mm"),
         }
 
         travessas_kwargs = {

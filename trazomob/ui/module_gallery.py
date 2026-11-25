@@ -337,6 +337,8 @@ class DialogGalleryMixin:
             for w in self._gaveta_widgets:
                 w.setVisible(has_gav)
             if has_gav:
+                if hasattr(self, "cb_prof_gaveta"):
+                    self.cb_prof_gaveta.setCurrentIndex(0)
                 self.cb_tipo_fundo_gaveta.setCurrentIndex(0)
                 self.sp_folga_corredica.setValue(26)
                 self.cb_material_gaveta.setCurrentIndex(0)

@@ -228,6 +228,16 @@ class SidebarApplyMixin:
         # Parâmetros de Caixa de Gaveta
         has_gav = ("num_gavetas" in new_params) or (tipo in ("gaveteiro", "balcao_misto", "torre_quente", "gabinete_banheiro", "peca_gaveta_avulsa", "gaveta_avulsa")) or (tipo == "balcao_forno" and new_params.get("tem_gaveta", True))
         if has_gav and hasattr(self, "cb_tipo_fundo_gaveta"):
+            if hasattr(self, "cb_prof_gaveta"):
+                txt_pg = self.cb_prof_gaveta.currentText()
+                if txt_pg.startswith("Auto"):
+                    new_params["prof_gaveta_mm"] = None
+                else:
+                    try:
+                        new_params["prof_gaveta_mm"] = float(txt_pg.split()[0])
+                    except Exception:
+                        new_params["prof_gaveta_mm"] = None
+
             if hasattr(self, "chk_gaveta_tem_frente") and tipo in ("peca_gaveta_avulsa", "gaveta_avulsa", "peca_gaveta"):
                 new_params["tem_frente"] = bool(self.chk_gaveta_tem_frente.isChecked())
             idx_tfg = self.cb_tipo_fundo_gaveta.currentIndex()

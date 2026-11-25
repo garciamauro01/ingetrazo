@@ -202,6 +202,15 @@ class ModuleDialogFormMixin:
                 for w in self._gaveta_widgets:
                     w.setVisible(has_gav)
                 if has_gav:
+                    # Profundidade da gaveta
+                    if hasattr(self, "cb_prof_gaveta"):
+                        pg_val = params.get("prof_gaveta_mm")
+                        if pg_val:
+                            idx_pg = self.cb_prof_gaveta.findText(f"{int(round(float(pg_val)))} mm")
+                            self.cb_prof_gaveta.setCurrentIndex(idx_pg if idx_pg >= 0 else 0)
+                        else:
+                            self.cb_prof_gaveta.setCurrentIndex(0)
+
                     # Tipo de fundo da gaveta
                     m_fg = str(params.get("tipo_fundo_gaveta", "rasgo")).lower()
                     if m_fg in ("sem_fundo", "sem", "none", "nenhum"):

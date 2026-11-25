@@ -812,7 +812,9 @@ class CantoEspecialBuilder:
         material_fita_gaveta: str | None = None,
         material_fundo_gaveta: str | None = None,
         esp_fundo_gaveta_mm: float = 6.0,
+        prof_gaveta_mm: float | None = None,
         mat_ctx: ModuloMaterialContext | None = None,
+        **kwargs: Any,
     ) -> list[Group]:
         """Gera caixa padrão de balcão inferior para forno com frente cega em MDF e gaveta opcional."""
         if mat_ctx is None:

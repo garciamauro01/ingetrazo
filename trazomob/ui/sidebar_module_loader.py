@@ -479,6 +479,15 @@ class SidebarModuleLoaderMixin:
                         if is_gav_avulsa:
                             self.chk_gaveta_tem_frente.setChecked(bool(params.get("tem_frente", True)))
 
+                    # Profundidade da gaveta
+                    if hasattr(self, "cb_prof_gaveta"):
+                        pg_val = params.get("prof_gaveta_mm")
+                        if pg_val:
+                            idx_pg = self.cb_prof_gaveta.findText(f"{int(round(float(pg_val)))} mm")
+                            self.cb_prof_gaveta.setCurrentIndex(idx_pg if idx_pg >= 0 else 0)
+                        else:
+                            self.cb_prof_gaveta.setCurrentIndex(0)
+
                     # Tipo de fundo da gaveta
                     m_fg = str(params.get("tipo_fundo_gaveta", "rasgo")).lower()
                     if m_fg in ("sem_fundo", "sem", "none", "nenhum"):
@@ -540,6 +549,9 @@ class SidebarModuleLoaderMixin:
                     efg = params.get("esp_fundo_gaveta_mm", 6.0)
                     idx_efg = self.cb_esp_fundo_gaveta.findText(f"{int(round(float(efg)))} mm")
                     self.cb_esp_fundo_gaveta.setCurrentIndex(idx_efg if idx_efg >= 0 else 0)
+
+                    if hasattr(self, "_update_gaveta_util_preview"):
+                        self._update_gaveta_util_preview()
 
             if hasattr(self, "chk_gerar_furacao"):
                 self.chk_gerar_furacao.setChecked(bool(params.get("gerar_furacao", True)))

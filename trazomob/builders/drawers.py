@@ -20,6 +20,75 @@ from trazomob.builders.chapa_builder import build_chapa
 class CanonicalDrawerBuilder:
     """Construtor canônico e reutilizável de gavetas."""
 
+    CORREDICAS_PADRAO_MM = (250, 300, 350, 400, 450, 500, 550, 600, 650, 700)
+
+    @classmethod
+    def resolve_profundidade_gaveta(
+        cls,
+        prof_disponivel_m: float,
+        prof_gaveta_param_mm: float | str | None = None,
+    ) -> tuple[float, int]:
+        """Resolve a profundidade externa da caixa de gaveta e o tamanho nominal da corrediça.
+
+        Retorna:
+            (prof_caixa_m, tamanho_corredica_mm)
+        """
+        # Se o usuário configurou uma profundidade específica > 0
+        if prof_gaveta_param_mm is not None:
+            try:
+                p_val = float(prof_gaveta_param_mm)
+                if p_val > 50.0:
+                    prof_m = p_val / 1000.0
+                    # Acha a corrediça comercial mais próxima ou menor
+                    tam_corr = int(min(cls.CORREDICAS_PADRAO_MM, key=lambda c: abs(c - p_val)))
+                    return max(0.15, prof_m), tam_corr
+            except (ValueError, TypeError):
+                pass
+
+        # Modo automático baseado no vão disponível do móvel:
+        prof_util_m = max(0.15, prof_disponivel_m)
+        prof_mm = prof_util_m * 1000.0
+        # Seleciona a maior corrediça comercial que cabe no vão útil
+        corredicas_compativeis = [c for c in cls.CORREDICAS_PADRAO_MM if c <= prof_mm + 5.0]
+        tam_corr = corredicas_compativeis[-1] if corredicas_compativeis else 250
+        return max(0.15, float(tam_corr) / 1000.0), tam_corr
+
+    @classmethod
+    def calcular_dimensoes_uteis(
+        cls,
+        larg_caixa_mm: float,
+        prof_caixa_mm: float,
+        alt_caixa_mm: float,
+        esp_gaveta_mm: float = 15.0,
+        esp_fundo_gaveta_mm: float = 6.0,
+        tipo_fundo_gaveta: str = "rasgo",
+    ) -> dict[str, float]:
+        """Calcula as dimensões úteis internas (luz livre real) de uma caixa de gaveta."""
+        E_g = float(esp_gaveta_mm) if esp_gaveta_mm > 0 else 15.0
+        E_fg = float(esp_fundo_gaveta_mm) if esp_fundo_gaveta_mm > 0 else 6.0
+
+        # Largura útil: largura da caixa descontando as 2 laterais
+        larg_util = max(0.0, larg_caixa_mm - (2.0 * E_g))
+
+        # Profundidade útil: profundidade da caixa descontando contra-frente dianteira e traseira
+        prof_util = max(0.0, prof_caixa_mm - (2.0 * E_g))
+
+        # Altura útil:
+        # Se for canal/rasgo, o fundo fica recuado cerca de 10mm da base inferior + espessura do fundo
+        if tipo_fundo_gaveta in ("por_baixo", "baixo", "sobreposto"):
+            alt_util = max(0.0, alt_caixa_mm - E_fg)
+        elif tipo_fundo_gaveta in ("sem_fundo", "sem", "none", "nenhum"):
+            alt_util = max(0.0, alt_caixa_mm)
+        else:
+            # rasgo padrão: 10mm de rebaixo inferior + espessura do fundo
+            alt_util = max(0.0, alt_caixa_mm - 10.0 - E_fg)
+
+        return {
+            "larg_util_mm": larg_util,
+            "prof_util_mm": prof_util,
+            "alt_util_mm": alt_util,
+        }
+
     @staticmethod
     def get_material_color(material: str | None) -> tuple[float, float, float]:
         """Resolve a cor representativa com base no nome do material."""
@@ -256,6 +325,7 @@ class CanonicalDrawerBuilder:
         esp_fundo_gaveta_mm: float = 6.0,
         folga_corredica_mm: float = 26.0,
         recuo_frontal_caixa_m: float = 0.010,
+        prof_gaveta_mm: float | None = None,
         puxador_tipo: str = "alca",
         puxador_cor: str = "preto",
         puxador_pos: str = "padrao",
@@ -278,7 +348,10 @@ class CanonicalDrawerBuilder:
         larg_corredica_m = max(0.010, float(folga_corredica_mm) / 1000.0)
         larg_caixa_gav = max(0.08, larg_vao - larg_corredica_m)
         alt_caixa_gav = max(0.06, alt_frente - 0.040)
-        prof_caixa_gav = max(0.15, prof_vao)
+        prof_caixa_gav, _ = cls.resolve_profundidade_gaveta(
+            prof_disponivel_m=prof_vao,
+            prof_gaveta_param_mm=prof_gaveta_mm,
+        )
 
         eff_x_frente = x_frente if x_frente is not None else (x_vao + folga_frente_m)
         cor_frente_res = cor_frente or cls.get_material_color(material_frente)

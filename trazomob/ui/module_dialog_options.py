@@ -161,6 +161,21 @@ class ModuleDialogOptionsMixin:
         self.lbl_tipo_fundo_gaveta = QLabel("Montagem Fundo Gav.:")
         form_layout.addRow(self.lbl_tipo_fundo_gaveta, self.cb_tipo_fundo_gaveta)
 
+        self.cb_prof_gaveta = QComboBox()
+        self.cb_prof_gaveta.addItems([
+            "Automático (Luz do Vão)",
+            "250 mm",
+            "300 mm",
+            "350 mm",
+            "400 mm",
+            "450 mm",
+            "500 mm",
+            "550 mm",
+            "600 mm",
+        ])
+        self.lbl_prof_gaveta = QLabel("Prof. Gaveta / Corrediça:")
+        form_layout.addRow(self.lbl_prof_gaveta, self.cb_prof_gaveta)
+
         self.sp_folga_corredica = QSpinBox()
         self.sp_folga_corredica.setRange(10, 50)
         self.sp_folga_corredica.setValue(26)
@@ -222,8 +237,16 @@ class ModuleDialogOptionsMixin:
         self.lbl_esp_fundo_gaveta = QLabel("Espessura Fundo Gav.:")
         form_layout.addRow(self.lbl_esp_fundo_gaveta, self.cb_esp_fundo_gaveta)
 
+        self.lbl_gaveta_util_info = QLabel("")
+        self.lbl_gaveta_util_info.setStyleSheet(
+            "QLabel { background: #F0FDF4; border: 1px solid #86EFAC; border-radius: 4px; padding: 6px 8px; font-size: 11px; color: #166534; font-weight: bold; }"
+        )
+        self.lbl_gaveta_util_info.setWordWrap(True)
+        form_layout.addRow(self.lbl_gaveta_util_info)
+
         self._gaveta_widgets = [
             self.lbl_gaveta_section,
+            self.lbl_prof_gaveta, self.cb_prof_gaveta,
             self.lbl_tipo_fundo_gaveta, self.cb_tipo_fundo_gaveta,
             self.lbl_folga_corredica, self.sp_folga_corredica,
             self.lbl_material_gaveta, self.cb_material_gaveta,
@@ -231,6 +254,7 @@ class ModuleDialogOptionsMixin:
             self.lbl_material_fita_gaveta, self.cb_material_fita_gaveta,
             self.lbl_material_fundo_gaveta, self.cb_material_fundo_gaveta,
             self.lbl_esp_fundo_gaveta, self.cb_esp_fundo_gaveta,
+            self.lbl_gaveta_util_info,
         ]
         for w in self._gaveta_widgets:
             w.setVisible(False)

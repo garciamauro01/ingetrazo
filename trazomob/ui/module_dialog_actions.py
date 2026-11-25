@@ -179,6 +179,16 @@ class ModuleDialogActionsMixin:
         # Grava parâmetros de Caixa de Gaveta
         has_gav = bool(mod_data.get("has_gavetas", False)) or (tipo in ("gaveteiro", "balcao_misto", "torre_quente", "gabinete_banheiro")) or (tipo == "balcao_forno" and params.get("tem_gaveta", True))
         if hasattr(self, "cb_tipo_fundo_gaveta") and has_gav:
+            if hasattr(self, "cb_prof_gaveta"):
+                txt_pg = self.cb_prof_gaveta.currentText()
+                if txt_pg.startswith("Auto"):
+                    params["prof_gaveta_mm"] = None
+                else:
+                    try:
+                        params["prof_gaveta_mm"] = float(txt_pg.split()[0])
+                    except Exception:
+                        params["prof_gaveta_mm"] = None
+
             idx_tfg = self.cb_tipo_fundo_gaveta.currentIndex()
             params["tipo_fundo_gaveta"] = "sem_fundo" if idx_tfg == 2 else ("por_baixo" if idx_tfg == 1 else "rasgo")
             params["folga_corredica_mm"] = float(self.sp_folga_corredica.value())
