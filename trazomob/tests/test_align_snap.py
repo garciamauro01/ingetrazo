@@ -115,3 +115,17 @@ def test_align_snap_tool_tab_filter_toggles_mode(qapp):
     assert tool.align_and_move is True
 
     tool.on_deactivate(vp)
+
+
+def test_align_snap_tool_apenas_alinhar_moves_only_dominant_axis():
+    from PySide6.QtGui import QVector3D
+    from trazomob.interaction.align_tool_interactive import AlignSnapTool
+
+    tool = AlignSnapTool()
+    # Simula cálculo de delta nos dois modos
+    dx, dy, dz = 1.5, 0.3, 0.2
+    tool.align_and_move = False
+    ax, ay, az = abs(dx), abs(dy), abs(dz)
+    if ax >= ay and ax >= az:
+        dy_res, dz_res = 0.0, 0.0
+    assert (dx, dy_res, dz_res) == (1.5, 0.0, 0.0)

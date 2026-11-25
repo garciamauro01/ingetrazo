@@ -351,6 +351,18 @@ class AlignSnapTool(Tool):
         elif self.axis_lock == "z":
             dx = 0.0
             dy = 0.0
+        elif not self.align_and_move:
+            # Modo Apenas Alinhar: alinha somente no eixo dominante do deslocamento
+            ax, ay, az = abs(dx), abs(dy), abs(dz)
+            if ax >= ay and ax >= az:
+                dy = 0.0
+                dz = 0.0
+            elif ay >= ax and ay >= az:
+                dx = 0.0
+                dz = 0.0
+            else:
+                dx = 0.0
+                dy = 0.0
 
         delta = QVector3D(dx, dy, dz)
 
