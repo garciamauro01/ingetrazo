@@ -1268,7 +1268,7 @@ class SidebarModuleLoaderMixin:
             vp = host.active_viewport()
 
         dx, dy = 0.0, 0.0
-        if abs(d_off) > 1e-5 and vp is not None and getattr(vp, "scene", None) is not None:
+        if (abs(d_off) > 1e-5 or abs(dz) > 1e-5) and vp is not None and getattr(vp, "scene", None) is not None:
             seg_id = mep_data.get("seg_id")
             for g in getattr(vp.scene, "groups", []) or []:
                 wp = (getattr(g, "ext", None) or {}).get("trazomob_wall")
