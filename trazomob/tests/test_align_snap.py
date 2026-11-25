@@ -93,3 +93,25 @@ def test_axis_locking_keys():
     # Pressiona A -> Libera todos (XYZ livre)
     tool.on_key(vp, int(Qt.Key_A), Qt.NoModifier)
     assert tool.axis_lock is None
+
+
+def test_align_snap_tool_tab_filter_toggles_mode(qapp):
+    from PySide6.QtCore import QEvent, Qt
+    from PySide6.QtGui import QKeyEvent
+    from PySide6.QtWidgets import QWidget
+    from trazomob.interaction.align_tool_interactive import AlignSnapTool
+
+    vp = QWidget()
+    tool = AlignSnapTool()
+    tool.on_activate(vp)
+    assert tool.align_and_move is True
+
+    ev = QKeyEvent(QEvent.KeyPress, Qt.Key_Tab, Qt.NoModifier)
+    qapp.sendEvent(vp, ev)
+    assert tool.align_and_move is False
+
+    ev2 = QKeyEvent(QEvent.KeyPress, Qt.Key_Tab, Qt.NoModifier)
+    qapp.sendEvent(vp, ev2)
+    assert tool.align_and_move is True
+
+    tool.on_deactivate(vp)

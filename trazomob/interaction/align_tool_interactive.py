@@ -84,6 +84,7 @@ class AlignSnapTool(Tool):
         from ..integrations import platform as host
         host.register_viewport_overlay(viewport, self._draw_align_overlay)
         self._overlay_installed = True
+        self._install_tab_filter(viewport)
 
         # Se houver objeto já selecionado, pode pré-definir como objeto de origem
         scene = getattr(viewport, "scene", None)
@@ -109,7 +110,34 @@ class AlignSnapTool(Tool):
         from ..integrations import platform as host
         host.unregister_viewport_overlay(viewport, self._draw_align_overlay)
         self._overlay_installed = False
+        self._remove_tab_filter(viewport)
         viewport.update()
+
+    def _install_tab_filter(self, viewport) -> None:
+        from PySide6.QtCore import QEvent, QObject
+        if not isinstance(viewport, QObject):
+            return
+        tool = self
+
+        class _TabFilter(QObject):
+            def eventFilter(self, obj, ev):
+                t = ev.type()
+                if t in (QEvent.ShortcutOverride, QEvent.KeyPress):
+                    if ev.key() in (int(Qt.Key_Tab), int(Qt.Key_Backtab)):
+                        ev.accept()
+                        if t == QEvent.KeyPress:
+                            tool.on_key(viewport, ev.key(), ev.modifiers())
+                        return True
+                return False
+
+        self._tab_filter = _TabFilter(viewport)
+        viewport.installEventFilter(self._tab_filter)
+
+    def _remove_tab_filter(self, viewport) -> None:
+        flt = getattr(self, "_tab_filter", None)
+        if flt is not None and hasattr(viewport, "removeEventFilter"):
+            viewport.removeEventFilter(flt)
+        self._tab_filter = None
 
     def claims_key(self, key: int, modifiers: Qt.KeyboardModifiers) -> bool:
         """Informa ao Viewport do IngeTrazo para não consumir TAB, X, Y, Z, A e repassar à ferramenta."""
