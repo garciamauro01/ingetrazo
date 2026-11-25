@@ -403,7 +403,8 @@ class Plan2DGeometryMixin:
                 wx = na.x + dx * t
                 wy = na.y + dy * t
                 wz = float(z_base) + float(pt.height_m)
-                mep_grp = build_mep_point_group(pt, world_pos=(wx, wy, wz))
+                wall_t = float(getattr(seg, "thickness", self.default_thickness) or self.default_thickness)
+                mep_grp = build_mep_point_group(pt, world_pos=(wx, wy, wz), size_m=(0.10, wall_t + 0.03, 0.12))
                 grp.children.append(mep_grp)
         return grp
 
