@@ -117,3 +117,42 @@ def test_draw_mep_selection_overlay_handles_tuple_world_to_pixel():
     assert len(drawn_lines) == 1
     assert len(drawn_texts) == 1
     assert "Alt: 300 mm" in drawn_texts[0][2]
+
+
+def test_sidebar_mep_editor_applies_new_height_and_distance(qapp):
+    from types import SimpleNamespace
+    from trazomob.domain.mep_points import MEPPoint, build_mep_point_group
+    from trazomob.ui.sidebar_panel import TrazoMobSidebarPanel
+    from trazomob.wall.plan_2d import WallGraph2D
+
+    g2d = WallGraph2D()
+    s1 = g2d.add_segment(0.0, 0.0, 4.0, 0.0)
+    wall_grp = SimpleNamespace(mesh=SimpleNamespace(_chunk_dirty=False), children=[], ext={"trazomob_wall": {"graph_2d": g2d.to_dict()}})
+
+    pt = MEPPoint(id=10, seg_id=s1, kind="tomada_110v", offset_m=1.0, height_m=0.30)
+    mep_grp = build_mep_point_group(pt, world_pos=(1.0, 0.0, 0.30))
+
+    updated = []
+    vp = SimpleNamespace(
+        scene=SimpleNamespace(groups=[wall_grp, mep_grp], selection=[mep_grp]),
+        update=lambda: updated.append(True),
+        notify_scene_changed=lambda: None,
+    )
+    panel = TrazoMobSidebarPanel(SimpleNamespace(viewport=vp))
+
+    panel.load_module(mep_grp)
+    assert not panel.card_mep.isHidden()
+    assert panel.sp_mep_alt.value() == 300.0
+    assert panel.sp_mep_dist.value() == 1000.0
+
+    panel.sp_mep_alt.setValue(1200.0)
+    panel.sp_mep_dist.setValue(1500.0)
+    panel.btn_apply_mep.click()
+
+    assert mep_grp.ext["trazomob_mep_point"]["height_m"] == 1.2
+    assert mep_grp.ext["trazomob_mep_point"]["offset_m"] == 1.5
+    assert len(updated) >= 1
+    avg_z = sum(v.position.z() for v in mep_grp.mesh.vertices) / len(mep_grp.mesh.vertices)
+    avg_x = sum(v.position.x() for v in mep_grp.mesh.vertices) / len(mep_grp.mesh.vertices)
+    assert abs(avg_z - 1.2) < 1e-4
+    assert abs(avg_x - 1.5) < 1e-4

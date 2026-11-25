@@ -1262,7 +1262,8 @@ class SidebarModuleLoaderMixin:
         mep_data["height_m"] = new_h
         mep_data["offset_m"] = new_off
 
-        vp = getattr(self, "viewport", None) or getattr(self, "vp", None)
+        get_vp = getattr(self, "_get_viewport", None)
+        vp = get_vp() if callable(get_vp) else (getattr(self, "viewport", None) or getattr(self, "vp", None))
         if vp is None and hasattr(host, "active_viewport"):
             vp = host.active_viewport()
 
