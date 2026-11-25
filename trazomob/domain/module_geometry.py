@@ -295,13 +295,13 @@ def build_default_module_params(mod_data: dict[str, Any]) -> dict[str, Any]:
             tipo, "profundidade",
             prefs.get_module_default(cat, "profundidade",
                                      mod_data.get("profundidade", 550.0))))
-        if tipo in ("balcao_canto_l", "balcao_canto_chanfrado"):
-            # O balcão de canto em L e o chanfrado são módulos de quina (1000 × 1000 mm):
-            # não herdam a profundidade padrão da categoria de balcões retos.
+        if tipo in ("balcao_canto_l", "balcao_canto_chanfrado", "balcao_canto_gaveteiro_l", "canto_gaveteiro_l"):
+            # O balcão de canto em L, chanfrado e space corner são módulos de quina:
+            # não herdam a profundidade padrão (550mm) da categoria de balcões retos.
             L_mm = float(prefs.get_module_default(
-                tipo, "largura", mod_data.get("largura", 1000.0)))
+                tipo, "largura", mod_data.get("largura", 1050.0 if "gaveteiro" in tipo else 1000.0)))
             P_mm = float(prefs.get_module_default(
-                tipo, "profundidade", mod_data.get("profundidade", 1000.0)))
+                tipo, "profundidade", mod_data.get("profundidade", 1050.0 if "gaveteiro" in tipo else 1000.0)))
         rodape_mm = float(prefs.get_module_default(
             tipo, "rodape",
             prefs.get_module_default(cat, "rodape",
