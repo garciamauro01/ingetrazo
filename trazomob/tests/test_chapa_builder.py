@@ -61,3 +61,13 @@ def test_build_chapa_frente_herda_material_e_fita_do_contexto():
     assert meta["material"] == "MDF Grafite"
     assert meta["material_fita"] == "Fita Grafite"
     assert meta["espessura_fita"] == 1.0
+
+
+def test_build_chapa_resolve_cor_automaticamente_do_catalogo():
+    from trazomob.domain.materials_catalog import get_material_color
+    spec = ChapaSpec.resolve("Prateleira Freijo", PapelChapa.PRATELEIRA, _ctx(), material_override="MDF Louro Freijo 15mm")
+    group = build_chapa(spec, (0.0, 0.0, 0.0), (0.8, 0.5, 0.015))
+
+    cor_esperada = get_material_color("MDF Louro Freijo 15mm")
+    assert group.mesh.faces[0].attrs["color"] == cor_esperada
+

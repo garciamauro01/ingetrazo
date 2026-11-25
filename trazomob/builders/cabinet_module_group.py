@@ -10,6 +10,8 @@ from PySide6.QtGui import QVector3D
 
 from core.group import Group
 from core.mesh import Mesh
+from .chapa_builder import build_chapa
+from .chapa_spec import ChapaSpec, ModuloMaterialContext, PapelChapa
 
 logger = logging.getLogger("trazomob.cabinet_module_group")
 
@@ -19,7 +21,7 @@ class ModuleGroupMixin:
 
     @classmethod
     def build_module_group(cls, params: dict[str, Any], offset: tuple[float, float, float] = (0.0, 0.0, 0.0)) -> Group:
-        tipo = params.get("tipo", "balcao")
+        tipo = params.get("tipo") or params.get("id", "balcao")
         L_mm = params["largura"]
         A_mm = params["altura"]
         P_mm = params["profundidade"]
@@ -211,16 +213,29 @@ class ModuleGroupMixin:
                             except (TypeError, ValueError):
                                 pass
                         ops_espelhadas.append(copia)
-                    p_rebuilt = create_board_group(
-                        p_name_dir,
+                    mat_porta = p_meta.get("material", material_frentes or material)
+                    mat_fita_porta = p_meta.get("material_fita", p_meta.get("fita_borda", None))
+                    ctx_porta = ModuloMaterialContext(material_frentes=mat_porta, material_fita_frentes=mat_fita_porta)
+                    spec_porta = ChapaSpec.resolve(
+                        nome=p_name_dir,
+                        papel=PapelChapa.PORTA,
+                        ctx=ctx_porta,
+                        material_override=mat_porta,
+                        fita_override=(
+                            p_meta.get("fita_c1", True),
+                            p_meta.get("fita_c2", True),
+                            p_meta.get("fita_l1", True),
+                            p_meta.get("fita_l2", True),
+                        ),
+                        material_fita_override=mat_fita_porta,
+                        operacoes=ops_espelhadas,
+                    )
+                    p_rebuilt = build_chapa(
+                        spec_porta,
                         (ox_p, max(ys) - sy_p, oz_p),
                         (sx_p, sy_p, sz_p),
-                        p_meta.get("material", material_frentes or material),
-                        fita_c1=p_meta.get("fita_c1", True),
-                        fita_c2=p_meta.get("fita_c2", True),
-                        fita_l1=p_meta.get("fita_l1", True),
-                        fita_l2=p_meta.get("fita_l2", True),
-                        color=cls.get_material_color(p_meta.get("material", material_frentes or material)),
+                        material_fita=spec_porta.material_fita,
+                        espessura_fita=spec_porta.espessura_fita,
                         puxador_tipo=puxador_tipo,
                         puxador_cor=puxador_cor,
                         puxador_pos=puxador_pos,

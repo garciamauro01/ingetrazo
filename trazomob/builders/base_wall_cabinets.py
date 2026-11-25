@@ -4,10 +4,17 @@ import math
 from typing import Any
 from core.group import Group
 from core.mesh import Mesh
-from ..builders.mesh_utils import create_board_group
+from ..builders.mesh_utils import (
+    create_board_group,
+    create_polygon_board_group,
+    create_prism_board_group,
+    create_cylinder_group,
+)
 from ..builders.chapa_builder import build_chapa
 from ..builders.chapa_spec import ChapaSpec, PapelChapa, ModuloMaterialContext
 from ..builders.fronts import FrentesKitBuilder
+from ..builders.parts import _chapa, _chapa_frente
+
 
 class BalcaoAereoBuilder:
     """Construtor especializado para balcões inferiores padrão, gaveteiros, balcões mistos, pias, aéreos e nichos."""
@@ -1241,9 +1248,9 @@ class BalcaoAereoBuilder:
             x_vao=x_gav_interno,
             y_vao=oy,
             z_vao=oz + R,
-            larg_vao=larg_gav_interna,
+            larg_vao=L_gav,
             prof_vao=prof_gaveta,
-            alt_vao=alt_disponivel_frentes,
+            alt_vao=alt_disponivel_gav,
             larg_frente=larg_frente,
             folga_frente_m=folga_f,
             esp_frente_m=E_frente,
@@ -2170,7 +2177,7 @@ class BalcaoAereoBuilder:
             z_vao=oz,
             larg_vao=larg_cg + larg_corredica,
             prof_vao=prof_gav,
-            alt_vao=altura_misto,
+            alt_vao=A,
             larg_frente=larg_frente,
             folga_frente_m=folga_f,
             esp_frente_m=E_frente,
@@ -2386,6 +2393,394 @@ class BalcaoAereoBuilder:
                     esp_fundo_gaveta_mm=esp_fundo_gaveta_mm,
                 )
                 groups.extend(gav_pieces)
+
+        return groups
+
+    @classmethod
+    def build_porta_panos(
+        cls,
+        largura_mm: float = 200.0,
+        altura_mm: float = 720.0,
+        prof_mm: float = 550.0,
+        esp_mm: float = 15.0,
+        rodape_mm: float = 100.0,
+        num_prateleiras: int = 4,
+        material: str = "MDF Branco 15mm",
+        cor: tuple[float, float, float] | None = None,
+        origin: tuple[float, float, float] = (0.0, 0.0, 0.0),
+        has_fundo: bool = True,
+        esp_fundo_mm: float = 6.0,
+        **kwargs: Any,
+    ) -> list[Group]:
+        """Constrói nicho estreito porta-panos / toalheiro / garrafeiro reto com prateleiras horizontais."""
+        ox, oy, oz = origin
+        L = largura_mm / 1000.0
+        H = altura_mm / 1000.0
+        P = prof_mm / 1000.0
+        E = esp_mm / 1000.0
+        R = rodape_mm / 1000.0
+        Ef = esp_fundo_mm / 1000.0
+
+        H_caixa = H - R
+        z_base = oz + R
+        z_topo = oz + H - E
+        groups: list[Group] = []
+
+        # Laterais retas
+        g_lat_esq = _chapa(
+            "Porta Panos - Lateral Esq",
+            (ox, oy, z_base),
+            (E, P, H_caixa),
+            material, fita_c1=True, fita_c2=True, fita_l1=True, fita_l2=True,
+            color=cor, papel=PapelChapa.LATERAL_ESQUERDA,
+        )
+        groups.append(g_lat_esq)
+
+        g_lat_dir = _chapa(
+            "Porta Panos - Lateral Dir",
+            (ox + L - E, oy, z_base),
+            (E, P, H_caixa),
+            material, fita_c1=True, fita_c2=True, fita_l1=True, fita_l2=True,
+            color=cor, papel=PapelChapa.LATERAL_DIREITA,
+        )
+        groups.append(g_lat_dir)
+
+        larg_vao = max(0.02, L - (2.0 * E))
+
+        # Base inferior
+        g_base = _chapa(
+            "Porta Panos - Base Inferior",
+            (ox + E, oy, z_base),
+            (larg_vao, P, E),
+            material, fita_c1=True, color=cor, papel=PapelChapa.BASE_INFERIOR,
+        )
+        groups.append(g_base)
+
+        # Topo
+        g_topo = _chapa(
+            "Porta Panos - Topo",
+            (ox + E, oy, z_topo),
+            (larg_vao, P, E),
+            material, fita_c1=True, color=cor, papel=PapelChapa.TAMPO_SUPERIOR,
+        )
+        groups.append(g_topo)
+
+        # Fundo traseiro
+        if has_fundo:
+            g_fundo = _chapa(
+                "Porta Panos - Fundo",
+                (ox + E, oy + P - Ef, z_base + E),
+                (larg_vao, Ef, H_caixa - (2.0 * E)),
+                material, color=cor, papel=PapelChapa.FUNDO,
+            )
+            groups.append(g_fundo)
+            prof_util = P - Ef - 0.01
+        else:
+            prof_util = P - 0.01
+
+        # Prateleiras horizontais
+        if num_prateleiras > 0:
+            espaco_util_z = (H_caixa - (2.0 * E))
+            passo_z = espaco_util_z / (num_prateleiras + 1)
+            for i in range(1, num_prateleiras + 1):
+                z_prat = z_base + E + (i * passo_z) - (E / 2.0)
+                g_prat = _chapa(
+                    f"Porta Panos - Prateleira {i}",
+                    (ox + E, oy, z_prat),
+                    (larg_vao, prof_util, E),
+                    material, fita_c1=True, color=cor, papel=PapelChapa.PRATELEIRA,
+                )
+                groups.append(g_prat)
+
+        # Rodapé
+        if R > 0.01:
+            g_rod = _chapa(
+                "Porta Panos - Rodapé Frontal",
+                (ox, oy + 0.05, oz),
+                (L, E, R),
+                material, color=cor, papel=PapelChapa.RODAPE,
+            )
+            groups.append(g_rod)
+
+        return groups
+
+    @classmethod
+    def build_adega_colmeia(
+        cls,
+        largura_mm: float = 200.0,
+        altura_mm: float = 720.0,
+        prof_mm: float = 550.0,
+        esp_mm: float = 15.0,
+        rodape_mm: float = 100.0,
+        num_garrafas: int = 5,
+        material: str = "MDF Branco 15mm",
+        cor: tuple[float, float, float] | None = None,
+        origin: tuple[float, float, float] = (0.0, 0.0, 0.0),
+        has_fundo: bool = True,
+        esp_fundo_mm: float = 6.0,
+        **kwargs: Any,
+    ) -> list[Group]:
+        """Constrói adega colmeia em X (losangos inclinados a 45 graus) para garrafas."""
+        ox, oy, oz = origin
+        L = largura_mm / 1000.0
+        H = altura_mm / 1000.0
+        P = prof_mm / 1000.0
+        E = esp_mm / 1000.0
+        R = rodape_mm / 1000.0
+        Ef = esp_fundo_mm / 1000.0
+
+        H_caixa = H - R
+        z_base = oz + R
+        z_topo = oz + H - E
+        groups: list[Group] = []
+
+        # Caixa externa
+        g_lat_esq = _chapa(
+            "Adega Colmeia - Lateral Esq",
+            (ox, oy, z_base),
+            (E, P, H_caixa),
+            material, fita_c1=True, fita_c2=True, fita_l1=True, fita_l2=True,
+            color=cor, papel=PapelChapa.LATERAL_ESQUERDA,
+        )
+        groups.append(g_lat_esq)
+
+        g_lat_dir = _chapa(
+            "Adega Colmeia - Lateral Dir",
+            (ox + L - E, oy, z_base),
+            (E, P, H_caixa),
+            material, fita_c1=True, fita_c2=True, fita_l1=True, fita_l2=True,
+            color=cor, papel=PapelChapa.LATERAL_DIREITA,
+        )
+        groups.append(g_lat_dir)
+
+        larg_vao = max(0.05, L - (2.0 * E))
+
+        g_base = _chapa(
+            "Adega Colmeia - Base Inferior",
+            (ox + E, oy, z_base),
+            (larg_vao, P, E),
+            material, fita_c1=True, color=cor, papel=PapelChapa.BASE_INFERIOR,
+        )
+        groups.append(g_base)
+
+        g_topo = _chapa(
+            "Adega Colmeia - Topo",
+            (ox + E, oy, z_topo),
+            (larg_vao, P, E),
+            material, fita_c1=True, color=cor, papel=PapelChapa.TAMPO_SUPERIOR,
+        )
+        groups.append(g_topo)
+
+        if has_fundo:
+            g_fundo = _chapa(
+                "Adega Colmeia - Fundo",
+                (ox + E, oy + P - Ef, z_base + E),
+                (larg_vao, Ef, H_caixa - (2.0 * E)),
+                material, color=cor, papel=PapelChapa.FUNDO,
+            )
+            groups.append(g_fundo)
+            prof_util = P - Ef - 0.01
+        else:
+            prof_util = P - 0.01
+
+        # Divisórias cruzadas em X (45 graus)
+        # Cada célula tem largura = larg_vao. Para 45 graus, a altura de meio-passo = larg_vao.
+        import math
+        altura_vao_util = H_caixa - (2.0 * E)
+        comprimento_lamina = math.sqrt(2.0) * larg_vao
+        passo_z_modulo = larg_vao  # altura da célula em X
+
+        qtd_divisoes = max(2, int(altura_vao_util / passo_z_modulo))
+        offset_inicial_z = z_base + E
+
+        for k in range(qtd_divisoes):
+            z_centro = offset_inicial_z + (k + 0.5) * passo_z_modulo
+            if z_centro + (passo_z_modulo / 2.0) > z_topo:
+                break
+
+            # Lâmina diagonal 1 (/ subindo da esq para dir)
+            # Polígono no plano XZ extrudado ao longo de Y
+            poly_diag1 = [
+                (ox + E, z_centro - (passo_z_modulo / 2.0)),
+                (ox + L - E, z_centro + (passo_z_modulo / 2.0)),
+                (ox + L - E, z_centro + (passo_z_modulo / 2.0) + (E * math.sqrt(2))),
+                (ox + E, z_centro - (passo_z_modulo / 2.0) + (E * math.sqrt(2))),
+            ]
+            # Lâmina diagonal 2 (\ descendo da esq para dir)
+            poly_diag2 = [
+                (ox + E, z_centro + (passo_z_modulo / 2.0)),
+                (ox + L - E, z_centro - (passo_z_modulo / 2.0)),
+                (ox + L - E, z_centro - (passo_z_modulo / 2.0) + (E * math.sqrt(2))),
+                (ox + E, z_centro + (passo_z_modulo / 2.0) + (E * math.sqrt(2))),
+            ]
+
+            # Criando chapas extrudadas no plano XZ em Y
+            from ..builders.mesh_utils import create_prism_board_group
+            g_d1 = create_prism_board_group(
+                f"Adega Colmeia - Divisória X1_{k+1}",
+                poly_xz=poly_diag1,
+                y_start=oy,
+                y_thickness=prof_util,
+                material=material,
+                color=cor,
+            )
+            groups.append(g_d1)
+
+            g_d2 = create_prism_board_group(
+                f"Adega Colmeia - Divisória X2_{k+1}",
+                poly_xz=poly_diag2,
+                y_start=oy,
+                y_thickness=prof_util,
+                material=material,
+                color=cor,
+            )
+            groups.append(g_d2)
+
+        # Rodapé
+        if R > 0.01:
+            g_rod = _chapa(
+                "Adega Colmeia - Rodapé Frontal",
+                (ox, oy + 0.05, oz),
+                (L, E, R),
+                material, color=cor, papel=PapelChapa.RODAPE,
+            )
+            groups.append(g_rod)
+
+        return groups
+
+    @classmethod
+    def build_balcao_peninsula(
+        cls,
+        largura_mm: float = 1200.0,
+        altura_mm: float = 850.0,
+        prof_mm: float = 600.0,
+        largura_mesa_mm: float = 800.0,
+        comprimento_mesa_mm: float = 1200.0,
+        esp_mm: float = 15.0,
+        esp_tampo_mm: float = 30.0,
+        rodape_mm: float = 100.0,
+        material: str = "MDF Branco 15mm",
+        material_tampo: str = "MDF Louro Freijo 30mm",
+        cor: tuple[float, float, float] | None = None,
+        cor_tampo: tuple[float, float, float] | None = None,
+        origin: tuple[float, float, float] = (0.0, 0.0, 0.0),
+        puxador_tipo: str = "perfil",
+        puxador_cor: str = "anodizado",
+        puxador_pos: str = "superior",
+        **kwargs: Any,
+    ) -> list[Group]:
+        """Constrói balcão ilha/península com portas inferiores e mesa projetada com pé tubular."""
+        ox, oy, oz = origin
+        L = largura_mm / 1000.0
+        H = (altura_mm - esp_tampo_mm) / 1000.0  # Altura da caixaria até a base do tampo
+        P = prof_mm / 1000.0
+        E = esp_mm / 1000.0
+        R = rodape_mm / 1000.0
+        Et = esp_tampo_mm / 1000.0
+
+        # 1. Base, laterais e caixaria padrão de 2 portas
+        groups: list[Group] = []
+
+        # Caixaria
+        caixaria = cls.build_balcao(
+            largura_mm=largura_mm,
+            altura_mm=H * 1000.0,
+            prof_mm=prof_mm,
+            esp_mm=esp_mm,
+            rodape_mm=rodape_mm,
+            num_portas=2,
+            num_prateleiras=1,
+            tem_fundo=True,
+            material=material,
+            offset=origin,
+            puxador_tipo=puxador_tipo,
+            puxador_cor=puxador_cor,
+            puxador_pos=puxador_pos,
+        )
+        groups.extend(caixaria)
+
+        # 2. Tampo da Mesa Península com pontas frontais arredondadas
+        Lm = largura_mesa_mm / 1000.0
+        Cm = comprimento_mesa_mm / 1000.0
+        # O tampo apoia sobre o balcão (da esquerda ou centro) e projeta para fora (ex: ao longo de X ou Y)
+        # Projetando perpendicularmente para a frente (em -Y) ou extensão lateral (em +X):
+        # Península típica: projeta para a frente de quem olha o balcão (em -Y), saindo de oy até oy - Cm
+        raio = min(0.15, Lm / 3.0)
+
+        # Polígono do tampo no plano XY:
+        # Cobre toda a largura L do balcão na área traseira/sobre o móvel
+        # e projeta a bancada de refeições (península):
+        # Para ser uma bancada de ilha/península completa e realista:
+        # Cobrimos o topo do balcão inteiro (0 a L em X, 0 a P em Y)
+        # e a mesa projeta para a frente (em -Y, de 0 até -Cm) com largura Lm (centralizada ou alinhada).
+        # Vamos fazer o tampo cobrir todo o balcão (0 a L) e estender a mesa para frente:
+        # Ou um tampo contínuo que cobre o balcão (0 a L, 0 a P) + balanço/mesa.
+        # Mais ergonômico e limpo para península: tampo inteiro cobre o balcão e estende para frente:
+        x_mesa_esq = ox + max(0.0, (L - Lm) / 2.0)
+        x_mesa_dir = x_mesa_esq + Lm
+        y_frente = oy - Cm
+        y_tras = oy + P
+
+        # Vamos traçar o polígono no sentido horário:
+        # 1. Traseira: (ox, y_tras) até (ox + L, y_tras)
+        # 2. Lateral direita traseira: (ox + L, y_tras) até (ox + L, oy)
+        # 3. Transição ou mesa:
+        # Se o tampo cobre todo o balcão (L x P):
+        poly_tampo: list[tuple[float, float]] = []
+        poly_tampo.append((ox, y_tras))
+        poly_tampo.append((ox + L, y_tras))
+        poly_tampo.append((ox + L, oy))
+        if x_mesa_dir < ox + L:
+            poly_tampo.append((x_mesa_dir, oy))
+
+        # Canto frontal direito arredondado da mesa (em y_frente)
+        # De (x_mesa_dir, y_frente + raio) até (x_mesa_dir - raio, y_frente)
+        steps = 8
+        cx_dir = x_mesa_dir - raio
+        cy_frente = y_frente + raio
+        poly_tampo.append((x_mesa_dir, cy_frente))
+        for s in range(1, steps + 1):
+            ang = (s / steps) * (math.pi / 2.0)
+            poly_tampo.append((cx_dir + raio * math.cos(ang), cy_frente - raio * math.sin(ang)))
+
+        # Canto frontal esquerdo arredondado da mesa (em y_frente)
+        # De (x_mesa_esq + raio, y_frente) até (x_mesa_esq, y_frente + raio)
+        cx_esq = x_mesa_esq + raio
+        for s in range(1, steps + 1):
+            ang = (math.pi / 2.0) + (s / steps) * (math.pi / 2.0)
+            poly_tampo.append((cx_esq + raio * math.cos(ang), cy_frente - raio * math.sin(ang)))
+
+        poly_tampo.append((x_mesa_esq, cy_frente))
+        if x_mesa_esq > ox:
+            poly_tampo.append((x_mesa_esq, oy))
+            poly_tampo.append((ox, oy))
+
+        from ..builders.mesh_utils import create_polygon_board_group
+        g_tampo = create_polygon_board_group(
+            name="Bancada Peninsula - Tampo Mesa",
+            polygon_xy=poly_tampo,
+            z0=oz + H,
+            espessura=Et,
+            material=material_tampo,
+            color=cor_tampo,
+        )
+        groups.append(g_tampo)
+
+        # 3. Pé Tubular de Apoio Metálico
+        x_pe = (x_mesa_esq + x_mesa_dir) / 2.0
+        y_pe = y_frente + raio + 0.08
+        alt_pe = oz + H
+
+        g_pe = create_cylinder_group(
+            name="Bancada Peninsula - Pé Tubular Metálico",
+            center_xy=(x_pe, y_pe),
+            radius=0.025,
+            z0=oz,
+            height=alt_pe,
+            material="Metal Cromado",
+            color=(0.85, 0.85, 0.88),
+        )
+        groups.append(g_pe)
 
         return groups
 

@@ -106,6 +106,41 @@ def _add_box(
         f.attrs["color"] = c
 
 
+def _add_oriented_box(
+    mesh: Mesh,
+    p0: QVector3D,
+    u_len: QVector3D,
+    u_thick: QVector3D,
+    u_h: QVector3D,
+    l_len: float,
+    l_thick: float,
+    l_h: float,
+    color: tuple[float, float, float] = _COLOR_METAL_ESCURO,
+) -> None:
+    """Cria uma caixa 3D orientada arbitrariamente no espaço."""
+    v = [
+        p0,
+        p0 + u_len * l_len,
+        p0 + u_len * l_len + u_thick * l_thick,
+        p0 + u_thick * l_thick,
+        p0 + u_h * l_h,
+        p0 + u_len * l_len + u_h * l_h,
+        p0 + u_len * l_len + u_thick * l_thick + u_h * l_h,
+        p0 + u_thick * l_thick + u_h * l_h,
+    ]
+    faces = [
+        ([2, 3, 0, 1], color),
+        ([4, 5, 6, 7], color),
+        ([0, 4, 7, 3], color),
+        ([1, 2, 6, 5], color),
+        ([3, 7, 6, 2], color),
+        ([0, 1, 5, 4], color),
+    ]
+    for idxs, c in faces:
+        f = mesh.add_face([v[i] for i in idxs])
+        f.attrs["color"] = c
+
+
 def _add_cylinder_y(
     mesh: Mesh,
     cx: float, cz: float,
@@ -296,6 +331,148 @@ def _add_telescopic_slide_inner(
     )
 
 
+def _make_corner_drawer_runners(
+    name: str,
+    key: str,
+    num_gavetas: int,
+    module_tag: str,
+    pieces: List[Group],
+    p_lat_esq: Group,
+    p_lat_dir: Group,
+) -> List[Group]:
+    """Cria corrediças telescópicas angulares de 3 estágios fixadas nas laterais inclinadas a 45° do Space Corner."""
+    groups: List[Group] = []
+
+    # Extrai os vértices das faces internas das laterais inclinadas
+    vs_e = [v.position for v in getattr(getattr(p_lat_esq, "mesh", None), "vertices", [])]
+    vs_d = [v.position for v in getattr(getattr(p_lat_dir, "mesh", None), "vertices", [])]
+    if not vs_e or not vs_d:
+        return groups
+
+    # Lateral Esquerda face interna: os 2 pontos com menor X positivo (X > 0.005)
+    pts_e_xy = sorted(list({(round(v.x(), 4), round(v.y(), 4)) for v in vs_e}))
+    # Face interna: segundo ponto em X e quarto ponto em X (com espessura em direção ao interior)
+    # (0.0106, 0.6106) e (0.6106, 0.0106)
+    p0_esq_xy = pts_e_xy[1]
+    p1_esq_xy = pts_e_xy[3]
+    p0_esq = QVector3D(p0_esq_xy[0], p0_esq_xy[1], 0.0)
+    p1_esq = QVector3D(p1_esq_xy[0], p1_esq_xy[1], 0.0)
+
+    # Lateral Direita face interna: (0.4394, 1.0394) e (1.0394, 0.4394)
+    pts_d_xy = sorted(list({(round(v.x(), 4), round(v.y(), 4)) for v in vs_d}))
+    p0_dir_xy = pts_d_xy[0]
+    p1_dir_xy = pts_d_xy[2]
+    p0_dir = QVector3D(p0_dir_xy[0], p0_dir_xy[1], 0.0)
+    p1_dir = QVector3D(p1_dir_xy[0], p1_dir_xy[1], 0.0)
+
+    v_len_esq = p1_esq - p0_esq
+    u_len_esq = v_len_esq.normalized()
+    # Normal que aponta para dentro do armário (face interna)
+    u_norm_esq = QVector3D(1.0 / math.sqrt(2.0), 1.0 / math.sqrt(2.0), 0.0)
+
+    v_len_dir = p1_dir - p0_dir
+    u_len_dir = v_len_dir.normalized()
+    u_norm_dir = QVector3D(-1.0 / math.sqrt(2.0), -1.0 / math.sqrt(2.0), 0.0)
+
+    u_h = QVector3D(0.0, 0.0, 1.0)
+
+    runner_len = min(0.50, max(0.35, v_len_esq.length() - 0.15))
+    offset_start = 0.040
+
+    pt_start_esq = p0_esq + u_len_esq * offset_start
+    pt_start_dir = p0_dir + u_len_dir * offset_start
+
+    # Dimensões padrão das corrediças telescópicas
+    h_out = 0.045
+    w_web = 0.0022
+    w_flange = 0.0115
+    t_flange = 0.0022
+    h_mid = 0.032
+    w_mid = 0.0045
+    h_in = 0.020
+    w_in = 0.0042
+    folga_lado = 0.013
+
+    # Agrupa peças por índice de gaveta (frentes e fundo)
+    by_drawer: Dict[int, Group] = {}
+    for p in pieces:
+        pname = str(getattr(p, "name", "") or "")
+        if "gaveta" in pname.lower() and "frente esq" in pname.lower():
+            idx = _drawer_index_from_name(pname)
+            if idx is not None:
+                by_drawer[idx] = p
+
+    for i in range(num_gavetas):
+        idx = i + 1
+        target_group = by_drawer.get(idx)
+        target_name = getattr(target_group, "name", f"Space Corner - Gaveta {idx} Frente Esq")
+
+        # Procura a altura Z da gaveta correspondente
+        frentes = [p for p in pieces if f"gaveta {idx}" in str(getattr(p, "name", "")).lower()]
+        zs = []
+        for fg in frentes:
+            b = _bounds(getattr(fg, "mesh", None))
+            if b:
+                zs.extend([b[4], b[5]])
+        cz = (min(zs) + max(zs)) * 0.5 if zs else (0.15 + i * 0.15)
+
+        # 1. Trilho Interno (corre 100% com a gaveta diagonalmente)
+        mesh_inner = Mesh()
+        z_in = cz - h_in * 0.5
+        p_in_esq = pt_start_esq + u_norm_esq * (folga_lado - w_in) + u_h * z_in
+        p_in_dir = pt_start_dir + u_norm_dir * (folga_lado - w_in) + u_h * z_in
+        _add_oriented_box(mesh_inner, p_in_esq, u_len_esq, u_norm_esq, u_h, runner_len, w_in, h_in, _COLOR_METAL_CLARO)
+        _add_oriented_box(mesh_inner, p_in_dir, u_len_dir, u_norm_dir, u_h, runner_len, w_in, h_in, _COLOR_METAL_CLARO)
+        g_inner = hardware_row(
+            f"Corrediças Gaveta {idx} (2x) {module_tag or name}".strip(),
+            key, mesh_inner, module_tag, linked_piece=target_name,
+        )
+        if getattr(g_inner, "ext", None) is None:
+            g_inner.ext = {}
+        g_inner.ext["slide_axis"] = u_len_esq
+        g_inner.ext["slide_distance"] = 0.45
+        groups.append(g_inner)
+
+        # 2. Gaiola Intermediária (corre 50% com a gaveta diagonalmente)
+        mesh_mid = Mesh()
+        z_mid = cz - h_mid * 0.5
+        p_mid_esq = pt_start_esq + u_norm_esq * 0.0035 + u_h * z_mid
+        p_mid_dir = pt_start_dir + u_norm_dir * 0.0035 + u_h * z_mid
+        _add_oriented_box(mesh_mid, p_mid_esq, u_len_esq, u_norm_esq, u_h, max(0.06, runner_len - 0.012), w_mid, h_mid, _COLOR_IMEX)
+        _add_oriented_box(mesh_mid, p_mid_dir, u_len_dir, u_norm_dir, u_h, max(0.06, runner_len - 0.012), w_mid, h_mid, _COLOR_IMEX)
+        g_mid = hardware_row(
+            f"Guia Telescópica Gaveta {idx} (2x) {module_tag or name}".strip(),
+            key, mesh_mid, module_tag, linked_piece=target_name,
+        )
+        if getattr(g_mid, "ext", None) is None:
+            g_mid.ext = {}
+        g_mid.ext["slide_scale"] = 0.5
+        g_mid.ext["slide_axis"] = u_len_esq
+        g_mid.ext["slide_distance"] = 0.45
+        groups.append(g_mid)
+
+        # 3. Trilho Fixo Externo (fixado diretamente sobre a lateral inclinada)
+        mesh_outer = Mesh()
+        z_out = cz - h_out * 0.5
+        p_out_esq = pt_start_esq + u_h * z_out
+        p_out_dir = pt_start_dir + u_h * z_out
+        # Alma do perfil C
+        _add_oriented_box(mesh_outer, p_out_esq, u_len_esq, u_norm_esq, u_h, runner_len, w_web, h_out, _COLOR_METAL_ESCURO)
+        _add_oriented_box(mesh_outer, p_out_dir, u_len_dir, u_norm_dir, u_h, runner_len, w_web, h_out, _COLOR_METAL_ESCURO)
+        # Abas superior e inferior
+        _add_oriented_box(mesh_outer, p_out_esq, u_len_esq, u_norm_esq, u_h, runner_len, w_flange, t_flange, _COLOR_METAL_CLARO)
+        _add_oriented_box(mesh_outer, p_out_esq + u_h * (h_out - t_flange), u_len_esq, u_norm_esq, u_h, runner_len, w_flange, t_flange, _COLOR_METAL_CLARO)
+        _add_oriented_box(mesh_outer, p_out_dir, u_len_dir, u_norm_dir, u_h, runner_len, w_flange, t_flange, _COLOR_METAL_CLARO)
+        _add_oriented_box(mesh_outer, p_out_dir + u_h * (h_out - t_flange), u_len_dir, u_norm_dir, u_h, runner_len, w_flange, t_flange, _COLOR_METAL_CLARO)
+        g_outer = hardware_row(
+            f"Trilho Fixo Gaveta {idx} (2x) {module_tag or name}".strip(),
+            key, mesh_outer, module_tag, linked_piece=None,
+        )
+        groups.append(g_outer)
+
+    return groups
+
+
 def _make_drawer_runners(
     name: str, key: str, bounds: tuple[float, ...], num_gavetas: int,
     module_tag: str = "",
@@ -308,6 +485,10 @@ def _make_drawer_runners(
     exatamente no vão do gaveteiro (seja à esquerda ou à direita), evitando colocar
     trilhos na lateral do vão das portas.
 
+    Em gaveteiros de canto em L (Space Corner / balcao_canto_gaveteiro_l), posiciona
+    as corrediças orientadas a 45° fixadas exatamente sobre as laterais inclinadas
+    do móvel, acompanhando perfeitamente a extração diagonal das gavetas.
+
     Gera 3 estágios por gaveta:
     1. Trilho Externo (fixo na lateral/divisória do móvel)
     2. Gaiola Intermediária (acompanha 50% da abertura da gaveta via ``slide_scale=0.5``)
@@ -316,6 +497,18 @@ def _make_drawer_runners(
     n = max(int(num_gavetas or 0), 0)
     if n == 0:
         return []
+
+    # Detecta se é o Gaveteiro de Canto em L (Space Corner)
+    tag_low = (module_tag or name or "").lower()
+    is_space_corner = ("space_corner" in tag_low or "canto_gaveteiro" in tag_low or
+                       any("space corner" in str(getattr(p, "name", "")).lower() for p in (pieces or [])))
+
+    p_lat_esq_sc = next((p for p in (pieces or []) if "lateral esquerda" in str(getattr(p, "name", "")).lower()), None)
+    p_lat_dir_sc = next((p for p in (pieces or []) if "lateral direita" in str(getattr(p, "name", "")).lower()), None)
+
+    if is_space_corner and p_lat_esq_sc is not None and p_lat_dir_sc is not None:
+        return _make_corner_drawer_runners(name, key, n, module_tag, pieces or [], p_lat_esq_sc, p_lat_dir_sc)
+
     min_x, max_x, min_y, max_y, min_z, max_z = bounds
     h = max_z - min_z
     cell = h / n

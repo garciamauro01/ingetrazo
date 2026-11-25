@@ -1831,7 +1831,7 @@ def create_board_group(
     fita_l1: bool = False,
     fita_l2: bool = False,
     ignorar_veio: bool = False,
-    color: tuple[float, float, float] = (0.94, 0.94, 0.92),
+    color: tuple[float, float, float] | None = None,
     puxador_tipo: str | None = None,
     puxador_cor: str | tuple[float, float, float] | None = None,
     door_side: str | None = None,
@@ -1857,6 +1857,14 @@ def create_board_group(
     - Remove a fita de borda no lado onde o perfil é encaixado;
     - Registra a medida real cortada nos metadados para envio ao TrazoMob.
     """
+    from ..domain.materials_catalog import get_material_color
+
+    # Resolução automática da cor visual e fita de borda via catálogo oficial de materiais
+    if color is None:
+        color = get_material_color(material)
+    if cor_fita is None and material_fita:
+        cor_fita = get_material_color(material_fita)
+
     # Converte qualquer objeto MachiningOp para dict padrão
     if operacoes:
         normalized_ops = []
@@ -2088,27 +2096,31 @@ def create_polygon_board_group(
     z0: float,
     espessura: float,
     material: str,
-    color: tuple[float, float, float] = (0.94, 0.94, 0.92),
+    color: tuple[float, float, float] | None = None,
     material_fita: str | None = None,
     cor_fita: tuple[float, float, float] | None = None,
     espessura_fita: float = 0.45,
     spec: Any | None = None,
 ) -> Group:
     """Cria uma chapa poligonal (prisma extrudado em Z, ex: base pentagonal de canto chanfrado)."""
+    from ..domain.materials_catalog import get_material_color
+
     mesh = Mesh()
     z1 = z0 + espessura
-    cor_borda = cor_fita or tuple(max(0.0, c * 0.94) for c in color)
+    eff_color = color if color is not None else get_material_color(material)
+    cor_borda = cor_fita or (get_material_color(material_fita) if material_fita else tuple(max(0.0, c * 0.94) for c in eff_color))
     tex_mat = _get_material_texture(material)
+
 
     # Face superior (+Z): sentido anti-horário
     f_top = mesh.add_face([QVector3D(x, y, z1) for x, y in polygon_xy])
-    f_top.attrs["color"] = color
+    f_top.attrs["color"] = eff_color
     if tex_mat:
         f_top.attrs["texture"] = dict(tex_mat)
 
     # Face inferior (-Z): sentido horário (normal apontando para baixo)
     f_bot = mesh.add_face([QVector3D(x, y, z0) for x, y in reversed(polygon_xy)])
-    f_bot.attrs["color"] = color
+    f_bot.attrs["color"] = eff_color
     if tex_mat:
         f_bot.attrs["texture"] = dict(tex_mat)
 
@@ -2159,5 +2171,119 @@ def create_polygon_board_group(
         g.ext["trazomob"] = meta
 
     return g
+
+
+def create_prism_board_group(
+    name: str,
+    poly_xz: list[tuple[float, float]],
+    y_start: float,
+    y_thickness: float,
+    material: str = "MDF Branco 15mm",
+    color: tuple[float, float, float] | None = None,
+    material_fita: str | None = None,
+    espessura_fita: float = 0.45,
+) -> Group:
+    """Cria uma chapa prismática com seção arbitrária no plano XZ extrudada ao longo de Y."""
+    from core.mesh import Mesh, Vertex, Face
+    from PySide6.QtGui import QVector3D
+    from ..domain.materials_catalog import get_material_color
+
+    mesh = Mesh()
+    y0 = y_start
+    y1 = y_start + y_thickness
+    eff_color = color if color is not None else get_material_color(material)
+    tex_mat = _get_material_texture(material)
+
+    # Face frontal (y0)
+    f_front = mesh.add_face([QVector3D(x, y0, z) for x, z in poly_xz])
+    f_front.attrs["color"] = eff_color
+    if tex_mat:
+        f_front.attrs["texture"] = dict(tex_mat)
+
+    # Face traseira (y1)
+    f_back = mesh.add_face([QVector3D(x, y1, z) for x, z in reversed(poly_xz)])
+    f_back.attrs["color"] = eff_color
+    if tex_mat:
+        f_back.attrs["texture"] = dict(tex_mat)
+
+    # Bordas laterais
+    n = len(poly_xz)
+    for i in range(n):
+        ax, az = poly_xz[i]
+        bx, bz = poly_xz[(i + 1) % n]
+        f_side = mesh.add_face([
+            QVector3D(ax, y0, az),
+            QVector3D(bx, y0, bz),
+            QVector3D(bx, y1, bz),
+            QVector3D(ax, y1, az),
+        ])
+        f_side.attrs["color"] = eff_color
+        if tex_mat:
+            f_side.attrs["texture"] = dict(tex_mat)
+
+    g = Group()
+    g.name = name
+    g.mesh = mesh
+
+    xs = [p[0] for p in poly_xz]
+    zs = [p[1] for p in poly_xz]
+    bb_w = (max(xs) - min(xs)) * 1000.0
+    bb_h = (max(zs) - min(zs)) * 1000.0
+    bb_d = abs(y_thickness) * 1000.0
+
+    meta = {
+        "nome": name,
+        "material": material,
+        "comprimento": round(max(bb_w, bb_h), 1),
+        "largura": round(bb_d, 1),
+        "espessura": 15.0,
+        "fita_c1": True,
+        "fita_c2": False,
+        "fita_l1": False,
+        "fita_l2": False,
+        "espessura_fita": float(espessura_fita or 0.45),
+        "ignorar_veio": True,
+        "operacoes": [],
+        "_rendered_ops_count": 0,
+    }
+    if material_fita:
+        meta["material_fita"] = material_fita
+
+    if hasattr(g, "ext"):
+        if getattr(g, "ext", None) is None:
+            g.ext = {}
+        g.ext["trazomob"] = meta
+
+    return g
+
+
+def create_cylinder_group(
+    name: str,
+    center_xy: tuple[float, float],
+    radius: float,
+    z0: float,
+    height: float,
+    material: str = "Metal Cromado",
+    color: tuple[float, float, float] | None = None,
+    segments: int = 16,
+) -> Group:
+    """Cria um sólido cilíndrico prismático vertical (ex: pé tubular metálico ou tubo de cabideiro)."""
+    import math
+    cx, cy = center_xy
+    poly_circle: list[tuple[float, float]] = []
+    for s in range(segments):
+        ang = s * (2.0 * math.pi / segments)
+        poly_circle.append((cx + radius * math.cos(ang), cy + radius * math.sin(ang)))
+
+    eff_color = color if color is not None else (0.85, 0.85, 0.88)
+    return create_polygon_board_group(
+        name=name,
+        polygon_xy=poly_circle,
+        z0=z0,
+        espessura=height,
+        material=material,
+        color=eff_color,
+    )
+
 
 

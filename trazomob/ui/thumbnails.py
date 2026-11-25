@@ -282,6 +282,37 @@ def get_module_thumbnail(module_id: str) -> QIcon:
         p.setPen(QColor("#FFFFFF"))
         p.drawText(28, 101, 74, 11, Qt.AlignCenter, "CANTO EM L")
 
+    elif module_id in ("balcao_canto_gaveteiro_l", "canto_gaveteiro_l", "space_corner"):
+        # ── Balcão Canto Gaveteiro em L (Space Corner) ── Destaque: CIANO / Gavetas em V ──
+        accent = QColor("#0891B2")          # Cyan 600
+        accent_light = QColor("#ECFEFF")    # Cyan 50
+        p.setBrush(brush_plinth)
+        p.drawRect(24, 100, 82, 10)
+        p.setBrush(QBrush(accent_light))
+        p.setPen(pen_dark)
+        p.drawRect(20, 26, 90, 74)
+        # 4 gavetas em V esquemáticas
+        p.setPen(pen_dark)
+        p.setBrush(brush_white)
+        for gy in [28, 46, 64, 82]:
+            p.drawRect(22, gy, 86, 16)
+            # Puxadores alça duplos na gaveta
+            p.setPen(Qt.NoPen)
+            p.setBrush(QBrush(accent))
+            p.drawRoundedRect(36, gy + 6, 16, 4, 1, 1)
+            p.drawRoundedRect(76, gy + 6, 16, 4, 1, 1)
+            p.setPen(pen_dark)
+        # Badge "SPACE CORNER"
+        p.setPen(Qt.NoPen)
+        p.setBrush(QBrush(accent))
+        p.drawRoundedRect(22, 101, 86, 11, 3, 3)
+        font = p.font()
+        font.setPointSize(6)
+        font.setBold(True)
+        p.setFont(font)
+        p.setPen(QColor("#FFFFFF"))
+        p.drawText(22, 101, 86, 11, Qt.AlignCenter, "SPACE CORNER")
+
     elif module_id == "porta_tempero":
         # ── Porta-Tempero / Garrafeiro ── Destaque: ROSA / Estreito com aramado e garrafas ──
         accent = QColor("#BE185D")          # Pink 700

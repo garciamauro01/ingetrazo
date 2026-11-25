@@ -18,13 +18,14 @@ ModuleBuilderFunc = Callable[[Any, Dict[str, Any], Dict[str, Any]], Tuple[List[G
 _BUILDER_REGISTRY: Dict[str, ModuleBuilderFunc] = {}
 
 
-def register_module_builder(types: str | Tuple[str, ...]) -> Callable[[ModuleBuilderFunc], ModuleBuilderFunc]:
+def register_module_builder(*types: str) -> Callable[[ModuleBuilderFunc], ModuleBuilderFunc]:
     """Decorador para associar uma função de geração a um ou mais tipos de módulos."""
     def decorator(fn: ModuleBuilderFunc) -> ModuleBuilderFunc:
-        if isinstance(types, str):
-            _BUILDER_REGISTRY[types] = fn
-        else:
-            for t in types:
+        for t in types:
+            if isinstance(t, (list, tuple)):
+                for sub_t in t:
+                    _BUILDER_REGISTRY[sub_t] = fn
+            else:
                 _BUILDER_REGISTRY[t] = fn
         return fn
     return decorator
@@ -1289,4 +1290,112 @@ def _build_tamponamento_linha(cls, params: Dict[str, Any], ctx: Dict[str, Any]) 
         mat_ctx=ctx.get("mat_ctx"),
     )
     return pieces, name
+
+
+@register_module_builder("terminal_chanfrado", "balcao_terminal_chanfrado")
+def _build_terminal_chanfrado(cls, params: Dict[str, Any], ctx: Dict[str, Any]) -> Tuple[List[Group], str]:
+    from ..builders.corner_cabinets import CantoEspecialBuilder
+    L, A, P = ctx["L_mm"], ctx["A_mm"], ctx["P_mm"]
+    lado = str(params.get("lado", "direita"))
+    name = f"Terminal Chanfrado ({lado.capitalize()}) {int(L)}x{int(P)}x{int(A)}"
+    pieces = CantoEspecialBuilder.build_terminal_chanfrado(
+        largura_mm=L,
+        altura_mm=A,
+        prof_mm=P,
+        prof_frente_mm=float(params.get("prof_frente_mm", 200.0)),
+        lado=lado,
+        esp_mm=ctx["esp_mm"],
+        rodape_mm=ctx["rodape_mm"],
+        num_prateleiras=int(params.get("num_prateleiras", 2)),
+        material=ctx["material"],
+        origin=ctx["offset"],
+    )
+    return pieces, name
+
+
+@register_module_builder("porta_panos", "toalheiro")
+def _build_porta_panos(cls, params: Dict[str, Any], ctx: Dict[str, Any]) -> Tuple[List[Group], str]:
+    from ..builders.base_wall_cabinets import BalcaoAereoBuilder
+    L, A, P = ctx["L_mm"], ctx["A_mm"], ctx["P_mm"]
+    name = f"Porta Panos / Toalheiro {int(L)}x{int(P)}x{int(A)}"
+    pieces = BalcaoAereoBuilder.build_porta_panos(
+        largura_mm=L,
+        altura_mm=A,
+        prof_mm=P,
+        esp_mm=ctx["esp_mm"],
+        rodape_mm=ctx["rodape_mm"],
+        num_prateleiras=int(params.get("num_prateleiras", 4)),
+        material=ctx["material"],
+        origin=ctx["offset"],
+    )
+    return pieces, name
+
+
+@register_module_builder("adega_colmeia", "adega_losango")
+def _build_adega_colmeia(cls, params: Dict[str, Any], ctx: Dict[str, Any]) -> Tuple[List[Group], str]:
+    from ..builders.base_wall_cabinets import BalcaoAereoBuilder
+    L, A, P = ctx["L_mm"], ctx["A_mm"], ctx["P_mm"]
+    name = f"Adega Colmeia Losango {int(L)}x{int(P)}x{int(A)}"
+    pieces = BalcaoAereoBuilder.build_adega_colmeia(
+        largura_mm=L,
+        altura_mm=A,
+        prof_mm=P,
+        esp_mm=ctx["esp_mm"],
+        rodape_mm=ctx["rodape_mm"],
+        num_garrafas=int(params.get("num_garrafas", 5)),
+        material=ctx["material"],
+        origin=ctx["offset"],
+    )
+    return pieces, name
+
+
+@register_module_builder("balcao_peninsula", "bancada_peninsula")
+def _build_balcao_peninsula(cls, params: Dict[str, Any], ctx: Dict[str, Any]) -> Tuple[List[Group], str]:
+    from ..builders.base_wall_cabinets import BalcaoAereoBuilder
+    L, A, P = ctx["L_mm"], ctx["A_mm"], ctx["P_mm"]
+    name = f"Balcão Península com Mesa {int(L)}x{int(P)}x{int(A)}"
+    pieces = BalcaoAereoBuilder.build_balcao_peninsula(
+        largura_mm=L,
+        altura_mm=A,
+        prof_mm=P,
+        largura_mesa_mm=float(params.get("largura_mesa_mm", 800.0)),
+        comprimento_mesa_mm=float(params.get("comprimento_mesa_mm", 1200.0)),
+        esp_mm=ctx["esp_mm"],
+        esp_tampo_mm=float(params.get("esp_tampo_mm", 30.0)),
+        rodape_mm=ctx["rodape_mm"],
+        material=ctx["material"],
+        origin=ctx["offset"],
+        puxador_tipo=ctx.get("puxador_tipo", "perfil"),
+        puxador_cor=ctx.get("puxador_cor", "anodizado"),
+        puxador_pos=ctx.get("puxador_pos", "superior"),
+    )
+    return pieces, name
+
+
+@register_module_builder("canto_gaveteiro_l", "balcao_canto_gaveteiro_l", "space_corner")
+def _build_space_corner(cls, params: Dict[str, Any], ctx: Dict[str, Any]) -> Tuple[List[Group], str]:
+    from ..builders.corner_cabinets import CantoEspecialBuilder
+    L, A, P = ctx["L_mm"], ctx["A_mm"], ctx["P_mm"]
+    name = f"Gaveteiro Canto Space Corner {int(L)}x{int(P)}x{int(A)}"
+    pieces = CantoEspecialBuilder.build_canto_gaveteiro_l(
+        largura_mm=L,
+        altura_mm=A,
+        prof_mm=P,
+        prof_lateral_esq_mm=float(params.get("prof_lateral_esq", params.get("prof_lateral_esq_mm", 600.0))),
+        prof_lateral_dir_mm=float(params.get("prof_lateral_dir", params.get("prof_lateral_dir_mm", 600.0))),
+        num_gavetas=int(params.get("num_gavetas", 4)),
+        esp_mm=ctx["esp_mm"],
+        rodape_mm=ctx["rodape_mm"],
+        larg_travessa_frontal_mm=float(params.get("larg_travessa_frontal_mm", 70.0)),
+        larg_travessa_traseira_mm=float(params.get("larg_travessa_traseira_mm", 70.0)),
+        travessa_frontal_em_pe=bool(params.get("travessa_frontal_em_pe", False)),
+        travessa_traseira_em_pe=bool(params.get("travessa_traseira_em_pe", False)),
+        material=ctx["material"],
+        origin=ctx["offset"],
+        puxador_tipo=ctx.get("puxador_tipo", "perfil"),
+        puxador_cor=ctx.get("puxador_cor", "anodizado"),
+        puxador_pos=ctx.get("puxador_pos", "superior"),
+    )
+    return pieces, name
+
 

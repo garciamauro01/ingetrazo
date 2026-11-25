@@ -8,8 +8,16 @@ from .materials_registry import MaterialsRegistry, MaterialDefinition
 
 # Obtém a lista dinâmica a partir do registro oficial de materiais
 def get_available_mdf_materials() -> list[str]:
-    """Retorna a lista de padrões de MDF cadastrados."""
-    return [m.nome for m in MaterialsRegistry.get_instance().list_materials(categoria="mdf")]
+    """Retorna a lista de padrões de chapas derivadas de madeira (MDF, MDP, Compensados, Virola) cadastradas."""
+    reg = MaterialsRegistry.get_instance()
+    chapas = (
+        reg.list_materials(categoria="mdf")
+        + reg.list_materials(categoria="mdp")
+        + reg.list_materials(categoria="compensado")
+        + reg.list_materials(categoria="virola")
+    )
+    return [m.nome for m in chapas]
+
 
 
 def get_available_stone_materials() -> list[str]:
@@ -152,4 +160,14 @@ def get_material_color(material: str) -> tuple[float, float, float]:
         return (0.25, 0.25, 0.25)
     if "cinza" in mat_lower or "titanio" in mat_lower:
         return (0.65, 0.65, 0.65)
+    # Compensados e Virolinhas
+    if "naval" in mat_lower:
+        return (0.82, 0.68, 0.48)
+    if "sarrafeado" in mat_lower:
+        return (0.80, 0.65, 0.46)
+    if "virola" in mat_lower or "virolinha" in mat_lower:
+        return (0.76, 0.58, 0.42)
+    if "eucatex" in mat_lower or "hdf" in mat_lower:
+        return (0.90, 0.88, 0.85)
     return (0.95, 0.95, 0.93)
+
