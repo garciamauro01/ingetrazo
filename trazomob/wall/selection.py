@@ -842,6 +842,7 @@ class WallSelectionManager:
         active_vp = self.viewport
         if vp is not None and active_vp is not None and vp is not active_vp:
             return
+        self._draw_mep_selection_overlay(vp, painter)
         info = self.selected_wall_face
         if info is None or info.face is None:
             return
@@ -1001,3 +1002,44 @@ class WallSelectionManager:
                         painter.drawLine(QPointF(*vis[0]), QPointF(*vis[1]))
 
         pass
+
+    def _draw_mep_selection_overlay(self, vp, painter: QPainter) -> None:
+        """Desenha cotas de altura do piso para pontos MEP selecionados na viewport 3D."""
+        scene = getattr(vp, "scene", None)
+        if scene is None:
+            return
+        sel = getattr(scene, "selection", None) or []
+        mep_grps = [
+            g for g in sel
+            if isinstance(getattr(g, "ext", None), dict) and g.ext.get("trazomob_mep_point") is not None
+        ]
+        if not mep_grps:
+            return
+        proj_fn = getattr(vp, "world_to_screen", None) or getattr(vp, "project", None)
+        if not callable(proj_fn):
+            return
+        painter.save()
+        for g in mep_grps:
+            mep_data = g.ext["trazomob_mep_point"]
+            h_m = float(mep_data.get("height_m", 0.0))
+            off_m = float(mep_data.get("offset_m", 0.0))
+            mesh = getattr(g, "mesh", None)
+            verts = getattr(mesh, "vertices", None) or []
+            if not verts:
+                continue
+            xf = getattr(g, "xform", None)
+            w_pts = [xf.map(v) if xf is not None else v for v in verts]
+            cx = sum(p.x() for p in w_pts) / len(w_pts)
+            cy = sum(p.y() for p in w_pts) / len(w_pts)
+            cz = sum(p.z() for p in w_pts) / len(w_pts)
+            p_top = proj_fn(QVector3D(cx, cy, cz))
+            p_floor = proj_fn(QVector3D(cx, cy, max(0.0, cz - h_m)))
+            if p_top is None or p_floor is None:
+                continue
+            painter.setPen(QPen(QColor(255, 215, 0), 2.0, Qt.DashLine))
+            painter.drawLine(p_top, p_floor)
+            mid_y = int((p_top.y() + p_floor.y()) * 0.5)
+            mid_x = int((p_top.x() + p_floor.x()) * 0.5)
+            painter.setPen(QPen(QColor(255, 255, 255), 1))
+            painter.drawText(mid_x + 8, mid_y, f"Alt: {h_m:.2f}m | Dist: {off_m:.2f}m")
+        painter.restore()
