@@ -94,10 +94,10 @@ class SidebarApplyMixin:
                 new_params["lado_gaveteiro"] = ["esquerda", "direita", "ambos", "nenhum"][self.cb_lado_gaveteiro.currentIndex()] if 0 <= self.cb_lado_gaveteiro.currentIndex() < 4 else "esquerda"
             else:
                 new_params["lado_gaveteiro"] = str(old_params.get("lado_gaveteiro", "esquerda"))
-        elif tipo in ("balcao_canto_l", "balcao_canto_chanfrado", "balcao_canto_gaveteiro_l", "canto_gaveteiro_l"):
+        elif tipo in ("balcao_canto_l", "balcao_canto_chanfrado"):
             new_params["larg_asa_esq"] = float(self.sp_larg_asa_esq.value()) if hasattr(self, "sp_larg_asa_esq") else float(old_params.get("larg_asa_esq", old_params.get("larg_asa", 550.0)))
             new_params["larg_asa_dir"] = float(self.sp_larg_asa_dir.value()) if hasattr(self, "sp_larg_asa_dir") else float(old_params.get("larg_asa_dir", old_params.get("larg_asa", 550.0)))
-            if tipo in ("balcao_canto_chanfrado", "balcao_canto_gaveteiro_l", "canto_gaveteiro_l"):
+            if tipo == "balcao_canto_chanfrado":
                 new_params["prof_lateral_esq"] = new_params["larg_asa_esq"]
                 new_params["prof_lateral_dir"] = new_params["larg_asa_dir"]
             new_params["tem_batente_canto"] = bool(self.chk_batente_canto.isChecked()) if hasattr(self, "chk_batente_canto") else bool(old_params.get("tem_batente_canto", False))

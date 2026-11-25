@@ -326,7 +326,7 @@ class SidebarModuleLoaderMixin:
                     val_d = float(params.get("dist_regua_fechamento_mm", 0.0))
                     self.sp_dist_regua_canto.setValue(int(round(val_d)))
 
-            is_canto_l_mod = tipo in ("balcao_canto_l", "balcao_canto_chanfrado", "balcao_canto_gaveteiro_l", "canto_gaveteiro_l", "bancada_canto_l", "bancada_canto")
+            is_canto_l_mod = tipo in ("balcao_canto_l", "balcao_canto_chanfrado", "bancada_canto_l", "bancada_canto")
             if hasattr(self, "lbl_larg_asa_esq"):
                 self.lbl_larg_asa_esq.setVisible(is_canto_l_mod)
                 self.sp_larg_asa_esq.setVisible(is_canto_l_mod)
