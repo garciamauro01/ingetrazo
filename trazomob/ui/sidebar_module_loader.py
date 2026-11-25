@@ -1243,7 +1243,9 @@ class SidebarModuleLoaderMixin:
         self.card_mep.setVisible(True)
 
     def _apply_mep_edits(self) -> None:
+        import math
         from PySide6.QtGui import QMatrix4x4
+        from ..integrations import platform as host
 
         mod = getattr(self, "_current_mep_grp", None)
         if mod is None or not isinstance(getattr(mod, "ext", None), dict):
@@ -1252,16 +1254,43 @@ class SidebarModuleLoaderMixin:
         if not isinstance(mep_data, dict):
             return
         old_h = float(mep_data.get("height_m", 0.30))
+        old_off = float(mep_data.get("offset_m", 0.0))
         new_h = float(self.sp_mep_alt.value()) / 1000.0
         new_off = float(self.sp_mep_dist.value()) / 1000.0
         dz = new_h - old_h
+        d_off = new_off - old_off
         mep_data["height_m"] = new_h
         mep_data["offset_m"] = new_off
-        if abs(dz) > 1e-5:
+
+        vp = getattr(self, "viewport", None) or getattr(self, "vp", None)
+        if vp is None and hasattr(host, "active_viewport"):
+            vp = host.active_viewport()
+
+        dx, dy = 0.0, 0.0
+        if abs(d_off) > 1e-5 and vp is not None and getattr(vp, "scene", None) is not None:
+            seg_id = mep_data.get("seg_id")
+            for g in getattr(vp.scene, "groups", []) or []:
+                wp = (getattr(g, "ext", None) or {}).get("trazomob_wall")
+                g2d = wp.get("graph_2d") if isinstance(wp, dict) else None
+                if isinstance(g2d, dict):
+                    segs = {s["id"]: s for s in g2d.get("segments", []) if "id" in s}
+                    nodes = {n["id"]: n for n in g2d.get("nodes", []) if "id" in n}
+                    seg = segs.get(seg_id)
+                    if seg and seg.get("node_a_id") in nodes and seg.get("node_b_id") in nodes:
+                        na, nb = nodes[seg["node_a_id"]], nodes[seg["node_b_id"]]
+                        vx, vy = float(nb["x"]) - float(na["x"]), float(nb["y"]) - float(na["y"])
+                        vlen = math.hypot(vx, vy)
+                        if vlen > 1e-6:
+                            dx, dy = (vx / vlen) * d_off, (vy / vlen) * d_off
+                        break
+
+        if abs(dx) > 1e-5 or abs(dy) > 1e-5 or abs(dz) > 1e-5:
             xf = getattr(mod, "xform", None) or QMatrix4x4()
             m_tr = QMatrix4x4()
-            m_tr.translate(0.0, 0.0, dz)
+            m_tr.translate(dx, dy, dz)
             mod.xform = m_tr * xf
-        vp = getattr(self, "viewport", None)
+
         if vp is not None:
+            if hasattr(host, "invalidate_viewport_caches"):
+                host.invalidate_viewport_caches(vp)
             vp.update()
