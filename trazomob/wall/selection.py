@@ -1015,6 +1015,10 @@ class WallSelectionManager:
         ]
         if not mep_grps:
             return
+        sb = getattr(self, "sidebar_panel", None)
+        if sb is not None and getattr(sb, "_current_mep_grp", None) is not mep_grps[0]:
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(0, lambda g=mep_grps[0], s=sb: s.load_module(g))
         proj_fn = getattr(vp, "world_to_pixel", None) or getattr(vp, "world_to_screen", None) or getattr(vp, "project", None)
         if not callable(proj_fn):
             return
