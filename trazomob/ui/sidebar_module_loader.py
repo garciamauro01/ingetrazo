@@ -23,6 +23,11 @@ class SidebarModuleLoaderMixin:
 
     def load_module(self, mod: Group) -> None:
         """Carrega os dados do módulo selecionado nos controles da barra lateral."""
+        if isinstance(getattr(mod, "ext", None), dict) and mod.ext.get("trazomob_mep_point") is not None:
+            self._load_mep_point(mod)
+            return
+        if hasattr(self, "card_mep"):
+            self.card_mep.setVisible(False)
         self.focus_panel()
         from ..domain.migration import migrate_legacy_group
         migrate_legacy_group(mod)
@@ -1182,3 +1187,81 @@ class SidebarModuleLoaderMixin:
             self._updating_ui = False
             self._update_badges()
 
+
+    def _ensure_mep_card(self) -> None:
+        if hasattr(self, "card_mep"):
+            return
+        from PySide6.QtWidgets import QDoubleSpinBox, QFormLayout, QGroupBox, QLabel, QPushButton, QVBoxLayout
+
+        self.card_mep = QGroupBox("⚡ Ponto Elétrico / Hidráulico", self)
+        lay = QVBoxLayout(self.card_mep)
+        self.lbl_mep_title = QLabel("", self.card_mep)
+        lay.addWidget(self.lbl_mep_title)
+
+        form = QFormLayout()
+        self.sp_mep_alt = QDoubleSpinBox(self.card_mep)
+        self.sp_mep_alt.setRange(0.0, 3.50)
+        self.sp_mep_alt.setSingleStep(0.05)
+        self.sp_mep_alt.setDecimals(2)
+        self.sp_mep_alt.setSuffix(" m")
+
+        self.sp_mep_dist = QDoubleSpinBox(self.card_mep)
+        self.sp_mep_dist.setRange(0.0, 50.0)
+        self.sp_mep_dist.setSingleStep(0.05)
+        self.sp_mep_dist.setDecimals(2)
+        self.sp_mep_dist.setSuffix(" m")
+
+        form.addRow("Altura do Piso:", self.sp_mep_alt)
+        form.addRow("Distância da Parede:", self.sp_mep_dist)
+        lay.addLayout(form)
+
+        self.btn_apply_mep = QPushButton("Aplicar Cotas MEP", self.card_mep)
+        self.btn_apply_mep.clicked.connect(self._apply_mep_edits)
+        lay.addWidget(self.btn_apply_mep)
+
+        main_lay = self.layout()
+        if main_lay is not None:
+            main_lay.insertWidget(0, self.card_mep)
+
+    def _load_mep_point(self, mod: Group) -> None:
+        from ..domain.mep_points import MEP_KINDS
+
+        self.focus_panel()
+        self._ensure_mep_card()
+        self._current_mep_grp = mod
+        mep_data = mod.ext["trazomob_mep_point"]
+        kind = str(mep_data.get("kind", "tomada_110v"))
+        label = MEP_KINDS.get(kind, {}).get("label", kind)
+        self.lbl_mep_title.setText(f"<b>{label}</b>")
+        self.sp_mep_alt.setValue(float(mep_data.get("height_m", 0.30)))
+        self.sp_mep_dist.setValue(float(mep_data.get("offset_m", 0.0)))
+
+        for attr in ("card_paredes", "scroll_paredes", "card_interact", "scroll_area", "actions_bar"):
+            w = getattr(self, attr, None)
+            if w is not None:
+                w.setVisible(False)
+        self.card_mep.setVisible(True)
+
+    def _apply_mep_edits(self) -> None:
+        from PySide6.QtGui import QMatrix4x4
+
+        mod = getattr(self, "_current_mep_grp", None)
+        if mod is None or not isinstance(getattr(mod, "ext", None), dict):
+            return
+        mep_data = mod.ext.get("trazomob_mep_point")
+        if not isinstance(mep_data, dict):
+            return
+        old_h = float(mep_data.get("height_m", 0.30))
+        new_h = float(self.sp_mep_alt.value())
+        new_off = float(self.sp_mep_dist.value())
+        dz = new_h - old_h
+        mep_data["height_m"] = new_h
+        mep_data["offset_m"] = new_off
+        if abs(dz) > 1e-5:
+            xf = getattr(mod, "xform", None) or QMatrix4x4()
+            m_tr = QMatrix4x4()
+            m_tr.translate(0.0, 0.0, dz)
+            mod.xform = m_tr * xf
+        vp = getattr(self, "viewport", None)
+        if vp is not None:
+            vp.update()
