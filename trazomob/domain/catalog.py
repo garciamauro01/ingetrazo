@@ -110,7 +110,8 @@ MODULE_CATALOG = {
             "largura": 1050, "altura": 720, "profundidade": 1050, "rodape": 0,
             "has_portas": False, "num_portas": 0, "has_gavetas": True, "num_gavetas": 4,
             "has_prateleiras": False, "num_prateleiras": 0, "has_fundo": True, "has_rodape": True,
-            "prof_lateral_esq": 600, "prof_lateral_dir": 600,
+            "prof_lateral_esq": 550, "prof_lateral_dir": 550,
+            "larg_asa_esq": 550, "larg_asa_dir": 550,
             "default_z": 0.0,
         },
         {
