@@ -81,14 +81,15 @@ class ModuleDialogActionsMixin:
             params["largura_gaveteiro"] = float(self.sp_largura_gaveteiro.value()) if hasattr(self, "sp_largura_gaveteiro") else float(mod_data.get("largura_gaveteiro", 600.0))
             if hasattr(self, "cb_lado_gaveteiro"):
                 params["lado_gaveteiro"] = ["esquerda", "direita", "ambos", "nenhum"][self.cb_lado_gaveteiro.currentIndex()] if 0 <= self.cb_lado_gaveteiro.currentIndex() < 4 else "esquerda"
-        elif tipo in ("balcao_canto_l", "balcao_canto_chanfrado"):
-            params["larg_asa_esq"] = float(self.sp_larg_asa_esq.value()) if hasattr(self, "sp_larg_asa_esq") else float(mod_data.get("larg_asa_esq", 550.0))
-            params["larg_asa_dir"] = float(self.sp_larg_asa_dir.value()) if hasattr(self, "sp_larg_asa_dir") else float(mod_data.get("larg_asa_dir", 550.0))
-            if tipo == "balcao_canto_chanfrado":
+        elif tipo in ("balcao_canto_l", "balcao_canto_chanfrado", "balcao_canto_gaveteiro_l", "canto_gaveteiro_l"):
+            params["larg_asa_esq"] = float(self.sp_larg_asa_esq.value()) if hasattr(self, "sp_larg_asa_esq") else float(mod_data.get("larg_asa_esq", mod_data.get("prof_lateral_esq", 600.0)))
+            params["larg_asa_dir"] = float(self.sp_larg_asa_dir.value()) if hasattr(self, "sp_larg_asa_dir") else float(mod_data.get("larg_asa_dir", mod_data.get("prof_lateral_dir", 600.0)))
+            if tipo in ("balcao_canto_chanfrado", "balcao_canto_gaveteiro_l", "canto_gaveteiro_l"):
                 params["prof_lateral_esq"] = params["larg_asa_esq"]
                 params["prof_lateral_dir"] = params["larg_asa_dir"]
             params["tem_batente_canto"] = bool(self.chk_batente_canto.isChecked()) if hasattr(self, "chk_batente_canto") else bool(mod_data.get("tem_batente_canto", False))
-            params["num_portas"] = 2
+            if tipo == "balcao_canto_l":
+                params["num_portas"] = 2
         elif mod_data.get("fixed_portas"):
             # Portas fixas: não ler do spinbox — usar o valor definido no catálogo
             params["num_portas"] = int(mod_data.get("num_portas", 2))

@@ -326,15 +326,17 @@ class SidebarModuleLoaderMixin:
                     val_d = float(params.get("dist_regua_fechamento_mm", 0.0))
                     self.sp_dist_regua_canto.setValue(int(round(val_d)))
 
-            is_canto_l_mod = tipo in ("balcao_canto_l", "balcao_canto_chanfrado", "bancada_canto_l", "bancada_canto")
+            is_canto_l_mod = tipo in ("balcao_canto_l", "balcao_canto_chanfrado", "balcao_canto_gaveteiro_l", "canto_gaveteiro_l", "bancada_canto_l", "bancada_canto")
             if hasattr(self, "lbl_larg_asa_esq"):
                 self.lbl_larg_asa_esq.setVisible(is_canto_l_mod)
                 self.sp_larg_asa_esq.setVisible(is_canto_l_mod)
                 self.lbl_larg_asa_dir.setVisible(is_canto_l_mod)
                 self.sp_larg_asa_dir.setVisible(is_canto_l_mod)
                 if is_canto_l_mod:
-                    self.sp_larg_asa_esq.setValue(int(round(float(params.get("larg_asa_esq", params.get("larg_asa", 550.0))))))
-                    self.sp_larg_asa_dir.setValue(int(round(float(params.get("larg_asa_dir", params.get("larg_asa", 550.0))))))
+                    val_e = float(params.get("larg_asa_esq", params.get("prof_lateral_esq", params.get("larg_asa", 600.0))))
+                    val_d = float(params.get("larg_asa_dir", params.get("prof_lateral_dir", params.get("larg_asa", 600.0))))
+                    self.sp_larg_asa_esq.setValue(int(round(val_e)))
+                    self.sp_larg_asa_dir.setValue(int(round(val_d)))
                 if hasattr(self, "lbl_batente_canto"):
                     is_batente_mod = (tipo == "balcao_canto_l")
                     self.lbl_batente_canto.setVisible(is_batente_mod)
@@ -552,7 +554,7 @@ class SidebarModuleLoaderMixin:
 
             # ── Troca Dinâmica do Contexto da Barra Lateral (Móvel vs Pedra vs Cama vs Peça Avulsa) ──
             is_pedra = "bancada" in str(tipo)
-            is_canto_l_asa = tipo in ("balcao_canto_l", "balcao_canto_chanfrado", "bancada_canto_l", "bancada_canto")
+            is_canto_l_asa = tipo in ("balcao_canto_l", "balcao_canto_chanfrado", "balcao_canto_gaveteiro_l", "canto_gaveteiro_l", "bancada_canto_l", "bancada_canto")
 
             # Avaliação de abas
             tem_puxadores_reais = (
@@ -597,8 +599,10 @@ class SidebarModuleLoaderMixin:
                     self.sp_larg_asa_esq.setVisible(True)
                     self.lbl_larg_asa_dir.setVisible(True)
                     self.sp_larg_asa_dir.setVisible(True)
-                    self.sp_larg_asa_esq.setValue(int(round(float(params.get("larg_asa_esq", params.get("larg_asa", 550.0))))))
-                    self.sp_larg_asa_dir.setValue(int(round(float(params.get("larg_asa_dir", params.get("larg_asa", 550.0))))))
+                    val_e = float(params.get("larg_asa_esq", params.get("prof_lateral_esq", params.get("larg_asa", 600.0))))
+                    val_d = float(params.get("larg_asa_dir", params.get("prof_lateral_dir", params.get("larg_asa", 600.0))))
+                    self.sp_larg_asa_esq.setValue(int(round(val_e)))
+                    self.sp_larg_asa_dir.setValue(int(round(val_d)))
 
             if is_pedra:
                 # Oculta seções exclusivas de marcenaria

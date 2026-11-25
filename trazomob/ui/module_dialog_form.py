@@ -86,21 +86,17 @@ class ModuleDialogFormMixin:
                     lado_p = str(params.get("lado_abertura_porta", "esquerda")).lower()
                     self.cb_lado_porta_armario.setCurrentIndex(1 if lado_p.startswith(("dir", "right")) else 0)
 
-            is_canto_l_mod = tipo in ("balcao_canto_l", "balcao_canto_chanfrado", "bancada_canto_l", "bancada_canto")
+            is_canto_l_mod = tipo in ("balcao_canto_l", "balcao_canto_chanfrado", "balcao_canto_gaveteiro_l", "canto_gaveteiro_l", "bancada_canto_l", "bancada_canto")
             if hasattr(self, "lbl_larg_asa_esq"):
                 self.lbl_larg_asa_esq.setVisible(is_canto_l_mod)
                 self.sp_larg_asa_esq.setVisible(is_canto_l_mod)
                 self.lbl_larg_asa_dir.setVisible(is_canto_l_mod)
                 self.sp_larg_asa_dir.setVisible(is_canto_l_mod)
                 if is_canto_l_mod:
-                    if "larg_asa_esq" in params:
-                        self.sp_larg_asa_esq.setValue(int(round(float(params["larg_asa_esq"]))))
-                    elif "larg_asa" in params:  # fallback para compatibilidade
-                        self.sp_larg_asa_esq.setValue(int(round(float(params["larg_asa"]))))
-                    if "larg_asa_dir" in params:
-                        self.sp_larg_asa_dir.setValue(int(round(float(params["larg_asa_dir"]))))
-                    elif "larg_asa" in params:  # fallback para compatibilidade
-                        self.sp_larg_asa_dir.setValue(int(round(float(params["larg_asa"]))))
+                    val_esq = params.get("larg_asa_esq", params.get("prof_lateral_esq", params.get("larg_asa", 600.0)))
+                    val_dir = params.get("larg_asa_dir", params.get("prof_lateral_dir", params.get("larg_asa", 600.0)))
+                    self.sp_larg_asa_esq.setValue(int(round(float(val_esq))))
+                    self.sp_larg_asa_dir.setValue(int(round(float(val_dir))))
                 if hasattr(self, "lbl_batente_canto"):
                     is_batente_mod = (tipo == "balcao_canto_l")
                     self.lbl_batente_canto.setVisible(is_batente_mod)
