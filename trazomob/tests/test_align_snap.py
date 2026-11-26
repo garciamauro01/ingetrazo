@@ -129,3 +129,21 @@ def test_align_snap_tool_apenas_alinhar_moves_only_dominant_axis():
     if ax >= ay and ax >= az:
         dy_res, dz_res = 0.0, 0.0
     assert (dx, dy_res, dz_res) == (1.5, 0.0, 0.0)
+
+
+def test_align_snap_tool_preselects_source_point_for_one_click_align(qapp):
+    from types import SimpleNamespace
+    from PySide6.QtWidgets import QWidget
+    from trazomob.builders.mesh_utils import create_board_group
+    from trazomob.interaction.align_tool_interactive import AlignSnapTool
+
+    grp = create_board_group("Modulo_1", origin=(0.0, 0.0, 0.0), size=(0.6, 0.5, 0.7), material="MDF")
+    vp = QWidget()
+    vp.scene = SimpleNamespace(selection=[grp])
+
+    tool = AlignSnapTool()
+    tool.on_activate(vp)
+    assert tool.source_group is grp
+    assert tool.source_point is not None
+    assert tool.source_point.kind == "center"
+    tool.on_deactivate(vp)
