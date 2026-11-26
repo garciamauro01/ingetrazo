@@ -28,6 +28,7 @@ class SidebarModuleLoaderMixin:
             return
         if hasattr(self, "card_mep"):
             self.card_mep.setVisible(False)
+        self._align_first_mod = mod
         self._ensure_align_anchor_bar()
         self.focus_panel()
         from ..domain.migration import migrate_legacy_group
@@ -1347,7 +1348,12 @@ class SidebarModuleLoaderMixin:
             if vp is not None and hasattr(vp, "flash_status"):
                 vp.flash_status("Selecione 2 objetos (1º a mover, 2º referência) para alinhar.")
             return
-        src, dst = sel[0], sel[1]
+        first = getattr(self, "_align_first_mod", None)
+        if first in sel:
+            src = first
+            dst = next((g for g in sel if g is not src), sel[1])
+        else:
+            src, dst = sel[0], sel[1]
         delta = align_objects_by_anchor(src, dst, anchor)
         if delta.length() > 1e-5 and hasattr(vp, "history"):
             vp.history.execute(MoveGroupCommand(src, delta))
