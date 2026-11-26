@@ -28,6 +28,7 @@ class SidebarModuleLoaderMixin:
             return
         if hasattr(self, "card_mep"):
             self.card_mep.setVisible(False)
+        self._ensure_align_anchor_bar()
         self.focus_panel()
         from ..domain.migration import migrate_legacy_group
         migrate_legacy_group(mod)
@@ -1308,6 +1309,48 @@ class SidebarModuleLoaderMixin:
                     host.dirty_group_chunks(vp.scene)
             if hasattr(host, "invalidate_viewport_caches"):
                 host.invalidate_viewport_caches(vp)
+            if hasattr(vp, "notify_scene_changed"):
+                vp.notify_scene_changed()
+            vp.update()
+
+    def _ensure_align_anchor_bar(self) -> None:
+        if hasattr(self, "card_align_anchors"):
+            return
+        from PySide6.QtWidgets import QGroupBox, QHBoxLayout, QPushButton
+
+        self.card_align_anchors = QGroupBox("📐 Alinhar Selecionados (1º → 2º)", self)
+        lay = QHBoxLayout(self.card_align_anchors)
+        lay.setContentsMargins(6, 6, 6, 6)
+        lay.setSpacing(4)
+        for label, anchor in (
+            ("⬆️ Topo", "top"),
+            ("⬇️ Base", "bottom"),
+            ("⬅️ Esq", "left"),
+            ("➡️ Dir", "right"),
+            ("🎯 Centro", "center"),
+        ):
+            btn = QPushButton(label, self.card_align_anchors)
+            btn.clicked.connect(lambda _=False, a=anchor: self._align_selected_by_anchor(a))
+            lay.addWidget(btn)
+        main_lay = self.layout()
+        if main_lay is not None:
+            main_lay.addWidget(self.card_align_anchors)
+
+    def _align_selected_by_anchor(self, anchor: str) -> None:
+        from ..interaction.align_tool_interactive import align_objects_by_anchor
+        from ..builders.cabinet import MoveGroupCommand
+
+        vp = self._get_viewport() if hasattr(self, "_get_viewport") else None
+        scene = getattr(vp, "scene", None) if vp is not None else None
+        sel = list(getattr(scene, "selection", []) or []) if scene is not None else []
+        if len(sel) < 2:
+            if vp is not None and hasattr(vp, "flash_status"):
+                vp.flash_status("Selecione 2 objetos (1º a mover, 2º referência) para alinhar.")
+            return
+        src, dst = sel[0], sel[1]
+        delta = align_objects_by_anchor(src, dst, anchor)
+        if delta.length() > 1e-5 and hasattr(vp, "history"):
+            vp.history.execute(MoveGroupCommand(src, delta))
             if hasattr(vp, "notify_scene_changed"):
                 vp.notify_scene_changed()
             vp.update()
