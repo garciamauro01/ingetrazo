@@ -28,12 +28,11 @@ class SidebarModuleLoaderMixin:
             return
         if hasattr(self, "card_mep"):
             self.card_mep.setVisible(False)
-        vp = self._get_viewport() if hasattr(self, "_get_viewport") else None
-        sel_len = len(getattr(getattr(vp, "scene", None), "selection", []) or []) if vp is not None else 0
-        if sel_len <= 1:
-            self._align_first_mod = mod
-            self.focus_panel()
+        if hasattr(self, "card_mep"):
+            self.card_mep.setVisible(False)
+        self._align_first_mod = mod
         self._ensure_align_anchor_bar()
+        self.focus_panel()
         from ..domain.migration import migrate_legacy_group
         migrate_legacy_group(mod)
         self._updating_ui = True
