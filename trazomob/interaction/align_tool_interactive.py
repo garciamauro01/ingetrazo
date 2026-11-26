@@ -382,14 +382,14 @@ class AlignSnapTool(Tool):
                 ctx.viewport.notify_scene_changed()
             ctx.viewport.update()
 
-        alvo_nome = getattr(self.source_group, "name", "Objeto")
-        dest_nome = getattr(dest_group, "name", "Destino") if dest_group else "Destino"
+        alvo_nome = getattr(aligned_group, "name", "Objeto")
+        dest_nome = getattr(self.source_group, "name", "Destino") if self.source_group else "Destino"
         copia_str = " (Cópia gerada)" if self.copy_mode else ""
         eixo_str = f" no eixo {self.axis_lock.upper()}" if self.axis_lock else ""
 
         if hasattr(ctx.viewport, "flash_status"):
             ctx.viewport.flash_status(
-                f"🎯 Alinhado com sucesso{copia_str}: {self.source_point.label} ➔ {dest_point.label}{eixo_str}!"
+                f"🎯 Alinhado com sucesso{copia_str}: {aligned_pt.label} ➔ {self.source_point.label}{eixo_str}!"
             )
 
         # Prepara para próximo alinhamento
