@@ -1338,7 +1338,7 @@ class SidebarModuleLoaderMixin:
 
     def _align_selected_by_anchor(self, anchor: str) -> None:
         from ..interaction.align_tool_interactive import align_objects_by_anchor
-        from ..builders.cabinet import MoveGroupCommand
+        from core.history import MoveGroupCommand
 
         vp = self._get_viewport() if hasattr(self, "_get_viewport") else None
         scene = getattr(vp, "scene", None) if vp is not None else None
