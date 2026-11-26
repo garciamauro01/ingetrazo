@@ -301,12 +301,13 @@ class AlignSnapTool(Tool):
 
     def on_click(self, ctx: ToolContext) -> None:
         self.copy_mode = bool(ctx.modifiers & (Qt.ControlModifier | Qt.AltModifier))
+        multi_select = bool(ctx.modifiers & Qt.ShiftModifier)
 
-        # Passo 1: Captura o Ponto de Origem
+        # Passo 1 (estilo s4u Align): 1º clique define o DESTINO (Target)
         if self.source_point is None:
             if not self.hovered_point:
                 if hasattr(ctx.viewport, "flash_status"):
-                    ctx.viewport.flash_status("Passe o cursor sobre uma quina, centro ou face do objeto a mover.")
+                    ctx.viewport.flash_status("Passe o cursor sobre a face, quina ou centro de DESTINO.")
                 return
 
             self.source_point = self.hovered_point
@@ -315,31 +316,29 @@ class AlignSnapTool(Tool):
             if hasattr(ctx.viewport, "flash_status"):
                 eixo_info = f" [Trava: {self.axis_lock.upper()}]" if self.axis_lock else ""
                 ctx.viewport.flash_status(
-                    f"📍 Origem: {self.source_point.label} de '{self.source_group.name}'. "
-                    f"Agora clique no PONTO DE DESTINO{eixo_info}."
+                    f"🎯 Destino: {self.source_point.label}. "
+                    f"Clique no(s) objeto(s) para alinhar{eixo_info} (Shift: vários | Ctrl: copiar)."
                 )
             ctx.viewport.update()
             return
 
-        # Passo 2: Captura o Ponto de Destino e executa o Alinhamento
+        # Passo 2: 2º clique seleciona o OBJETO A ALINHAR até o Destino
         if not self.hovered_point:
             if hasattr(ctx.viewport, "flash_status"):
-                ctx.viewport.flash_status("Clique em um centro, quina ou face de destino para alinhar.")
+                ctx.viewport.flash_status("Clique em um centro, quina ou face do objeto que deseja alinhar.")
             return
 
-        dest_point = self.hovered_point
-        dest_group = self.hovered_point.group
-
-        if self.source_group is None:
+        aligned_pt = self.hovered_point
+        aligned_group = self.hovered_point.group or ctx.viewport.pick_group(ctx.screen.x(), ctx.screen.y())
+        if aligned_group is None:
             return
 
-        # Vetor de deslocamento exato conectando o ponto de origem ao ponto de destino
-        p_orig = self.source_point.pos
-        p_dest = dest_point.pos
+        p_target = self.source_point.pos
+        p_orig = aligned_pt.pos
 
-        dx = p_dest.x() - p_orig.x()
-        dy = p_dest.y() - p_orig.y()
-        dz = p_dest.z() - p_orig.z()
+        dx = p_target.x() - p_orig.x()
+        dy = p_target.y() - p_orig.y()
+        dz = p_target.z() - p_orig.z()
 
         # Aplica a trava de eixo se solicitada pelo usuário (X, Y, Z ou Total)
         if self.axis_lock == "x":
@@ -367,11 +366,11 @@ class AlignSnapTool(Tool):
         delta = QVector3D(dx, dy, dz)
 
         if delta.length() > 1e-5 and hasattr(ctx.viewport, "history"):
-            target = self.source_group
+            target = aligned_group
 
             # Se estiver com Ctrl pressionado, gera uma CÓPIA alinhada
             if self.copy_mode:
-                new_grp = copy_group(self.source_group)
+                new_grp = copy_group(aligned_group)
                 if hasattr(ctx.viewport, "scene") and hasattr(ctx.viewport.scene, "groups"):
                     ctx.viewport.scene.groups.append(new_grp)
                 target = new_grp
