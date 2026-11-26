@@ -161,3 +161,28 @@ def test_align_objects_by_anchor_all_directions():
     assert abs(align_objects_by_anchor(src, dst, "right").x() - 1.5) < 1e-5
     d_center = align_objects_by_anchor(src, dst, "center")
     assert abs(d_center.x() - 1.25) < 1e-5 and abs(d_center.z() - 1.25) < 1e-5
+
+
+def test_sidebar_align_selected_by_anchor_moves_first_to_second(qapp):
+    from types import SimpleNamespace
+    from trazomob.builders.mesh_utils import create_board_group
+    from trazomob.ui.sidebar_panel import TrazoMobSidebarPanel
+
+    g1 = create_board_group("Mod_1", origin=(0.0, 0.0, 0.0), size=(0.5, 0.5, 0.5), material="MDF")
+    g2 = create_board_group("Mod_2", origin=(1.0, 0.0, 1.0), size=(0.5, 0.5, 0.5), material="MDF")
+    executed = []
+    vp = SimpleNamespace(
+        scene=SimpleNamespace(selection=[g1]),
+        history=SimpleNamespace(execute=lambda cmd: executed.append(cmd)),
+        notify_scene_changed=lambda: None,
+        update=lambda: None,
+    )
+    panel = TrazoMobSidebarPanel(SimpleNamespace(viewport=vp))
+    panel.load_module(g1)
+    assert panel._align_first_mod is g1
+
+    vp.scene.selection = {g1, g2}
+    panel._align_selected_by_anchor("top")
+    assert len(executed) == 1
+    assert executed[0].group is g1
+    assert abs(executed[0].delta.z() - 1.0) < 1e-5

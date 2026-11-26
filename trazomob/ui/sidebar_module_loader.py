@@ -32,8 +32,8 @@ class SidebarModuleLoaderMixin:
         sel_len = len(getattr(getattr(vp, "scene", None), "selection", []) or []) if vp is not None else 0
         if sel_len <= 1:
             self._align_first_mod = mod
+            self.focus_panel()
         self._ensure_align_anchor_bar()
-        self.focus_panel()
         from ..domain.migration import migrate_legacy_group
         migrate_legacy_group(mod)
         self._updating_ui = True
