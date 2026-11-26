@@ -92,12 +92,9 @@ class AlignSnapTool(Tool):
             sel_groups = [it for it in scene.selection if isinstance(it, Group)]
             if len(sel_groups) == 1:
                 self.source_group = sel_groups[0]
-                pts = self._get_group_notable_points(self.source_group)
-                if pts:
-                    self.source_point = pts[0]
                 if hasattr(viewport, "flash_status"):
                     viewport.flash_status(
-                        f"🎯 '{self.source_group.name}' pronto: clique no DESTINO para alinhar (1 clique)."
+                        f"🎯 Objeto: '{self.source_group.name}'. Clique no PONTO DE ORIGEM (ex: Centro da Base ou Quina)."
                     )
                 return
 

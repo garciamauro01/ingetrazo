@@ -144,6 +144,5 @@ def test_align_snap_tool_preselects_source_point_for_one_click_align(qapp):
     tool = AlignSnapTool()
     tool.on_activate(vp)
     assert tool.source_group is grp
-    assert tool.source_point is not None
-    assert tool.source_point.kind == "center"
+    assert tool.source_point is None
     tool.on_deactivate(vp)
