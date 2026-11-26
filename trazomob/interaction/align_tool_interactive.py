@@ -516,3 +516,39 @@ class AlignSnapTool(Tool):
         painter.drawText(hud_x, hud_y + 36, f"  {dica_txt}")
 
         painter.restore()
+
+
+def align_objects_by_anchor(source_group: Group, target_group: Group, anchor: str) -> QVector3D:
+    """Calcula o delta 3D para alinhar ``source_group`` a ``target_group`` por âncora (top/bottom/left/right/center)."""
+    def _bbox(grp: Group):
+        pts = []
+        stack = [grp]
+        while stack:
+            g = stack.pop()
+            xf = getattr(g, "xform", None)
+            mesh = getattr(g, "mesh", None)
+            for v in getattr(mesh, "vertices", []) or []:
+                p = getattr(v, "position", v)
+                pts.append(xf.map(p) if xf is not None else p)
+            stack.extend(getattr(g, "children", []) or [])
+        xs = [p.x() for p in pts]
+        ys = [p.y() for p in pts]
+        zs = [p.z() for p in pts]
+        return min(xs), max(xs), min(ys), max(ys), min(zs), max(zs)
+
+    sx0, sx1, sy0, sy1, sz0, sz1 = _bbox(source_group)
+    tx0, tx1, ty0, ty1, tz0, tz1 = _bbox(target_group)
+
+    if anchor == "top":
+        return QVector3D(0.0, 0.0, tz1 - sz1)
+    if anchor == "bottom":
+        return QVector3D(0.0, 0.0, tz0 - sz0)
+    if anchor == "left":
+        return QVector3D(tx0 - sx0, 0.0, 0.0)
+    if anchor == "right":
+        return QVector3D(tx1 - sx1, 0.0, 0.0)
+    if anchor == "center":
+        scx, scy, scz = (sx0 + sx1) * 0.5, (sy0 + sy1) * 0.5, (sz0 + sz1) * 0.5
+        tcx, tcy, tcz = (tx0 + tx1) * 0.5, (ty0 + ty1) * 0.5, (tz0 + tz1) * 0.5
+        return QVector3D(tcx - scx, tcy - scy, tcz - scz)
+    return QVector3D(0.0, 0.0, 0.0)

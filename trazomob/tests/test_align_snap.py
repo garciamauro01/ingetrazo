@@ -146,3 +146,18 @@ def test_align_snap_tool_preselects_source_point_for_one_click_align(qapp):
     assert tool.source_group is grp
     assert tool.source_point is None
     tool.on_deactivate(vp)
+
+
+def test_align_objects_by_anchor_all_directions():
+    from trazomob.builders.mesh_utils import create_board_group
+    from trazomob.interaction.align_tool_interactive import align_objects_by_anchor
+
+    src = create_board_group("Src", origin=(0.0, 0.0, 0.0), size=(0.5, 0.5, 0.5), material="MDF")
+    dst = create_board_group("Dst", origin=(1.0, 0.0, 1.0), size=(1.0, 0.5, 1.0), material="MDF")
+
+    assert abs(align_objects_by_anchor(src, dst, "top").z() - 1.5) < 1e-5
+    assert abs(align_objects_by_anchor(src, dst, "bottom").z() - 1.0) < 1e-5
+    assert abs(align_objects_by_anchor(src, dst, "left").x() - 1.0) < 1e-5
+    assert abs(align_objects_by_anchor(src, dst, "right").x() - 1.5) < 1e-5
+    d_center = align_objects_by_anchor(src, dst, "center")
+    assert abs(d_center.x() - 1.25) < 1e-5 and abs(d_center.z() - 1.25) < 1e-5
