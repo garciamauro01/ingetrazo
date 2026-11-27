@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""Construtor especializado para peças avulsas e tampos engrossados de marcenaria."""
+"""Specialized builder for standalone woodworking parts and thickened countertops."""
 from __future__ import annotations
 
 from typing import Any
@@ -27,7 +27,7 @@ def _chapa(
     operacoes: list[dict[str, Any]] | None = None,
     **kwargs: Any,
 ) -> Group:
-    """Cria uma peça avulsa pela API canônica de chapa (material explícito)."""
+    """Create a standalone part through the canonical board API (explicit material)."""
     spec = ChapaSpec.resolve(
         nome=name,
         papel=papel,
@@ -50,13 +50,13 @@ def _chapa_frente(
     papel: PapelChapa = PapelChapa.PORTA,
     **kwargs: Any,
 ) -> Group:
-    """Cria porta/frente avulsa herdando material e fita de frentes do contexto."""
+    """Create a standalone door/front inheriting fronts material and edge banding from context."""
     spec = ChapaSpec.resolve(nome=name, papel=papel, ctx=ctx)
     return build_chapa(spec, origin, size, **kwargs)
 
 
 class CustomPartsBuilder:
-    """Construtor desacoplado para tampos engrossados e peças avulsas individuais."""
+    """Decoupled builder for thickened countertops and individual standalone parts."""
 
     @staticmethod
     def get_material_color(material: str) -> tuple[float, float, float]:
@@ -130,7 +130,7 @@ class CustomPartsBuilder:
 
     @classmethod
     def build_gaveta_avulsa(cls, *args, **kwargs):
-        """Gera a gaveta canônica avulsa através do CanonicalDrawerBuilder."""
+        """Generate the standalone canonical drawer via CanonicalDrawerBuilder."""
         from trazomob.builders.drawers import CanonicalDrawerBuilder
         return CanonicalDrawerBuilder.build_gaveta_completa(*args, **kwargs)
 
@@ -158,7 +158,7 @@ class CustomPartsBuilder:
         lado_abertura_porta: str = "esquerda",
         **kwargs: Any,
     ) -> list[Group]:
-        """Gera uma peça avulsa individual (lateral, base, travessa, fundo, porta, etc.)."""
+        """Generate an individual standalone part (side panel, base, stretcher, back panel, door, etc.)."""
         ox, oy, oz = offset
         profundidade_mm = float(prof_mm if prof_mm is not None else kwargs.get("profundidade_mm", 0.0))
         L = float(largura_mm) / 1000.0
@@ -172,7 +172,7 @@ class CustomPartsBuilder:
         groups: list[Group] = []
 
         if subtipo in ("tamponamento", "tamponamento_vertical"):
-            # Tamponamento vertical externo canonico em YZ (espessura ao longo de X = E, profundidade = P, altura = A)
+            # Canonical external vertical cover panel in YZ (thickness along X = E, depth = P, height = A)
             modo_f = (fita_borda_modo or "4L").lower()
             fc1 = modo_f in ("frontal_1l", "2l", "4l")
             fc2 = modo_f in ("2l", "4l")
@@ -187,7 +187,7 @@ class CustomPartsBuilder:
                 color=cor, material_fita=material_fita, cor_fita=cor_fita,
             ))
         elif subtipo in ("lateral", "lateral_esquerda"):
-            # Lateral vertical esquerda canônica em YZ (espessura ao longo de X = E, profundidade = P, altura = A)
+            # Canonical vertical left side panel in YZ (thickness along X = E, depth = P, height = A)
             groups.append(cls.build_lateral_esquerda(
                 name="Lateral Esquerda Avulsa",
                 origin=(ox, oy, oz),
@@ -197,7 +197,7 @@ class CustomPartsBuilder:
                 color=cor, material_fita=material_fita, cor_fita=cor_fita,
             ))
         elif subtipo == "lateral_direita":
-            # Lateral vertical direita canônica em YZ
+            # Canonical vertical right side panel in YZ
             groups.append(cls.build_lateral_direita(
                 name="Lateral Direita Avulsa",
                 origin=(ox, oy, oz),
@@ -207,7 +207,7 @@ class CustomPartsBuilder:
                 color=cor, material_fita=material_fita, cor_fita=cor_fita,
             ))
         elif subtipo == "base":
-            # Chapa horizontal canônica: Base Inferior (largura = L, profundidade = P, espessura ao longo de Z = E)
+            # Canonical horizontal board: Bottom Base (width = L, depth = P, thickness along Z = E)
             groups.append(cls.build_base_inferior(
                 name="Base Avulsa",
                 origin=(ox, oy, oz),
@@ -217,7 +217,7 @@ class CustomPartsBuilder:
                 color=cor, material_fita=material_fita, cor_fita=cor_fita,
             ))
         elif subtipo == "tampo_superior":
-            # Chapa horizontal canônica: Tampo Superior
+            # Canonical horizontal board: Top Panel
             groups.append(cls.build_tampo_superior(
                 name="Tampo Superior Avulso",
                 origin=(ox, oy, oz),
@@ -227,7 +227,7 @@ class CustomPartsBuilder:
                 color=cor, material_fita=material_fita, cor_fita=cor_fita,
             ))
         elif subtipo == "prateleira":
-            # Prateleira canônica horizontal
+            # Canonical horizontal shelf
             groups.append(cls.build_prateleira(
                 name="Prateleira Avulsa",
                 origin=(ox, oy, oz),
@@ -237,7 +237,7 @@ class CustomPartsBuilder:
                 color=cor, material_fita=material_fita, cor_fita=cor_fita,
             ))
         elif subtipo in ("divisoria", "divisoria_vertical"):
-            # Divisória canônica vertical (espessura ao longo de X = E, profundidade = P, altura = A)
+            # Canonical vertical divider (thickness along X = E, depth = P, height = A)
             groups.append(cls.build_divisoria(
                 name="Divisória Vertical Avulsa",
                 origin=(ox, oy, oz),
@@ -251,7 +251,7 @@ class CustomPartsBuilder:
                 afastamento_cavilha_traseiro_mm=afastamento_cavilha_traseiro_mm,
             ))
         elif subtipo == "divisoria_horizontal":
-            # Divisória canônica horizontal (largura = L, profundidade = P, espessura ao longo de Z = E)
+            # Canonical horizontal divider (width = L, depth = P, thickness along Z = E)
             groups.append(cls.build_divisoria_horizontal(
                 name="Divisória Horizontal Avulsa",
                 origin=(ox, oy, oz),
@@ -261,7 +261,7 @@ class CustomPartsBuilder:
                 color=cor, material_fita=material_fita, cor_fita=cor_fita,
             ))
         elif subtipo in ("travessa_deitada", "travessa"):
-            # Régua deitada horizontal canônica (largura = L, profundidade = P, espessura ao longo de Z = E)
+            # Canonical flat horizontal stretcher (width = L, depth = P, thickness along Z = E)
             groups.append(cls.build_travessa_peca(
                 name="Travessa Deitada Avulsa",
                 origin=(ox, oy, oz),
@@ -271,7 +271,7 @@ class CustomPartsBuilder:
                 color=cor, material_fita=material_fita, cor_fita=cor_fita,
             ))
         elif subtipo == "travessa_em_pe":
-            # Régua em pé vertical canônica (largura = L, espessura ao longo de Y = E, altura = A)
+            # Canonical upright vertical stretcher (width = L, thickness along Y = E, height = A)
             groups.append(cls.build_travessa_peca(
                 name="Travessa em Pe Avulsa",
                 origin=(ox, oy, oz),
@@ -281,7 +281,7 @@ class CustomPartsBuilder:
                 color=cor, material_fita=material_fita, cor_fita=cor_fita,
             ))
         elif subtipo == "pilar_quina":
-            # Régua de coluna vertical (largura = L, espessura ao longo de Y = E, altura = A)
+            # Vertical corner post strip (width = L, thickness along Y = E, height = A)
             groups.append(cls.build_travessa_peca(
                 name="Pilar de Quina Avulso",
                 origin=(ox, oy, oz),
@@ -291,7 +291,7 @@ class CustomPartsBuilder:
                 color=cor, material_fita=material_fita, cor_fita=cor_fita,
             ))
         elif subtipo == "fundo":
-            # Fundo canônico vertical traseiro (largura = L, espessura ao longo de Y = E ou fundo, altura = A)
+            # Canonical vertical rear back panel (width = L, thickness along Y = E or back thickness, height = A)
             esp_f = E if E <= 0.010 else 0.006
             groups.append(cls.build_fundo(
                 name="Fundo Avulso",
@@ -328,7 +328,7 @@ class CustomPartsBuilder:
                     is_upper=False,
                 ))
         elif subtipo == "porta_esquerda":
-            # Porta de abrir canônica esquerda
+            # Canonical left hinged door
             groups.append(cls.build_porta_esquerda(
                 name="Porta Esquerda Avulsa",
                 origin=(ox, oy, oz),
@@ -341,7 +341,7 @@ class CustomPartsBuilder:
                 is_upper=False,
             ))
         elif subtipo == "porta_direita":
-            # Porta de abrir canônica direita
+            # Canonical right hinged door
             groups.append(cls.build_porta_direita(
                 name="Porta Direita Avulsa",
                 origin=(ox, oy, oz),
@@ -354,7 +354,7 @@ class CustomPartsBuilder:
                 is_upper=False,
             ))
         elif subtipo == "porta_basculante":
-            # Porta basculante canônica (abertura superior, puxador na base)
+            # Canonical flip-up door (top opening, handle at bottom)
             groups.append(cls.build_porta_basculante(
                 name="Porta Basculante Avulsa",
                 origin=(ox, oy, oz),
@@ -367,7 +367,7 @@ class CustomPartsBuilder:
                 is_upper=True,
             ))
         elif subtipo == "frente_gaveta":
-            # Frente de gaveta canônica externa
+            # Canonical external drawer front
             groups.append(cls.build_frente_gaveta(
                 name="Frente Gaveta Avulsa",
                 origin=(ox, oy, oz),
@@ -379,7 +379,7 @@ class CustomPartsBuilder:
                 desconto_perfil_mm=desconto_perfil_mm, perfil_modelo=perfil_modelo,
             ))
         elif subtipo in ("gaveta", "gaveta_avulsa", "caixa_gaveta"):
-            # Gaveta Canônica Avulsa (caixa + fundo + frente opcional)
+            # Standalone Canonical Drawer (box + bottom panel + optional front)
             from trazomob.builders.drawers import CanonicalDrawerBuilder
             esp_cx_mm = float(esp_mm) if esp_mm else 15.0
             incluir_fr = bool(kwargs.get("incluir_frente", kwargs.get("tem_frente", False)))
@@ -432,16 +432,16 @@ class CustomPartsBuilder:
         offset: tuple[float, float, float] = (0.0, 0.0, 0.0),
         material_fita: str | None = None,
     ) -> list[Group]:
-        """Gera uma base de rodapé fechado estruturada para marcenaria.
+        """Generate a structured closed toe-kick base for cabinetwork.
 
-        Composição:
-        1. Frente recuada (plano XZ, espessura em Y, em pé).
-        2. Laterais esquerda e direita (plano YZ, espessura em X, em pé).
-        3. Travessa traseira em pé (plano XZ, espessura em Y, fecha o fundo).
-        4. Travessas horizontais de fixação/topo (plano XY, espessura em Z, deitadas):
-           - Travessa frontal deitada no topo (logo atrás da frente).
-           - Travessa traseira deitada no topo (logo à frente do fechamento traseiro).
-        5. Travessas intermediárias de reforço vertical/apoio quando a largura for grande (L > 600mm).
+        Composition:
+        1. Recessed front (XZ plane, thickness along Y, upright).
+        2. Left and right side panels (YZ plane, thickness along X, upright).
+        3. Upright rear stretcher (XZ plane, thickness along Y, closes the back).
+        4. Horizontal top/mounting stretchers (XY plane, thickness along Z, flat):
+           - Top flat front stretcher (right behind the recessed front).
+           - Top flat rear stretcher (right in front of the rear closure).
+        5. Intermediate vertical reinforcement/support cleats for wide spans (L > 600mm).
         """
         ox, oy, oz = offset
         L = largura_mm / 1000.0
@@ -458,7 +458,7 @@ class CustomPartsBuilder:
 
         groups: list[Group] = []
 
-        # 1. Frente recuada (plano XZ, espessura em Y)
+        # 1. Recessed front (XZ plane, thickness along Y)
         if L > 0 and A > 0 and E > 0:
             groups.append(_chapa(
                 "Rodapé Fechado - Frente",
@@ -470,7 +470,7 @@ class CustomPartsBuilder:
                 papel=PapelChapa.RODAPE,
             ))
 
-        # 2. Travessa do fundo em pé (plano XZ, espessura em Y, na traseira total oy + P - E)
+        # 2. Upright rear stretcher (XZ plane, thickness along Y, at total rear oy + P - E)
         if L > 0 and A > 0 and E > 0 and P > (recuo + 2 * E):
             larg_fundo_util = max(0.0, L - 2 * E) if L > 2 * E else L
             x_fundo = (ox + E) if L > 2 * E else ox
@@ -484,8 +484,8 @@ class CustomPartsBuilder:
                 papel=PapelChapa.TRAVESSA,
             ))
 
-        # 3. Laterais de fechamento (plano YZ, espessura em X)
-        # Partem de trás da frente recuada (oy + recuo + E) até a traseira total (oy + P)
+        # 3. Closure side panels (YZ plane, thickness along X)
+        # Span from behind the recessed front (oy + recuo + E) to the total rear (oy + P)
         prof_lateral = max(0.0, P - recuo - E)
         if prof_lateral > 0 and A > 0 and E > 0:
             groups.append(_chapa(
@@ -507,8 +507,8 @@ class CustomPartsBuilder:
                 papel=PapelChapa.LATERAL_DIREITA,
             ))
 
-        # 4. Travessa deitada frontal no topo (plano XY, espessura em Z)
-        # Posicionada no topo do rodapé (oz + A - E), logo atrás da frente recuada
+        # 4. Top flat front stretcher (XY plane, thickness along Z)
+        # Positioned at the top of the toe kick (oz + A - E), right behind the recessed front
         largura_util_trav = max(0.0, L - 2 * E) if L > 2 * E else L
         x_trav = (ox + E) if L > 2 * E else ox
 
@@ -523,8 +523,8 @@ class CustomPartsBuilder:
                 papel=PapelChapa.TRAVESSA,
             ))
 
-        # 5. Travessa deitada do fundo no topo (plano XY, espessura em Z)
-        # Posicionada no topo do rodapé (oz + A - E), encostada na traseira
+        # 5. Top flat rear stretcher (XY plane, thickness along Z)
+        # Positioned at the top of the toe kick (oz + A - E), flush against the rear
         if larg_trav > 0 and L > 0 and E > 0 and P > (recuo + larg_trav + E):
             y_trav_fundo = max(oy + recuo + E + larg_trav, oy + P - E - larg_trav)
             groups.append(_chapa(
@@ -537,10 +537,10 @@ class CustomPartsBuilder:
                 papel=PapelChapa.TRAVESSA,
             ))
 
-        # 6. Travessas de reforço internas (nervuras/apoios intermediários no sentido Y - profundidade)
-        # Para vãos largos (L >= 600 mm), distribui travessas de reforço intermediárias.
-        # A altura da intermediária fica logo abaixo das travessas deitadas do topo (A - E),
-        # servindo de apoio contínuo inferior para as travessas deitadas sem sobrepô-las.
+        # 6. Internal reinforcement stretchers (intermediate ribs/supports along Y - depth)
+        # For wide spans (L >= 600 mm), distributes intermediate reinforcement stretchers.
+        # The intermediate height sits just below the top flat stretchers (A - E),
+        # serving as continuous bottom support for the flat stretchers without overlapping them.
         prof_reforco = max(0.0, P - recuo - 2 * E)
         alt_reforco = max(0.0, A - E) if (larg_trav > 0) else A
         if L > 0.6 and prof_reforco > 0 and alt_reforco > 0 and E > 0:
@@ -576,20 +576,20 @@ class CustomPartsBuilder:
         material_fita: str | None = None,
         offset: tuple[float, float, float] = (0.0, 0.0, 0.0),
     ) -> list[Group]:
-        """Gera um tampo engrossado de marcenaria com réguas perimetrais na espessura real da chapa.
+        """Generate a thickened woodworking top with perimeter strips at the actual board thickness.
 
-        ``snap_parede`` é metadado de encaixe (não altera a geometria): define
-        qual face adere à parede no arraste magnético e permite desligar o snap.
+        ``snap_parede`` is snap metadata (does not alter geometry): it defines
+        which face snaps to the wall during magnetic drag and allows disabling snap.
         """
         ox, oy, oz = offset
         L = largura_mm / 1000.0
         P = prof_mm / 1000.0
 
-        # Espessura nominal da madeira
+        # Nominal wood board thickness
         e_chapa = (esp_chapa_mm if esp_chapa_mm > 0 else 18.0) / 1000.0
 
-        # Determina a quantidade de camadas de réguas de engrosso no meio:
-        # Se qtd_engrosso for passado explicitamente (> 0), usa-o diretamente.
+        # Determine the number of intermediate thickening strip layers:
+        # If qtd_engrosso is explicitly passed (> 0), use it directly.
         n_camadas = int(qtd_engrosso) if qtd_engrosso and int(qtd_engrosso) >= 1 else 1
 
         w_regua = (larg_engrosso_mm if larg_engrosso_mm > 0 else 70.0) / 1000.0
@@ -600,20 +600,20 @@ class CustomPartsBuilder:
 
         groups: list[Group] = []
 
-        # ── ESTRUTURA VERTICAL DE BAIXO PARA CIMA: ──────────────────
-        # Nível inferior do módulo completo começa em oz:
-        # 1. Se 'fechar_embaixo' estiver ativo:
-        #    - A chapa de fechamento inferior fica na base: z = oz até oz + e_chapa.
-        #    - As réguas de engrosso ficam sobre ela: z = oz + e_chapa + (idx * e_chapa).
-        #    - A chapa superior fica no topo de tudo: z = oz + e_chapa + (n_camadas * e_chapa).
-        # 2. Se NÃO houver fechamento inferior:
-        #    - As réguas de engrosso ficam na base: z = oz + (idx * e_chapa).
-        #    - A chapa superior fica no topo: z = oz + (n_camadas * e_chapa).
+        # ── VERTICAL STRUCTURE FROM BOTTOM TO TOP: ──────────────────
+        # Bottom level of the complete module starts at oz:
+        # 1. If 'fechar_embaixo' is active:
+        #    - The bottom closure board sits at the base: z = oz to oz + e_chapa.
+        #    - The thickening strips sit on top of it: z = oz + e_chapa + (idx * e_chapa).
+        #    - The top board sits on top of everything: z = oz + e_chapa + (n_camadas * e_chapa).
+        # 2. If there is NO bottom closure:
+        #    - The thickening strips sit at the base: z = oz + (idx * e_chapa).
+        #    - The top board sits at the top: z = oz + (n_camadas * e_chapa).
 
         z_base_reguas = oz + (e_chapa if fechar_embaixo else 0.0)
         z_tampo_topo = z_base_reguas + n_camadas * e_chapa
 
-        # 1. Chapa Superior Principal (Fica no topo em z_tampo_topo)
+        # 1. Main Top Board (Sits at the top at z_tampo_topo)
         grp_tampo = _chapa(
             "Tampo Superior",
             (ox, oy, z_tampo_topo),
@@ -624,13 +624,13 @@ class CustomPartsBuilder:
         )
         groups.append(grp_tampo)
 
-        # 2. Réguas Intermediárias de Engrosso em Fatias/Camadas Discretas
-        # Cada camada tem espessura exatamente igual a 'e_chapa' da madeira
+        # 2. Intermediate Thickening Strips in Discrete Slices/Layers
+        # Each layer has thickness strictly equal to 'e_chapa' of the wood board
         for camada_idx in range(n_camadas):
             z_layer = z_base_reguas + camada_idx * e_chapa
             sufixo_camada = f" Camada {camada_idx + 1}" if n_camadas > 1 else ""
 
-            # Régua Frontal (ao longo de X)
+            # Front Strip (along X)
             grp_regua_front = _chapa(
                 f"Régua Engrosso Frontal{sufixo_camada}",
                 (ox, oy, z_layer),
@@ -641,12 +641,12 @@ class CustomPartsBuilder:
             )
             groups.append(grp_regua_front)
 
-            # Réguas Laterais (ao longo de Y)
+            # Side Strips (along Y)
             if tipo_engrosso in ("3_lados", "4_lados", "laterais"):
                 y_lat_inicio = oy + w_regua
                 comp_lat = P - w_regua - (w_regua if tipo_engrosso == "4_lados" else 0.0)
                 if comp_lat > 0.02:
-                    # Lateral Esquerda
+                    # Left Side
                     grp_lat_esq = _chapa(
                         f"Régua Engrosso Lateral Esquerda{sufixo_camada}",
                         (ox, y_lat_inicio, z_layer),
@@ -657,7 +657,7 @@ class CustomPartsBuilder:
                     )
                     groups.append(grp_lat_esq)
 
-                    # Lateral Direita
+                    # Right Side
                     grp_lat_dir = _chapa(
                         f"Régua Engrosso Lateral Direita{sufixo_camada}",
                         (ox + L - w_regua, y_lat_inicio, z_layer),
@@ -668,7 +668,7 @@ class CustomPartsBuilder:
                     )
                     groups.append(grp_lat_dir)
 
-            # Régua Traseira (ao longo de X, se 4 lados)
+            # Rear Strip (along X, if 4 sides)
             if tipo_engrosso == "4_lados":
                 grp_regua_tras = _chapa(
                     f"Régua Engrosso Traseira{sufixo_camada}",
@@ -680,7 +680,7 @@ class CustomPartsBuilder:
                 )
                 groups.append(grp_regua_tras)
 
-            # Travessa Central de Apoio (se vão livre L > 900 mm)
+            # Central Support Stretcher (if clear span L > 900 mm)
             if L > 0.90:
                 y_centro_inicio = oy + w_regua
                 comp_centro = P - w_regua - (w_regua if tipo_engrosso == "4_lados" else 0.0)
@@ -696,9 +696,9 @@ class CustomPartsBuilder:
                     )
                     groups.append(grp_centro)
 
-        # 3. Chapa de Fechamento Inferior (Tampo Sanduíche / Tamburato)
+        # 3. Bottom Closure Board (Sandwich / Hollow-Core Panel - Tamburato)
         if fechar_embaixo:
-            # Chapa inferior inteiriça na base absoluta (oz)
+            # Full-piece bottom board at the absolute base (oz)
             grp_fechamento = _chapa(
                 "Chapa Fechamento Inferior",
                 (ox, oy, oz),
@@ -730,7 +730,7 @@ class CustomPartsBuilder:
         perfil_modelo: str = "gola",
         mat_ctx: ModuloMaterialContext | None = None,
     ) -> list[Group]:
-        """Gera um conjunto avulso de portas de correr (2 a 4 portas) com trilhos duplos de alumínio."""
+        """Generate a standalone sliding door set (2 to 4 doors) with double aluminum tracks."""
         from PySide6.QtGui import QVector3D
         if mat_ctx is None:
             mat_ctx = ModuloMaterialContext(
@@ -751,7 +751,7 @@ class CustomPartsBuilder:
 
         groups: list[Group] = []
 
-        # 1. Trilhos Duplos de Alumínio (Inferior e Superior)
+        # 1. Double Aluminum Tracks (Bottom and Top)
         prof_trilho = min(0.045, P)
         groups.append(create_board_group(
             "Portas Correr - Trilho Inferior",
@@ -766,27 +766,27 @@ class CustomPartsBuilder:
             "Alumínio Anodizado", color=(0.75, 0.77, 0.80),
         ))
 
-        # 2. Cálculo de corte das folhas (2, 3 ou 4 portas)
-        # Em portas de correr, quando puxador_pos é "padrao"/"auto"/"superior" e puxador_tipo é "perfil" ou "alca",
-        # o puxador/perfil de porta de correr fica na lateral/extensão vertical da folha.
+        # 2. Door leaf cut calculation (2, 3, or 4 doors)
+        # For sliding doors, when puxador_pos is "padrao"/"auto"/"superior" and puxador_tipo is "perfil" or "alca",
+        # the sliding door handle/profile sits along the vertical side/extension of the door leaf.
         eff_pux_pos = puxador_pos
         if str(eff_pux_pos or "padrao").lower() in ("padrao", "auto", "superior", "topo"):
             eff_pux_pos = "extensao"
-        # Desconto vertical padrão de 15mm para sistema de correr/roldanas
+        # Standard 15mm vertical deduction for sliding track/roller system
         alt_porta = max(0.10, A - 0.015)
         z_porta = oz + 0.008
-        # No sistema de coordenadas do TrazoMob, a frente do móvel aponta para -Y e o fundo para +Y.
-        # Logo, o trilho externo (frontal) fica em menor Y e o trilho interno (traseiro) em maior Y.
+        # In TrazoMob's coordinate system, the furniture front points toward -Y and the back toward +Y.
+        # Therefore, the outer (front) track is at smaller Y and the inner (rear) track is at larger Y.
         y_trilho_frontal = oy + 0.004
         y_trilho_traseiro = oy + 0.004 + E_frente + 0.012
 
         if n_portas == 2:
-            # 2 Portas: 1 transpasse central (30mm)
+            # 2 Doors: 1 central overlap (30mm)
             larg_porta = (L + transpasse) / 2.0
             slide_dist = max(0.05, larg_porta - transpasse)
 
-            # Folha 1: Esquerda (Trilho Traseiro/Interno) -> corre para a direita (+X)
-            # Puxador na borda esquerda externa (door_side="right" coloca o puxador em ox)
+            # Leaf 1: Left (Rear/Inner Track) -> slides right (+X)
+            # Handle on the outer left edge (door_side="right" places the handle at ox)
             p1 = _chapa_frente(
                 "Porta Correr 1 - Esq (Interna)",
                 (ox, y_trilho_traseiro, z_porta),
@@ -802,8 +802,8 @@ class CustomPartsBuilder:
             p1.ext["slide_distance"] = float(slide_dist)
             groups.append(p1)
 
-            # Folha 2: Direita (Trilho Frontal/Externo) -> corre para a esquerda (-X)
-            # Puxador na borda direita externa (door_side="left" coloca o puxador em ox + larg_porta)
+            # Leaf 2: Right (Front/Outer Track) -> slides left (-X)
+            # Handle on the outer right edge (door_side="left" places the handle at ox + larg_porta)
             x_p2 = ox + L - larg_porta
             p2 = _chapa_frente(
                 "Porta Correr 2 - Dir (Externa)",
@@ -821,11 +821,11 @@ class CustomPartsBuilder:
             groups.append(p2)
 
         elif n_portas == 3:
-            # 3 Portas: 2 transpasses (30mm entre F1-F2 e 30mm entre F2-F3)
+            # 3 Doors: 2 overlaps (30mm between Leaf 1-2 and 30mm between Leaf 2-3)
             larg_porta = (L + (2.0 * transpasse)) / 3.0
             slide_dist = max(0.05, larg_porta - transpasse)
 
-            # Folha 1: Esquerda (Trilho Traseiro/Interno) -> corre para a direita (+X), puxador na esquerda
+            # Leaf 1: Left (Rear/Inner Track) -> slides right (+X), handle on the left
             p1 = _chapa_frente(
                 "Porta Correr 1 - Esq (Interna)",
                 (ox, y_trilho_traseiro, z_porta),
@@ -841,7 +841,7 @@ class CustomPartsBuilder:
             p1.ext["slide_distance"] = float(slide_dist)
             groups.append(p1)
 
-            # Folha 2: Centro (Trilho Frontal/Externo) -> corre para os dois lados, puxador nos dois lados ("both")
+            # Leaf 2: Center (Front/Outer Track) -> slides both ways, handle on both sides ("both")
             x_p2 = ox + (L * 0.5) - (larg_porta * 0.5)
             p2 = _chapa_frente(
                 "Porta Correr 2 - Centro (Externa)",
@@ -858,7 +858,7 @@ class CustomPartsBuilder:
             p2.ext["slide_distance"] = float(slide_dist)
             groups.append(p2)
 
-            # Folha 3: Direita (Trilho Traseiro/Interno) -> corre para a esquerda (-X), puxador na direita
+            # Leaf 3: Right (Rear/Inner Track) -> slides left (-X), handle on the right
             x_p3 = ox + L - larg_porta
             p3 = _chapa_frente(
                 "Porta Correr 3 - Dir (Interna)",
@@ -876,11 +876,11 @@ class CustomPartsBuilder:
             groups.append(p3)
 
         else:
-            # 4 Portas: sistema simétrico (2 laterais internas no trilho traseiro + 2 centrais externas no trilho frontal)
+            # 4 Doors: symmetrical system (2 outer leaves on rear track + 2 center leaves on front track)
             larg_porta = (L + (2.0 * transpasse)) / 4.0
             slide_dist = max(0.05, larg_porta - transpasse)
 
-            # Folha 1: Canto Esquerdo (Traseira/Interna) -> corre para a direita (+X), puxador na esquerda
+            # Leaf 1: Left End (Rear/Inner) -> slides right (+X), handle on the left
             x_p1 = ox
             p1 = _chapa_frente(
                 "Porta Correr 1 - Esq (Interna)",
@@ -897,7 +897,7 @@ class CustomPartsBuilder:
             p1.ext["slide_distance"] = float(slide_dist)
             groups.append(p1)
 
-            # Folha 2: Centro-Esquerda (Frontal/Externa) -> corre para a esquerda (-X), puxador no encontro central (direita)
+            # Leaf 2: Center-Left (Front/Outer) -> slides left (-X), handle at center meeting (right)
             x_p2 = ox + (L * 0.5) - larg_porta
             p2 = _chapa_frente(
                 "Porta Correr 2 - Centro Esq (Externa)",
@@ -914,7 +914,7 @@ class CustomPartsBuilder:
             p2.ext["slide_distance"] = float(slide_dist)
             groups.append(p2)
 
-            # Folha 3: Centro-Direita (Frontal/Externa) -> corre para a direita (+X), puxador no encontro central (esquerda)
+            # Leaf 3: Center-Right (Front/Outer) -> slides right (+X), handle at center meeting (left)
             x_p3 = ox + (L * 0.5)
             p3 = _chapa_frente(
                 "Porta Correr 3 - Centro Dir (Externa)",
@@ -931,7 +931,7 @@ class CustomPartsBuilder:
             p3.ext["slide_distance"] = float(slide_dist)
             groups.append(p3)
 
-            # Folha 4: Canto Direito (Traseira/Interna) -> corre para a esquerda (-X), puxador na direita
+            # Leaf 4: Right End (Rear/Inner) -> slides left (-X), handle on the right
             x_p4 = ox + L - larg_porta
             p4 = _chapa_frente(
                 "Porta Correr 4 - Dir (Interna)",
@@ -970,13 +970,13 @@ class CustomPartsBuilder:
         fita_l2: bool = True,
         mat_ctx: ModuloMaterialContext | None = None,
     ) -> list[Group]:
-        """Gera um conjunto de prateleiras avulsas distribuídas no espaço total especificado.
+        """Generate a set of standalone shelves distributed across the specified total space.
 
-        O parâmetro ``num_prateleiras`` define o número de prateleiras intermediárias
-        que dividem o vão em partes iguais.
-        ``has_primeira``: se True, adiciona uma prateleira na base inferior do vão (oz).
-        ``has_ultima``: se True, adiciona uma prateleira no topo superior do vão (oz + A - E).
-        Exemplo: 2 intermediárias + has_primeira + has_ultima = 4 prateleiras no total.
+        The ``num_prateleiras`` parameter defines the number of intermediate shelves
+        that divide the opening into equal sections.
+        ``has_primeira``: if True, adds a shelf at the bottom base of the opening (oz).
+        ``has_ultima``: if True, adds a shelf at the top of the opening (oz + A - E).
+        Example: 2 intermediate + has_primeira + has_ultima = 4 shelves in total.
         """
         ox, oy, oz = offset
         L = float(largura_mm) / 1000.0
@@ -992,30 +992,30 @@ class CustomPartsBuilder:
         n_interm = max(0, int(num_prateleiras))
         n_espacos = n_interm + 1
 
-        # Altura útil livre para distribuição descontando as espessuras
+        # Usable clear height for distribution discounting thicknesses
         z_pos: list[tuple[str, float]] = []
 
-        # 1. Primeira prateleira (Base do espaço útil)
+        # 1. First shelf (Bottom of usable space)
         if has_primeira:
             z_pos.append(("Base", oz))
 
-        # 2. Prateleiras intermediárias: dividem a altura A uniformemente
+        # 2. Intermediate shelves: divide height A evenly
         if n_interm > 0:
             passo = max(0.0, (A - E) / n_espacos) if A >= E else 0.0
             for i in range(1, n_interm + 1):
                 z_interm = oz + (i * passo)
                 z_pos.append((f"Intermediária {i}" if n_interm > 1 else "Intermediária", z_interm))
 
-        # 3. Última prateleira (Topo do espaço útil)
+        # 3. Last shelf (Top of usable space)
         if has_ultima:
             z_topo = oz + max(0.0, A - E)
             z_pos.append(("Topo", z_topo))
 
-        # Caso nenhuma seja selecionada e nem haja intermediárias, garante ao menos 1
+        # If neither is selected and there are no intermediate shelves, ensure at least 1
         if not z_pos:
             z_pos.append(("Central", oz + max(0.0, (A - E) / 2.0)))
 
-        # Ordena as prateleiras em Z para numeração lógica
+        # Sort shelves along Z for logical numbering
         z_pos.sort(key=lambda item: item[1])
 
         groups: list[Group] = []

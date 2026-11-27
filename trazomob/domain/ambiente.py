@@ -1,15 +1,15 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""Entidades **Ambiente** e **Pavimento** do TrazoMob.
+"""TrazoMob **Room** (*Ambiente*) and **Floor** (*Pavimento*) entities.
 
-Um **Ambiente** é um contêiner lógico que agrupa:
-* paredes (sólidos manifold já existentes)
-* piso (laje/contrapiso)
-* teto/forro
-* lista de módulos paramétricos pertencentes a esse ambiente
+A **Room** is a logical container that groups:
+* walls (existing manifold solids)
+* floor (slab/subfloor)
+* ceiling/drop ceiling
+* list of parametric modules belonging to that room
 
-Um **Pavimento** é um agrupador de ambientes no mesmo nível Z (térreo, 1º andar...).
-Permite alternar visibilidade de todo o andar e calcular área total.
+A **Floor** groups rooms at the same Z level (ground floor, 1st floor, ...).
+Allows toggling visibility for the entire floor and computing total area.
 """
 
 from __future__ import annotations
@@ -42,25 +42,25 @@ from ..domain.schema import (
 )
 
 # ---------------------------------------------------------------------------
-# Helpers de tipo
+# Type helpers
 # ---------------------------------------------------------------------------
 
 def is_ambiente(group: Any) -> bool:
-    """Diz se o grupo é um ambiente do TrazoMob."""
+    """Return whether the group is a TrazoMob room."""
     return is_kind(group, KIND_AMBIENTE)
 
 
 def is_pavimento(group: Any) -> bool:
-    """Diz se o grupo é um pavimento do TrazoMob."""
+    """Return whether the group is a TrazoMob floor."""
     return is_kind(group, KIND_PAVIMENTO)
 
 
 # ---------------------------------------------------------------------------
-# Iteradores de árvore
+# Tree iterators
 # ---------------------------------------------------------------------------
 
 def iter_ambientes(groups: Iterable[Any]) -> Iterable[Group]:
-    """Percorre a árvore (inclui grupos aninhados) e yield apenas ambientes."""
+    """Traverse the tree (including nested groups) and yield only rooms."""
     for g in groups:
         if is_ambiente(g):
             yield g
@@ -69,7 +69,7 @@ def iter_ambientes(groups: Iterable[Any]) -> Iterable[Group]:
 
 
 def iter_pavimentos(groups: Iterable[Any]) -> Iterable[Group]:
-    """Percorre a árvore e yield apenas pavimentos."""
+    """Traverse the tree and yield only floors."""
     for g in groups:
         if is_pavimento(g):
             yield g
@@ -78,46 +78,46 @@ def iter_pavimentos(groups: Iterable[Any]) -> Iterable[Group]:
 
 
 def iter_modulos_do_ambiente(ambiente: Group) -> Iterable[Group]:
-    """Yield módulos paramétricos que são filhos diretos do ambiente."""
+    """Yield parametric modules that are direct children of the room."""
     for child in getattr(ambiente, "children", None) or []:
         if is_kind(child, KIND_MODULE):
             yield child
 
 
 def iter_paredes_do_ambiente(ambiente: Group) -> Iterable[Group]:
-    """Yield paredes que são filhas diretas do ambiente."""
+    """Yield walls that are direct children of the room."""
     for child in getattr(ambiente, "children", None) or []:
         if is_kind(child, KIND_WALL):
             yield child
 
 
 def iter_pisos_do_ambiente(ambiente: Group) -> Iterable[Group]:
-    """Yield pisos que são filhos diretos do ambiente."""
+    """Yield floors/slabs that are direct children of the room."""
     for child in getattr(ambiente, "children", None) or []:
         if is_kind(child, KIND_FLOOR):
             yield child
 
 
 def iter_tetos_do_ambiente(ambiente: Group) -> Iterable[Group]:
-    """Yield tetos/forros que são filhos diretos do ambiente."""
+    """Yield ceilings/drop ceilings that are direct children of the room."""
     for child in getattr(ambiente, "children", None) or []:
         if is_kind(child, KIND_CEILING):
             yield child
 
 
 def ambiente_do_modulo(modulo: Group) -> Group | None:
-    """Sobe na hierarquia até encontrar o ambiente pai do módulo."""
-    # Em IngeTrazo, o pai não é exposto diretamente; varremos a cena.
-    # Quem chama deve passar a cena ou a lista de ambientes.
-    return None  # Implementado via busca na cena se necessário
+    """Walk up the hierarchy to find the parent room of the module."""
+    # In IngeTrazo, the parent is not directly exposed; scan the scene instead.
+    # Callers should pass the scene or the list of rooms.
+    return None  # Implemented via scene lookup if needed
 
 
 # ---------------------------------------------------------------------------
-# Cálculos de geometria
+# Geometry calculations
 # ---------------------------------------------------------------------------
 
 def _bounds_do_grupo(group: Group) -> tuple[float, float, float, float, float, float] | None:
-    """Retorna (minx, maxx, miny, maxy, minz, maxz) em metros do grupo e filhos."""
+    """Return (minx, maxx, miny, maxy, minz, maxz) in meters for the group and its children."""
     xs, ys, zs = [], [], []
     for child in getattr(group, "children", None) or []:
         mesh = getattr(child, "mesh", None)
@@ -128,7 +128,7 @@ def _bounds_do_grupo(group: Group) -> tuple[float, float, float, float, float, f
                 xs.append(p.x())
                 ys.append(p.y())
                 zs.append(p.z())
-        # recursivo
+        # recursive
         b = _bounds_do_grupo(child)
         if b:
             xs.extend([b[0], b[1]])
@@ -140,16 +140,16 @@ def _bounds_do_grupo(group: Group) -> tuple[float, float, float, float, float, f
 
 
 def calcular_area_ambiente(ambiente: Group) -> float:
-    """Área do ambiente em m² (projeção XY do piso ou bounds das paredes)."""
-    # Tenta usar o piso primeiro
+    """Room area in m² (XY projection of the floor slab or wall bounds)."""
+    # Try using the floor first
     for piso in iter_pisos_do_ambiente(ambiente):
         mesh = getattr(piso, "mesh", None)
         if mesh and hasattr(mesh, "vertices") and mesh.vertices:
-            # Projeção XY da malha do piso
+            # XY projection of the floor mesh
             xs = [v.position.x() for v in mesh.vertices]
             ys = [v.position.y() for v in mesh.vertices]
             return (max(xs) - min(xs)) * (max(ys) - min(ys))
-    # Fallback: bounds das paredes
+    # Fallback: wall bounds
     b = _bounds_do_grupo(ambiente)
     if b:
         return (b[1] - b[0]) * (b[3] - b[2])
@@ -157,25 +157,25 @@ def calcular_area_ambiente(ambiente: Group) -> float:
 
 
 def calcular_pe_direito_ambiente(ambiente: Group) -> float:
-    """Pé-direito do ambiente em metros (Z do teto - Z do piso)."""
+    """Room ceiling height in meters (ceiling Z - floor Z)."""
     z_piso = None
     z_teto = None
     for piso in iter_pisos_do_ambiente(ambiente):
         mesh = getattr(piso, "mesh", None)
         if mesh and mesh.vertices:
             zs = [v.position.z() for v in mesh.vertices]
-            z_piso = max(zs)  # topo da laje
+            z_piso = max(zs)  # top of slab
             break
     for teto in iter_tetos_do_ambiente(ambiente):
         mesh = getattr(teto, "mesh", None)
         if mesh and mesh.vertices:
             zs = [v.position.z() for v in mesh.vertices]
-            z_teto = min(zs)  # base do forro
+            z_teto = min(zs)  # bottom of ceiling
             break
     if z_piso is not None and z_teto is not None:
         return max(0.0, z_teto - z_piso)
-    # Fallback: maior altura entre as paredes do ambiente. Uma parede baixa
-    # não pode definir o pé-direito das demais.
+    # Fallback: greatest height among the room's walls. A low wall
+    # cannot define the ceiling height for the others.
     alturas = []
     for parede in iter_paredes_do_ambiente(ambiente):
         mesh = getattr(parede, "mesh", None)
@@ -184,15 +184,15 @@ def calcular_pe_direito_ambiente(ambiente: Group) -> float:
             alturas.append(max(zs) - min(zs))
     if alturas:
         return max(alturas)
-    return 2.7  # padrão
+    return 2.7  # default
 
 
 # ---------------------------------------------------------------------------
-# Builder de Ambiente a partir de planta 2D (integração com wall_plan_2d)
+# Room builder from 2D floorplan (integration with wall_plan_2d)
 # ---------------------------------------------------------------------------
 
 class AmbienteBuilder:
-    """Constrói o grupo Ambiente com paredes, piso, teto e metadados."""
+    """Build the Room group with walls, floor, ceiling, and metadata."""
 
     @staticmethod
     def build_ambiente_group(
@@ -205,24 +205,24 @@ class AmbienteBuilder:
         pe_direito: float = 2.7,
     ) -> Group:
         """
-        Cria o grupo Ambiente adotando paredes, piso e teto como filhos.
+        Create the Room group adopting walls, floor, and ceiling as children.
 
-        As paredes já vêm do ``WallPlan2D.build_3d_group`` (ou similar).
-        Piso e teto vêm do ``wall_mesh_builder``.
+        Walls already come from ``WallPlan2D.build_3d_group`` (or similar).
+        Floor and ceiling come from ``wall_mesh_builder``.
         """
-        # Cria o grupo mestre do ambiente
+        # Create the master room group
         master = Group(Mesh(), name=nome)
 
         filhos_iniciais = list(paredes)
 
-        # Piso
+        # Floor
         if piso is not None:
             filhos_iniciais.append(piso)
             schema_set = getattr(piso, "ext", None)
             if isinstance(schema_set, dict):
                 set_floor_data(piso, {"ambiente": nome})
 
-        # Teto
+        # Ceiling
         if teto is not None:
             filhos_iniciais.append(teto)
             schema_set = getattr(teto, "ext", None)
@@ -231,7 +231,7 @@ class AmbienteBuilder:
 
         master.adopt(filhos_iniciais)
 
-        # Metadados do ambiente
+        # Room metadata
         area = calcular_area_ambiente(master)
         pe_dir = calcular_pe_direito_ambiente(master) or pe_direito
 
@@ -248,7 +248,7 @@ class AmbienteBuilder:
 
     @staticmethod
     def ensure_pavimento(scene_groups: list[Group], nome: str, z_base: float = 0.0) -> Group:
-        """Garante que existe um grupo Pavimento com esse nome; cria se não houver."""
+        """Ensure a Floor group with this name exists; create it if missing."""
         for g in scene_groups:
             if is_pavimento(g):
                 params = pavimento_params(g)
@@ -256,7 +256,7 @@ class AmbienteBuilder:
                     if z_base > 0 and params.get("z_base", 0.0) == 0.0:
                         update_pavimento_data(g, {"z_base": z_base})
                     return g
-        # Cria novo e adiciona à lista da cena se fornecida
+        # Create new one and add to the scene list if provided
         pav = Group(Mesh(), name=nome)
         set_pavimento_data(pav, {"nome": nome, "z_base": z_base, "visivel": True})
         if scene_groups is not None and pav not in scene_groups:
@@ -265,12 +265,12 @@ class AmbienteBuilder:
 
     @classmethod
     def criar_pavimento(cls, scene_groups: list[Group], nome: str, z_base: float = 0.0) -> Group:
-        """Alias para criação explícita de pavimento."""
+        """Alias for explicit floor creation."""
         return cls.ensure_pavimento(scene_groups, nome, z_base=z_base)
 
     @staticmethod
     def adicionar_ao_pavimento(pavimento: Group, ambiente: Group) -> None:
-        """Adota o ambiente no pavimento (sem duplicar se já estiver)."""
+        """Adopt the room into the floor (without duplicating if already present)."""
         atuais = list(getattr(pavimento, "children", None) or [])
         if ambiente not in atuais:
             atuais.append(ambiente)
@@ -278,7 +278,7 @@ class AmbienteBuilder:
 
 
 # ---------------------------------------------------------------------------
-# Comando de agrupamento de módulos em ambiente (para a sidebar)
+# Command to group modules into a room (for the sidebar)
 # ---------------------------------------------------------------------------
 
 def build_ambiente_command(
@@ -287,20 +287,20 @@ def build_ambiente_command(
     pavimento_nome: str = "Térreo",
 ) -> "Command" | None:
     """
-    Cria um comando que agrupa os módulos selecionados num novo Ambiente.
+    Create a command that groups the selected modules into a new Room.
 
-    Reutiliza ``MakeNestedGroupCommand`` do core e marca como ambiente.
+    Reuses ``MakeNestedGroupCommand`` from core and marks it as a room.
     """
     if len(modulos) < 1:
         return None
 
     from core.history import MakeNestedGroupCommand
 
-    # Cria um grupo vazio que vai virar o ambiente
+    # Create an empty group that will become the room
     container = Group(Mesh(), name=nome)
     cmd = MakeNestedGroupCommand(modulos, container=container, name=nome)
 
-    # Wrapper para marcar como ambiente após executar
+    # Wrapper to mark as room after execution
     class _AmbienteWrapper:
         def __init__(self, inner_cmd, pavimento_nome):
             self.inner = inner_cmd
@@ -323,7 +323,7 @@ def build_ambiente_command(
 
 
 def build_dissolve_ambiente_command(ambiente: Group) -> "Command" | None:
-    """Cria comando para dissolver o ambiente, devolvendo filhos ao nível do pai."""
+    """Create a command to dissolve the room, returning children to the parent level."""
     if not is_ambiente(ambiente):
         return None
 
@@ -343,11 +343,11 @@ def build_dissolve_ambiente_command(ambiente: Group) -> "Command" | None:
 
 
 # ---------------------------------------------------------------------------
-# Utilitários de visibilidade
+# Visibility utilities
 # ---------------------------------------------------------------------------
 
 def set_ambiente_visivel(ambiente: Group, visivel: bool) -> None:
-    """Alterna visibilidade do ambiente e propaga para filhos."""
+    """Toggle room visibility and propagate to children."""
     update_ambiente_data(ambiente, {"visivel": visivel})
     if hasattr(ambiente, "hidden"):
         ambiente.hidden = not visivel
@@ -358,7 +358,7 @@ def set_ambiente_visivel(ambiente: Group, visivel: bool) -> None:
 
 
 def set_pavimento_visivel(pavimento: Group, visivel: bool) -> None:
-    """Alterna visibilidade do pavimento e de todos seus ambientes/filhos."""
+    """Toggle floor visibility and all of its rooms/children."""
     update_pavimento_data(pavimento, {"visivel": visivel})
     if hasattr(pavimento, "hidden"):
         pavimento.hidden = not visivel
@@ -371,11 +371,11 @@ def set_pavimento_visivel(pavimento: Group, visivel: bool) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Exportação para cutlist / relatórios
+# Export for cutlist / reports
 # ---------------------------------------------------------------------------
 
 def resumo_ambiente(ambiente: Group) -> dict[str, Any]:
-    """Dicionário pronto para relatório/cutlist filtrado por ambiente."""
+    """Dictionary ready for report/cutlist filtered by room."""
     params = ambiente_params(ambiente)
     modulos = list(iter_modulos_do_ambiente(ambiente))
     return {

@@ -1,15 +1,14 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""Bootstrap do plugin TrazoMob.
+"""TrazoMob plugin bootstrap.
 
-Extraído de ``__init__.py`` para reduzir o tamanho do módulo-raiz. Registra o
-painel lateral, a barra de ferramentas, o outliner, os pickables e o menu de
-contexto do TrazoMob.
+Extracted from ``__init__.py`` to keep the root module small. Registers the
+TrazoMob sidebar panel, toolbar, outliner, pickables, and context menu.
 
-As classes de ferramenta (``TrazoMobTool`` e ``CabinetInteractTool``) continuam
-definidas em ``__init__.py``: o carregador de plugins do IngeTrazo só descobre
-classes ``Tool`` cujo ``__module__`` é o próprio módulo do plugin, então elas são
-recebidas aqui por parâmetro.
+The tool classes (``TrazoMobTool`` and ``CabinetInteractTool``) remain defined
+in ``__init__.py``: the IngeTrazo plugin loader only discovers ``Tool`` classes
+whose ``__module__`` is the plugin module itself, so they are passed in here
+as parameters.
 """
 
 from __future__ import annotations
@@ -51,9 +50,9 @@ logger = logging.getLogger("trazomob")
 
 
 def install(app, TrazoMobTool, CabinetInteractTool) -> None:
-    """Inicializa o plugin TrazoMob registrando barra lateral, toolbar e menus de contexto."""
-    # First-party: o host chama o TrazoMob diretamente. Aqui só precisamos
-    # registrar a janela para os avisos de vínculo na barra de status.
+    """Initializes the TrazoMob plugin by registering the sidebar, toolbar, and context menus."""
+    # First-party: the host calls TrazoMob directly. Here we only need
+    # to register the window for link warnings in the status bar.
     from .integrations.library_links import set_host_window
 
     main_window = getattr(app, "window", None)
@@ -66,9 +65,9 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
     _snap_state = {"enabled": True}
     _wired_viewports = []
 
-    # Chaves estáveis para os atalhos lembrados pelo host: sem objectName,
-    # o texto traduzido de cada ação viraria uma chave diferente em cada
-    # idioma e o atalho salvo desapareceria ao trocar de língua.
+    # Stable keys for shortcuts remembered by the host: without objectName,
+    # each action's translated text would become a different key in every
+    # language and the saved shortcut would disappear when switching languages.
     from .domain.i18n import source_text
 
     def _name_action(act):
@@ -79,7 +78,7 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
         act.setObjectName("trazomob_" + (key or "action"))
 
     if viewport is not None:
-        # Pre-carrega prototipos de ferragens em segundo plano para duplo clique instantaneo
+        # Preload hardware prototypes in the background for instant double-click
         from PySide6.QtCore import QTimer
         def _warmup_hardware():
             try:
@@ -89,7 +88,7 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
                 logger.debug("Falha ao pré-carregar protótipos de ferragens", exc_info=True)
         QTimer.singleShot(100, _warmup_hardware)
 
-    # 1. Painel de encaixe da barra lateral (Side Tray Dock)
+    # 1. Side Tray Dock panel
     sidebar_panel = TrazoMobSidebarPanel(app)
     sidebar_dock = None
     if hasattr(app, "add_panel"):
@@ -110,7 +109,7 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
     if sidebar_dock is not None:
         sidebar_panel.set_dock(sidebar_dock)
 
-    # Inicializa o gerenciador de seleção de faces de paredes (WallSelectionManager)
+    # Initialize the wall face selection manager (WallSelectionManager)
     from .wall.selection import WallSelectionManager
     wall_mgr = WallSelectionManager.get_instance(_vp(), sidebar_panel)
     wall_mgr.install_overlay()
@@ -133,8 +132,8 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
             setattr(vp, "_trazomob_drag_filter", drag_f)
         drag_f.snap_enabled = bool(_snap_state["enabled"])
         WallSelectionManager.get_instance(vp, sidebar_panel).install_overlay()
-        # Auto-Migração e Compatibilidade Retroativa (Backward-Compatibility)
-        # Executa apenas UMA vez após carregar a cena, nunca no sinal recorrente sceneVersionChanged
+        # Auto-Migration and Backward Compatibility
+        # Runs only ONCE after loading the scene, never on the recurring sceneVersionChanged signal
         scene = getattr(vp, "scene", None)
         if scene is not None and not getattr(scene, "_trazomob_migrated", False):
             setattr(scene, "_trazomob_migrated", True)
@@ -144,8 +143,8 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
     for init_vp in host.all_viewports(window=main_window, viewport=viewport, app=app):
         _wire_trazomob_viewport(init_vp)
 
-    # Recortes de parede sao DERIVADOS da posicao das esquadrias: apos qualquer mudanca do
-    # documento (edicao, Ctrl+Z, Ctrl+Y, Abrir, troca de aba) recalcula-os e sincroniza o contexto.
+    # Wall cutouts are DERIVED from millwork opening positions: after any document
+    # change (edit, Ctrl+Z, Ctrl+Y, Open, tab switch), recalculate them and sync context.
     from PySide6.QtCore import QTimer
     _resync_state = {"pending": False, "busy": False}
 
@@ -219,9 +218,9 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
 
         app.on_document_closed(_on_doc_closed)
 
-    # Inicializa o visualizador gráfico sutil de luzes (cones de spot e fitas LED)
-    # 2. Identificacao nativa no Navegador / Arvore de Objetos do IngeTrazo (Outliner)
-    # Conforme especificado em docs/plugins.md (app.add_outliner_kind)
+    # Initialize the subtle graphic light visualizer (spotlight cones and LED strips)
+    # 2. Native identification in IngeTrazo's Object Browser / Tree (Outliner)
+    # As specified in docs/plugins.md (app.add_outliner_kind)
     if hasattr(app, "add_outliner_kind"):
         from .domain.entity import get_trazomob
 
@@ -285,7 +284,7 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
             lambda vp, painter: TrazoMobLightVisualizer.draw_trazomob_lights(vp, painter)
         )
 
-    # Permite seleção de luminárias e fontes de luz via ferramenta Select nativa e exclusão por Delete
+    # Allow selecting luminaires and light sources via the native Select tool and deleting with Delete
     if hasattr(app, "add_pickable"):
         from .render.lighting import TrazoMobLightVisualizer
         def _pick_trazomob_light(vp, px, py):
@@ -321,7 +320,7 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
             tip=tr("Abre o editor de módulos dinâmicos na barra lateral."),
         )
 
-    # 2. Cria barra de ferramentas na interface principal
+    # 2. Create toolbar in the main interface
     if main_window is not None and hasattr(main_window, "addToolBar"):
         from PySide6.QtWidgets import QWidget
         parent_widget = main_window if isinstance(main_window, QWidget) else None
@@ -339,7 +338,7 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
         act_side.triggered.connect(sidebar_panel.focus_panel)
         tb.addAction(act_side)
 
-        # Botão direto para Construir Paredes (Planta Baixa 2D)
+        # Direct button to Build Walls (2D Floorplan)
         act_wall = QAction(make_wall_icon(), tr("Construir Paredes"), main_window)
         act_wall.setStatusTip(tr("Abrir editor de Planta Baixa 2D para desenhar paredes e gerar sólido 3D"))
         act_wall.setToolTip(tr("🧱 Construir Paredes (Planta Baixa 2D) — Atalho: W"))
@@ -352,7 +351,7 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
         act_wall.triggered.connect(_open_wall_floorplan_dialog)
         tb.addAction(act_wall)
 
-        # Botão direto para Configurar Réguas de Altura
+        # Direct button to Configure Height Rulers
         act_ruler = QAction(make_ruler_icon(), tr("Réguas de Altura"), main_window)
         act_ruler.setStatusTip(tr("Configurar, criar e personalizar réguas de altura e linhas-guia magnéticas de parede"))
         act_ruler.setToolTip(tr("📏 Réguas de Altura & Linhas-Guia (Personalizar / Criar)"))
@@ -374,7 +373,7 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
         act_ruler.triggered.connect(_open_ruler_config)
         tb.addAction(act_ruler)
 
-        # Barra de Ferramentas com Abas de Módulos (instanciada sob demanda no primeiro clique)
+        # Tabbed Modules Toolbar (instantiated on demand on first click)
         setattr(main_window, "_trazomob_module_ribbon", None)
 
         def _toggle_module_ribbon():
@@ -462,7 +461,7 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
         act_interact.triggered.connect(_activate_interact)
         tb.addAction(act_interact)
 
-        # Botão interativo para Alinhar & Apoiar Objetos 3D
+        # Interactive button to Align & Rest 3D Objects
         from .interaction.align_tool_interactive import AlignSnapTool
         act_align = QAction(make_align_tool_icon(), tr("Alinhar e Apoiar"), main_window)
         act_align.setStatusTip(tr("Alinhar, apoiar sobre superfícies ou encostar objetos no 3D com precisão (Atalho: Shift+A)"))
@@ -521,7 +520,7 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
         act_plan.triggered.connect(_open_plan)
         tb.addAction(act_plan)
 
-        # ── BOTÃO DROPDOWN DE ESTILOS DE VISUALIZAÇÃO (SUPLANTA A BARRA POLUÍDA) ──
+        # ── DISPLAY STYLES DROPDOWN BUTTON (REPLACES CLUTTERED TOOLBAR) ──
         from PySide6.QtGui import QActionGroup
         from PySide6.QtWidgets import QMenu, QToolButton
 
@@ -534,7 +533,7 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
 
         menu_styles = QMenu(btn_styles)
 
-        # 1. Modos de Estilo de Faces
+        # 1. Face Style Modes
         from core.style import BUILTIN_STYLES
         group_styles = QActionGroup(menu_styles)
 
@@ -554,14 +553,14 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
 
         menu_styles.addSeparator()
 
-        # 2. Transparência / Raio-X
+        # 2. Transparency / X-Ray
         act_xray = QAction(tr("⚡ Alternar Raio-X (Alt+X)"), menu_styles)
         act_xray.triggered.connect(lambda: host.toggle_xray(main_window, _vp()))
         menu_styles.addAction(act_xray)
 
         menu_styles.addSeparator()
 
-        # 3. Arestas e Perfis
+        # 3. Edges and Profiles
         lbl_section2 = menu_styles.addAction(tr("── Arestas & Perfis ──"))
         lbl_section2.setEnabled(False)
 
@@ -589,7 +588,7 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
         for _act in menu_styles.actions():
             _name_action(_act)
 
-        # Sincroniza estado das caixas ao abrir o menu
+        # Sync checkbox states when opening the menu
         def _sync_style_dropdown():
             st = getattr(getattr(_vp(), "scene", None), "display_style", None)
             if st is None:
@@ -612,7 +611,7 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
         btn_styles.setMenu(menu_styles)
         tb.addWidget(btn_styles)
 
-        # ── BOTÃO DE ATIVAR/DESATIVAR SNAPS MAGNÉTICOS (TRAZOMOB) ──
+        # ── TOGGLE MAGNETIC SNAPS BUTTON (TRAZOMOB) ──
         act_snap = QAction(make_magnet_snap_icon(), tr("Snap Magnético"), main_window)
         act_snap.setCheckable(True)
         act_snap.setChecked(True)
@@ -639,7 +638,7 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
         act_snap.toggled.connect(_on_snap_toggled)
         tb.addAction(act_snap)
 
-        # ── BOTÃO DE ATIVAR/DESATIVAR ZOOM LIVRE / ATRAVESSAR SÓLIDOS (TRAZOMOB) ──
+        # ── TOGGLE FREE ZOOM / PASS THROUGH SOLIDS BUTTON (TRAZOMOB) ──
         from .interaction.free_zoom import FreeZoomManager
         act_free_zoom = QAction(make_free_zoom_icon(), tr("Zoom Livre / Atravessar"), main_window)
         act_free_zoom.setCheckable(True)
@@ -660,7 +659,7 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
         act_free_zoom.toggled.connect(_on_free_zoom_toggled)
         tb.addAction(act_free_zoom)
 
-        # ── BOTÃO DE MATERIAIS & SHADERS PBR (TRAZOMOB) ──
+        # ── PBR MATERIALS & SHADERS BUTTON (TRAZOMOB) ──
         act_pbr = QAction(make_pbr_material_icon(), tr("Materiais PBR (TrazoMob)"), main_window)
         act_pbr.setToolTip(tr("Materiais & Shaders PBR (Acabamentos, Reflexo, Relevo e Conta-gotas)"))
         act_pbr.setStatusTip(tr("Configurar propriedades PBR dos materiais da cena ou capturar face com conta-gotas"))
@@ -670,7 +669,7 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
         act_pbr.triggered.connect(_open_pbr_editor)
         tb.addAction(act_pbr)
 
-        # ── BOTÃO DE ILUMINAÇÃO E SPOTS FÍSICOS (TRAZOMOB) ──
+        # ── LIGHTING & PHYSICAL SPOTLIGHTS BUTTON (TRAZOMOB) ──
         act_light = QAction(make_light_icon(), tr("Iluminação e Spots Físicos (TrazoMob)"), main_window)
         act_light.setToolTip(tr("Gerenciador de Iluminação e Spots Físicos Profissionais"))
         act_light.setStatusTip(tr("Inserir e controlar spots, fitas LED, potência e cor da luz para o render"))
@@ -683,7 +682,7 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
         act_light.triggered.connect(_open_light_manager)
         tb.addAction(act_light)
 
-        # ── BOTÃO DE RENDER FOTO-REALISTA TRAZOMOB (BLENDER CYCLES / EEVEE) ──
+        # ── TRAZOMOB PHOTOREALISTIC RENDER BUTTON (BLENDER CYCLES / EEVEE) ──
         act_render = QAction(make_render_icon(), tr("Render Foto-Realista (TrazoMob)"), main_window)
         act_render.setToolTip(tr("Render Foto-Realista de Interiores (Blender Cycles / EEVEE)"))
         act_render.setStatusTip(tr("Gera imagem foto-realista com iluminação de estúdio e materiais PBR"))
@@ -705,7 +704,7 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
         act_render.triggered.connect(_open_render_dialog)
         tb.addAction(act_render)
 
-        # ── SUPRIME / ESCONDE A BARRA POLUÍDA igz_tb_style ──
+        # ── SUPPRESS / HIDE THE CLUTTERED igz_tb_style TOOLBAR ──
         def _suppress_legacy_style_toolbar():
             toolbar = host.legacy_style_toolbar(main_window)
             if toolbar is not None:
@@ -724,11 +723,11 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
                     _name_action(_sub_act)
 
         main_window.addToolBar(Qt.TopToolBarArea, tb)
-        # Garante que a barra do TrazoMob fique em sua própria linha para exibir
-        # todos os seus botões e ferramentas sem ser esmagada ou ocultada pelo overflow do Qt
+        # Ensure the TrazoMob toolbar sits on its own row to display
+        # all its buttons and tools without being crushed or hidden by Qt overflow
         QTimer.singleShot(0, lambda: main_window.insertToolBarBreak(tb))
 
-    # 3. Menu de contexto no botão direito do mouse
+    # 3. Right-click context menu
     from .context_menu import build_context_menu
 
     app.add_context_menu(

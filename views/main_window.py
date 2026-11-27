@@ -812,6 +812,7 @@ class MainWindow(QMainWindow):
         if QApplication.mouseButtons() != Qt.NoButton:
             return                      # try again next tick
         # Every open project, the tabs behind too: each into its own slot.
+        import time
         from core import autosave
         wrote = False
         for doc in list(self._documents):
@@ -825,12 +826,20 @@ class MainWindow(QMainWindow):
             version = vp.scene.version
             if version == doc.autosaved_version:
                 continue
+            t_save = time.perf_counter()
             try:
                 vp.scene.camera_home = self._camera_dict(vp)
                 vp.scene.views_home = self._views_dict(doc)
                 autosave.write(vp.scene, doc.path, untitled=doc.untitled_no)
             except Exception:  # noqa: BLE001 — recovery must never break modeling
                 continue
+            dt_save = time.perf_counter() - t_save
+            try:
+                log_path = autosave.autosave_dir() / "autosave_perf.log"
+                with open(log_path, "a", encoding="utf-8") as f:
+                    f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} | doc={doc.path or f'untitled-{doc.untitled_no}'} | write={dt_save:.3f}s\n")
+            except Exception:
+                pass
             doc.autosaved_version = version
             wrote = True
         if wrote:

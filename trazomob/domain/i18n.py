@@ -1,14 +1,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, Mauro Garcia and IngeTrazo contributors.
-"""Sistema de internacionalização (i18n) do plugin TrazoMob.
+"""Internationalization (i18n) system for the TrazoMob plugin.
 
-Usa o Português (pt-BR) como idioma-fonte (as chaves passadas para `tr` são
-as próprias strings originais em Português), de forma que qualquer string não
-traduzida faz fallback automático e seguro para o original, sem risco de quebrar
-a interface ou os testes.
+Uses Portuguese (pt-BR) as the source language (the keys passed to `tr` are
+the original Portuguese strings themselves), so any untranslated string
+safely falls back to the original without risking UI or test breakage.
 
-Os dicionários de tradução ficam em `assets/i18n/<lang>.json` (ex.: `es.json`, `en.json`).
-Sincroniza automaticamente com `core.i18n.current_language()` do IngeTrazo.
+Translation dictionaries live in `assets/i18n/<lang>.json` (e.g., `es.json`, `en.json`).
+Automatically syncs with IngeTrazo's `core.i18n.current_language()`.
 """
 from __future__ import annotations
 
@@ -23,7 +22,7 @@ logger = logging.getLogger("trazomob.i18n")
 
 
 def get_lang() -> str:
-    """Retorna o código de idioma ativo no IngeTrazo (ex.: 'pt-BR', 'es', 'en')."""
+    """Return the active language code in IngeTrazo (e.g., 'pt-BR', 'es', 'en')."""
     try:
         from core.i18n import current_language
         lang = current_language()
@@ -33,7 +32,7 @@ def get_lang() -> str:
 
 
 def _get_catalog(lang: str) -> dict[str, str]:
-    """Carrega e faz cache do dicionário JSON para o idioma informado."""
+    """Load and cache the JSON dictionary for the given language."""
     if not lang or lang in ("pt-BR", "pt", "pt_BR"):
         return {}
     if lang not in _CATALOG_CACHE:
@@ -54,11 +53,12 @@ def _get_catalog(lang: str) -> dict[str, str]:
 
 
 def source_text(text: str) -> str:
-    """Fonte (pt-BR) de um texto já traduzido pelo catálogo do TrazoMob.
+    """Source (pt-BR) of a text already translated by the TrazoMob catalog.
 
-    O host usa ``action_key`` para lembrar atalhos; quando o texto de uma ação
-    muda com o idioma, a chave muda e o atalho some. Reverter para a fonte antes
-    de gerar um ``objectName`` dá uma chave estável em qualquer idioma.
+    The host uses ``action_key`` to remember shortcuts; when an action's text
+    changes with the language, the key changes and the shortcut disappears.
+    Reverting to the source text before generating an ``objectName`` yields a
+    stable key in any language.
     """
     if not text:
         return text
@@ -71,12 +71,12 @@ def source_text(text: str) -> str:
 
 
 def clear_i18n_cache() -> None:
-    """Limpa o cache de traduções carregadas."""
+    """Clear the loaded translations cache."""
     _CATALOG_CACHE.clear()
 
 
 def tr(text: str, /, **kwargs) -> str:
-    """Traduz `text` para o idioma atual do IngeTrazo e interpola `kwargs` se fornecidos."""
+    """Translate `text` to the current IngeTrazo language and interpolate `kwargs` if provided."""
     if not text:
         return text
     lang = get_lang()

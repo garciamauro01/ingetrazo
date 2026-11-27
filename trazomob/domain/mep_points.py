@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Modelo e geometria 3D para Pontos Elétricos e Hidráulicos (MEP) em paredes."""
+"""Data model and 3D geometry for Electrical and Plumbing (MEP) Points on walls."""
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
@@ -21,7 +21,7 @@ MEP_KINDS: dict[str, dict[str, Any]] = {
 
 @dataclass
 class MEPPoint:
-    """Ponto técnico (elétrico, hidráulico ou gás) ancorado a um segmento de parede."""
+    """Technical point (electrical, plumbing, or gas) anchored to a wall segment."""
 
     id: int
     seg_id: int
@@ -54,7 +54,7 @@ def build_mep_point_group(
     world_pos: tuple[float, float, float],
     size_m: tuple[float, float, float] = (0.08, 0.03, 0.12),
 ) -> Group:
-    """Cria um grupo 3D representativo do ponto MEP na posição especificada."""
+    """Create a representative 3D group for the MEP point at the specified position."""
     meta = MEP_KINDS.get(point.kind, MEP_KINDS["tomada_110v"])
     w, d, h = size_m
     ox, oy, oz = world_pos
@@ -77,7 +77,7 @@ def check_mep_interferences(
     module_bboxes: list[tuple[str, tuple[float, float, float], tuple[float, float, float]]],
     tolerance_m: float = 0.05,
 ) -> list[dict[str, Any]]:
-    """Detecta interferências entre pontos MEP e caixas delimitadoras (min, max) de módulos."""
+    """Detect interferences between MEP points and module bounding boxes (min, max)."""
     alerts: list[dict[str, Any]] = []
     for pt in points:
         pos = point_world_positions.get(pt.id)
@@ -101,7 +101,7 @@ def check_mep_interferences(
 
 
 def compute_mep_wall_distances(point: MEPPoint, seg_length_m: float) -> dict[str, Any]:
-    """Calcula a altura do piso e as distâncias do ponto MEP até os cantos da parede."""
+    """Compute floor height and distances from the MEP point to the wall corners."""
     dist_start = max(0.0, min(seg_length_m, float(point.offset_m)))
     dist_end = max(0.0, seg_length_m - dist_start)
     nearest_corner = "start" if dist_start <= dist_end else "end"
@@ -122,7 +122,7 @@ def update_mep_point_position(
     height_m: float | None = None,
     dist_from_nearest_m: float | None = None,
 ) -> MEPPoint:
-    """Atualiza altura e/ou distância do ponto MEP a partir da cota editada."""
+    """Update MEP point height and/or distance from the edited dimension."""
     if height_m is not None:
         point.height_m = max(0.0, float(height_m))
     if dist_from_nearest_m is not None:

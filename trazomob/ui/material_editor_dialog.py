@@ -821,6 +821,21 @@ class MaterialEditorDialog(QDialog):
         h_opac.addWidget(self.lbl_opacity_val)
         l_right.addLayout(h_opac)
 
+        # 5. Emissive Intensity / Power (emissive shader only)
+        self.emission_widget = QWidget()
+        h_emit = QHBoxLayout(self.emission_widget)
+        h_emit.setContentsMargins(0, 0, 0, 0)
+        h_emit.addWidget(QLabel(tr("Potência da Luz:")))
+        self.sl_emission = QSlider(Qt.Horizontal)
+        self.sl_emission.setRange(1, 300)
+        self.sl_emission.setValue(80)
+        self.sl_emission.valueChanged.connect(self._on_slider_changed)
+        h_emit.addWidget(self.sl_emission, 1)
+        self.lbl_emission_val = QLabel("8.0")
+        h_emit.addWidget(self.lbl_emission_val)
+        self.emission_widget.setVisible(False)
+        l_right.addWidget(self.emission_widget)
+
         # Descrição explicativa do preset
         self.lbl_desc = QLabel()
         self.lbl_desc.setWordWrap(True)
@@ -1117,6 +1132,15 @@ class MaterialEditorDialog(QDialog):
         self.lbl_opacity_val.setText(f"{op_pct}%")
         self.sl_opacity.blockSignals(False)
 
+        self.emission_widget.setVisible(cur_type == "emissivo")
+        default_emit = 2.4 if "painel" in str(cfg.get("sub_type", "")).lower() else 8.0
+        emit_val = float(cfg.get("emission_strength", default_emit))
+        emit_slider = max(1, min(300, int(round(emit_val * 10))))
+        self.sl_emission.blockSignals(True)
+        self.sl_emission.setValue(emit_slider)
+        self.lbl_emission_val.setText(f"{emit_slider / 10.0:.1f}")
+        self.sl_emission.blockSignals(False)
+
         self._update_desc(cur_type)
 
         if self._highlight_active and self.viewport is not None:
@@ -1198,10 +1222,12 @@ class MaterialEditorDialog(QDialog):
         b_val = self.sl_bump.value() / 1000.0
         op_pct = self.sl_opacity.value()
         op_val = round(op_pct / 100.0, 4)
+        e_val = round(self.sl_emission.value() / 10.0, 1)
         self.lbl_rough_val.setText(f"{self.sl_rough.value()}%")
         self.lbl_specular_val.setText(f"{self.sl_specular.value()}%")
         self.lbl_bump_val.setText(f"{self.sl_bump.value() / 10.0:.1f}%")
         self.lbl_opacity_val.setText(f"{op_pct}%")
+        self.lbl_emission_val.setText(f"{e_val:.1f}")
 
         mat_item = next(
             (m for m in self._scene_materials if m.get("name") == self._current_mat),
@@ -1227,6 +1253,8 @@ class MaterialEditorDialog(QDialog):
             self._overrides[self._current_mat]["roughness"] = r_val
             self._overrides[self._current_mat]["specular"] = s_val
             self._overrides[self._current_mat]["bump"] = b_val
+            if self.cb_type.currentData() == "emissivo":
+                self._overrides[self._current_mat]["emission_strength"] = e_val
             if op_pct < 100 or op_pct != base_pct or "opacity" in self._overrides[self._current_mat]:
                 self._overrides[self._current_mat]["opacity"] = op_val
 

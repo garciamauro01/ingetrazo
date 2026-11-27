@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""Menu de contexto do TrazoMob (botão direito no viewport).
+"""TrazoMob context menu (right-click in the viewport).
 
-Extraído de ``__init__.py``. O handler recebe ``app``, ``sidebar_panel`` e a
-classe ``TrazoMobTool`` para evitar import circular com o módulo-raiz.
+Extracted from ``__init__.py``. The handler receives ``app``, ``sidebar_panel``,
+and the ``TrazoMobTool`` class to avoid a circular import with the root module.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ logger = logging.getLogger("trazomob.context_menu")
 
 
 def build_context_menu(menu, selection, app, sidebar_panel, tool_cls) -> None:
-    """Adiciona ao ``menu`` as ações do TrazoMob para a ``selection`` atual."""
+    """Adds TrazoMob actions for the current ``selection`` to ``menu``."""
     mep_grp = next(
         (item for item in selection if isinstance(getattr(item, "ext", None), dict) and "trazomob_mep_point" in item.ext),
         None,
@@ -71,7 +71,7 @@ def build_context_menu(menu, selection, app, sidebar_panel, tool_cls) -> None:
                     break
 
     if wall is not None:
-        # Tenta identificar qual segmento de parede específico foi clicado
+        # Try to identify which specific wall segment was clicked
         seg_index = None
         params = wall.ext.get("trazomob_wall") or {}
         face_map = params.get("face_segment_map", {})
@@ -88,7 +88,7 @@ def build_context_menu(menu, selection, app, sidebar_panel, tool_cls) -> None:
         is_seg = bool(params.get("is_segmented", False))
         pts_count = len(params.get("pontos", []))
 
-        # Se for monólito contínuo, oferece ação para seccionar em paredes individuais
+        # If continuous monolith, offer action to split into individual walls
         if not is_seg and pts_count > 2:
             act_split = menu.addAction(tr("✂️ Seccionar em Paredes Individuais"))
             def _do_split(w=wall):
@@ -123,7 +123,7 @@ def build_context_menu(menu, selection, app, sidebar_panel, tool_cls) -> None:
                 sidebar_panel._toggle_walls_floor_lock(new_state)
         act_lock.triggered.connect(_toggle_lock_from_menu)
 
-        # Opção de Ocultar / Reexibir Parede (vital para visão interna de câmeras)
+        # Hide / Unhide Wall option (essential for interior camera views)
         hide_label = f"👁️ Ocultar {wall.name}" if is_seg else f"👁️ Ocultar Parede{seg_text}"
         act_hide_wall = menu.addAction(hide_label)
         def _hide_this_wall(w=wall, s_idx=seg_index):
@@ -137,7 +137,7 @@ def build_context_menu(menu, selection, app, sidebar_panel, tool_cls) -> None:
                 is_s = bool(p.get("is_segmented", False))
                 p_cnt = len(p.get("pontos", []))
 
-                # Se já for seccionada, oculta diretamente o grupo da parede
+                # If already segmented, hide the wall group directly
                 if is_s or p_cnt <= 2:
                     app.viewport.history.execute(HideCommand([w], hidden=True))
                     if hasattr(app.viewport, "scene"):
@@ -148,7 +148,7 @@ def build_context_menu(menu, selection, app, sidebar_panel, tool_cls) -> None:
                         app.viewport.flash_status(f"👁️ {w.name} ocultada (use 'Reexibir Paredes' para mostrar novamente).")
                     return
 
-                # Se for monólito contínuo, secciona primeiro e oculta a parede escolhida
+                # If continuous monolith, split first and hide the chosen wall
                 eff_idx = s_idx if s_idx is not None else p.get("selected_segment", 0)
                 subs = WallBuilderTool.split_wall_group_into_segments(w)
                 if len(subs) > 1:
@@ -165,7 +165,7 @@ def build_context_menu(menu, selection, app, sidebar_panel, tool_cls) -> None:
                     return
         act_hide_wall.triggered.connect(_hide_this_wall)
 
-        # Se houver alguma parede, teto ou face oculta, adiciona atalho para reexibir
+        # If any wall, ceiling, or face is hidden, add shortcut to unhide
         has_hidden_arch = False
         if hasattr(app, "viewport") and hasattr(app.viewport, "scene"):
             for g in getattr(app.viewport.scene, "groups", []):
@@ -238,7 +238,7 @@ def build_context_menu(menu, selection, app, sidebar_panel, tool_cls) -> None:
         act_tg = menu.addAction(tr("🚪 Abrir / Fechar Portas e Gavetas"))
         act_tg.triggered.connect(lambda: CabinetInteract.toggle_all(mod, app.viewport.scene, app.viewport))
 
-    # ── Menu de Rotação 90° (qualquer objeto selecionado) ───────────────────
+    # ── 90° Rotation Menu (any selected object) ───────────────────────────────
     vp_ctx = getattr(app, "viewport", None)
     scene_ctx = getattr(vp_ctx, "scene", None) if vp_ctx is not None else None
     from .interaction.align_tools import (
@@ -256,11 +256,11 @@ def build_context_menu(menu, selection, app, sidebar_panel, tool_cls) -> None:
         rot_180 = rot_menu.addAction(tr("🔁 Girar 180°"))
         rot_180.triggered.connect(lambda: rotate_groups_with_command(rot_targets, 180.0, vp_ctx))
 
-    # ── Menu de Alinhamento e Centralização (TrazoMob) ──────────────────────
+    # ── Alignment and Centering Menu (TrazoMob) ──────────────────────────────
     sel_groups = [it for it in selection if isinstance(it, Group)]
     if len(sel_groups) >= 2:
         from .interaction.align_tools import center_objects
-        # O último clicado ou selecionado serve de alvo, o primeiro é a base/referência
+        # The last clicked or selected acts as target; the first is the base/reference
         alvo = sel_groups[-1]
         base = sel_groups[0]
         menu.addSeparator()
@@ -281,7 +281,7 @@ def build_context_menu(menu, selection, app, sidebar_panel, tool_cls) -> None:
         act_c_all = align_menu.addAction(tr("🎯 Centralizar em Todos os Eixos (XYZ)"))
         act_c_all.triggered.connect(lambda: center_objects(alvo, base, axes="xyz", viewport=getattr(app, "viewport", None)))
 
-    # Materiais PBR (Render) para qualquer grupo/componente selecionado na cena
+    # PBR Materials (Render) for any selected group/component in the scene
     selected_groups = [g for g in (selection or ()) if hasattr(g, "mesh") or hasattr(g, "children")]
     if len(selected_groups) == 1:
         target_group = selected_groups[0]

@@ -1,18 +1,18 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""Contrato de snap magnetico por face para pecas e modulos do TrazoMob.
+"""Per-face magnetic wall-snap contract for TrazoMob pieces and modules.
 
-O snap de parede tradicional assume que a face traseira do modulo encosta na
-parede (fundo do armario). Pecas avulsas, como o tampo engrossado, podem ser
-usadas em varias posicoes e precisam escolher qual face adere a parede - ou
-nao aderir a nenhuma.
+Traditional wall snapping assumes the rear face of the module rests against
+the wall (cabinet back panel). Standalone pieces, such as a thickened top
+panel, can be used in multiple orientations and need to choose which face
+snaps to the wall — or disable snapping altogether.
 
-As faces horizontais (``superior`` e ``inferior``) aderem a parede tombando a
-peca 90 graus em torno do eixo X local, de modo que o topo (ou a base) fique
-plano contra a parede, como um painel vertical.
+Horizontal faces (``superior`` and ``inferior``) snap to the wall by
+tilting the piece 90 degrees around the local X axis so that the top (or
+bottom) lies flat against the wall like a vertical panel.
 
-O parametro ``snap_parede`` e gravado nos metadados do modulo e lido pelo
-arraste magnetico (``interaction/magnetic_drag_snap.py``).
+The ``snap_parede`` parameter is stored in the module metadata and read by
+magnetic dragging (``interaction/magnetic_drag_snap.py``).
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ SNAP_PAREDE_NENHUM = "nenhum"
 
 DEFAULT_SNAP_PAREDE: str = SNAP_PAREDE_AUTO
 
-# (valor persistido, rotulo exibido na UI)
+# (persisted value, UI display label)
 SNAP_PAREDE_OPCOES: tuple[tuple[str, str], ...] = (
     (SNAP_PAREDE_AUTO, "Automático (fundo na parede)"),
     (SNAP_PAREDE_TRASEIRA, "Traseira na parede"),
@@ -71,8 +71,8 @@ _ALIASES: Mapping[str, str] = {
     "desligado": SNAP_PAREDE_NENHUM,
 }
 
-# Pecas que hoje expõem a escolha de face de snap na interface.
-# Basta acrescentar novos ids aqui para reutilizar o mesmo contrato.
+# Pieces that currently expose wall-snap face selection in the UI.
+# Simply add new IDs here to reuse the same contract.
 SNAP_PAREDE_TIPOS = frozenset({
     "peca_tampo_engrossado",
     "tampo_engrossado",
@@ -80,12 +80,12 @@ SNAP_PAREDE_TIPOS = frozenset({
 
 
 def should_show_snap_parede(tipo: str) -> bool:
-    """Retorna True quando a peca aceita configuracao de face de snap."""
+    """Returns True when the piece supports wall-snap face configuration."""
     return str(tipo).lower() in SNAP_PAREDE_TIPOS
 
 
 def normalize_snap_parede(value: Any) -> str:
-    """Normaliza o valor persistido, aceitando aliases e caindo em ``auto``."""
+    """Normalizes the persisted value, accepting aliases and falling back to ``auto``."""
     if value is None:
         return DEFAULT_SNAP_PAREDE
     texto = str(value).strip().lower()
@@ -95,7 +95,7 @@ def normalize_snap_parede(value: Any) -> str:
 
 
 def get_module_snap_parede(mod: Any) -> str:
-    """Le ``snap_parede`` dos metadados do modulo (com fallback ``auto``)."""
+    """Reads ``snap_parede`` from the module metadata (defaulting to ``auto``)."""
     from .module_utils import is_library_decoration
 
     if is_library_decoration(mod):
@@ -111,14 +111,14 @@ def get_module_snap_parede(mod: Any) -> str:
 
 
 def snap_face_tilt_deg(snap_parede: Any) -> float:
-    """Inclinacao (graus) em torno do eixo X local para apoiar a face na parede.
+    """Tilt angle (degrees) around the local X axis to rest the face on the wall.
 
-    - ``superior``: -90 (o topo local +Z passa a apontar para a traseira +Y).
-    - ``inferior``: +90 (a base local -Z passa a apontar para a traseira +Y).
-    - Demais faces: 0 (a peca permanece deitada).
+    - ``superior``: -90 (local top +Z points toward local rear +Y).
+    - ``inferior``: +90 (local bottom -Z points toward local rear +Y).
+    - Other faces: 0 (the piece remains flat).
 
-    Depois do tombamento a face escolhida fica na direcao da traseira, por isso
-    o encaixe em paredes reaproveita a mesma matematica de ``traseira``.
+    After tilting, the chosen face points in the rear direction, so wall
+    snapping reuses the same math as ``traseira``.
     """
     face = normalize_snap_parede(snap_parede)
     if face == SNAP_PAREDE_SUPERIOR:
@@ -129,15 +129,15 @@ def snap_face_tilt_deg(snap_parede: Any) -> float:
 
 
 def snap_face_target_rotation_deg(nx: float, ny: float, snap_parede: Any) -> float:
-    """Angulo ``rot_z`` (graus, multiplo de 90) para encostar a face escolhida.
+    """``rot_z`` angle (degrees, multiple of 90) to align the chosen face to the wall.
 
-    ``(nx, ny)`` e a normal da parede apontando para dentro do ambiente.
-    No construtor do modulo a frente local aponta para ``-Y`` e o fundo para
-    ``+Y``. O resultado posiciona a face selecionada contra a parede.
+    ``(nx, ny)`` is the wall normal pointing into the room.
+    In the module builder, local front points to ``-Y`` and local back to
+    ``+Y``. The result positions the selected face against the wall.
 
-    Faces tombadas (``superior``/``inferior``) se comportam como ``traseira``:
-    apos a inclinacao em X, a face escolhida aponta para o fundo local (+Y).
-    ``nenhum`` nao gira o modulo.
+    Tilted faces (``superior``/``inferior``) behave like ``traseira``:
+    after tilting around X, the chosen face points toward local back (+Y).
+    ``nenhum`` does not rotate the module.
     """
     face = normalize_snap_parede(snap_parede)
     if face == SNAP_PAREDE_NENHUM:
@@ -149,6 +149,6 @@ def snap_face_target_rotation_deg(nx: float, ny: float, snap_parede: Any) -> flo
         pass
     elif face == SNAP_PAREDE_DIREITA:
         base += 180.0
-    else:  # auto / traseira / superior / inferior
+    else:  # Fallback: auto / rear / top / bottom face
         base += 90.0
     return round(base / 90.0) * 90.0 % 360.0

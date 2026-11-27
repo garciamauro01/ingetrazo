@@ -1,23 +1,23 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""Modelo de dados de ferragens para módulos TrazoMob.
+"""Hardware data model for TrazoMob modules.
 
-Fornece:
+Provides:
 
-* ``HardwareItem`` — um item de ferragem (dobradiça, trilho, corrediça, puxador,
-  fixação etc.) com código estável, tipo, nome, quantidade e preço unitário.
-* ``infer_module_hardware(params)`` — infere a lista de ferragens de um módulo a
-  partir dos seus parâmetros (nº de portas, gavetas, portas de correr, tipo de
-  puxador, profundidade etc.). É a origem automática dos dados.
-* Serialização para/deserialização de dicionários, gravada em
-  ``group.ext["trazomob_hardware"]`` para sobreviver a reaberturas/edições.
-* Agregação de contagens para relatórios e orçamento, substituindo a heurística
-  por nome da peça usada anteriormente em ``production/pricing.py`` e
+* ``HardwareItem`` — a hardware item (hinge, track, drawer slide, handle,
+  fastener, etc.) with stable code, type, name, quantity, and unit price.
+* ``infer_module_hardware(params)`` — infers a module's hardware list from
+  its parameters (number of doors, drawers, sliding doors, handle type,
+  depth, etc.). This is the automatic source of truth.
+* Serialization to/from dictionaries, stored in
+  ``group.ext["trazomob_hardware"]`` to survive reopenings/edits.
+* Count aggregation for reports and quotes, replacing the part-name
+  heuristic previously used in ``production/pricing.py`` and
   ``production/report.py``.
 
-Regra: código novo lê/grava ferragens por aqui. Ler ``group.ext`` direto ou
-inferir ferragens pelo nome da peça produz resultados inconsistentes entre
-cutlist, orçamento e relatório.
+Rule: new code reads/writes hardware through here. Reading ``group.ext``
+directly or inferring hardware from part names yields inconsistent results
+across cutlist, quote, and report.
 """
 
 from __future__ import annotations
@@ -26,8 +26,8 @@ from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from typing import Any
 
-# Código estável -> (tipo, nome amigável, preço unitário padrão em R$)
-# O tipo controla a seção do relatório: dobradiça | trilho | corredica | puxador | fixacao | outro
+# Stable code -> (type, friendly name, default unit price in BRL/R$)
+# Type controls report section: dobradica | trilho | corredica | puxador | fixacao | outro
 HARDWARE_CATALOG: dict[str, dict[str, Any]] = {
     "dobradica_35mm": {
         "tipo": "dobradica",
@@ -101,7 +101,7 @@ HARDWARE_CATALOG: dict[str, dict[str, Any]] = {
     },
 }
 
-# Mapeia tipo de puxador salvo nos parâmetros para a chave do catálogo.
+# Maps handle type saved in parameters to the catalog key.
 _PUXADOR_KEY: dict[str, str | None] = {
     "alca": "puxador_ponto",
     "perfil": "puxador_perfil",
@@ -112,7 +112,7 @@ _PUXADOR_KEY: dict[str, str | None] = {
     "nenhum": None,
 }
 
-# Nº de dobradiças por porta conforme a altura (padrão marcenaria).
+# Number of hinges per door by height (woodworking standard).
 _DOBRA_POR_ALTURA: list[tuple[float, int]] = [
     (2100.0, 5),
     (1600.0, 4),
@@ -123,7 +123,7 @@ _DOBRA_POR_ALTURA: list[tuple[float, int]] = [
 
 @dataclass
 class HardwareItem:
-    """Um item de ferragem."""
+    """A hardware item."""
 
     key: str
     tipo: str
@@ -164,19 +164,19 @@ def _n_dobradicas(altura_mm: float) -> int:
 
 
 def infer_module_hardware(params: dict[str, Any]) -> list[HardwareItem]:
-    """Infere as ferragens de um módulo a partir dos parâmetros salvos.
+    """Infer hardware items for a module from saved parameters.
 
-    Regras de inferência automática:
+    Automatic inference rules:
 
-    * **Portas com abrir**: ``n`` dobradiças por porta (conforme altura), calço
-      para cada dobradiça e um puxador por porta (conforme o tipo escolhido).
-    * **Gavetas**: um par de corrediças por gaveta (400 mm ou 500 mm conforme
-      profundidade) e um puxador por frente de gaveta.
-    * **Portas de correr**: um trilho e duas roldanas por porta.
-    * **Junção da caixa**: kit minifix + cavilha (ou confirmat) conforme o
-      dispositivo de fixação escolhido.
-    * **Prateleiras**: pinos/cavilhas de apoio.
-    * **Pé nivelador**: para módulos de chão (balcões, gaveteiros, torres etc.).
+    * **Hinged doors**: ``n`` hinges per door (based on height), a mounting plate
+      for each hinge, and one handle per door (based on selected type).
+    * **Drawers**: one pair of drawer slides per drawer (400 mm or 500 mm based on
+      depth) and one handle per drawer front.
+    * **Sliding doors**: one track and two rollers per door.
+    * **Carcass joints**: cam lock + dowel kit (or Confirmat) based on the
+      selected fastening device.
+    * **Shelves**: support pins/dowels.
+    * **Leveling foot**: for floor-standing modules (base cabinets, drawer banks, tall cabinets, etc.).
     """
     params = params or {}
     hw: list[HardwareItem] = []
@@ -184,7 +184,7 @@ def infer_module_hardware(params: dict[str, Any]) -> list[HardwareItem]:
     num_portas = int(params.get("num_portas", 0) or 0)
     tipo = str(params.get("tipo", "") or "").lower()
     if tipo in ("balcao_duplo", "balcao_ilha"):
-        # Balcão ilha bilateral possui portas frontais e traseiras
+        # Bilateral island base cabinet has front and back doors
         num_portas_verso = int(params.get("num_portas_verso", num_portas) or num_portas)
         num_portas = num_portas + num_portas_verso
     num_gavetas = int(params.get("num_gavetas", 0) or 0)
@@ -196,23 +196,23 @@ def infer_module_hardware(params: dict[str, Any]) -> list[HardwareItem]:
     tipo = str(params.get("tipo", "") or "").lower()
     is_correr = "correr" in tipo
 
-    # balcao_forno sem gaveta não tem corrediças nem puxador de gaveta.
+    # balcao_forno without a drawer has no slides or drawer handle.
     if tipo == "balcao_forno" and not bool(params.get("tem_gaveta", True)):
         num_gavetas = 0
 
-    # porta_tempero: frente deslizante única (tipo gavetão).
-    # Se tipo_estrutura_tempero == "aramado", substitui corrediças avulsas pelo kit aramado completo.
+    # porta_tempero: single sliding front (deep-drawer style).
+    # If tipo_estrutura_tempero == "aramado", replace loose slides with full wirework kit.
     tipo_estrutura_tempero = str(params.get("tipo_estrutura_tempero", "mdf") or "mdf").lower()
     if tipo == "porta_tempero":
         if tipo_estrutura_tempero == "aramado":
-            # Kit aramado já inclui corrediças integradas no mecanismo
+            # Wirework kit already includes integrated slides in the mechanism
             num_gavetas = 0
             cat_kit = _catalogo("kit_porta_tempero_aramado")
             hw.append(HardwareItem(
                 "kit_porta_tempero_aramado", "outro", cat_kit["nome"], 1, float(cat_kit["preco"]),
                 posicao={"onde": "interno_caixa"},
             ))
-            # Puxador para a frente deslizante
+            # Handle for the sliding front
             pux_key = _PUXADOR_KEY.get(pux_tipo)
             if pux_key:
                 catp = _catalogo(pux_key)
@@ -221,11 +221,11 @@ def infer_module_hardware(params: dict[str, Any]) -> list[HardwareItem]:
                     posicao={"por": "frente_gaveta"},
                 ))
         else:
-            # 100% MDF usa 1 par de corrediça telescópica
+            # 100% MDF uses 1 pair of telescopic drawer slides
             num_gavetas = 1
 
-    # Altura real da porta: no balcão a porta não cobre o rodapé nem o recuo
-    # superior da travessa em pé (quando existir).
+    # Actual door height: on base cabinets the door does not cover the toe kick or
+    # the top recess of the vertical stretcher (when present).
     altura_porta_mm = altura_mm
     if "balcao" in tipo:
         rodape_hw = float(params.get("rodape", 0.0) or 0.0)
@@ -236,7 +236,7 @@ def infer_module_hardware(params: dict[str, Any]) -> list[HardwareItem]:
         altura_porta_mm = max(
             50.0, altura_mm - rodape_hw - recuo_topo_hw - 6.0)
 
-    # ── Portas de abrir: dobradiças, calços e puxadores ──────────────────────
+    # ── Hinged doors: hinges, mounting plates, and handles ──────────────────
     if num_portas > 0 and not is_correr:
         n_por_porta = _n_dobradicas(altura_porta_mm)
         total_dobra = n_por_porta * num_portas
@@ -260,7 +260,7 @@ def infer_module_hardware(params: dict[str, Any]) -> list[HardwareItem]:
                 posicao={"por": "porta"},
             ))
 
-    # ── Junção da caixa: minifix / cavilha / confirmat ───────────────────────
+    # ── Carcass joints: cam lock / dowel / Confirmat ────────────────────────
     if "minifix" in dispositivo:
         cat = _catalogo("minifix_kit")
         hw.append(HardwareItem(
@@ -280,7 +280,7 @@ def infer_module_hardware(params: dict[str, Any]) -> list[HardwareItem]:
             posicao={"onde": "juncao_caixa"},
         ))
 
-    # ── Gavetas: corrediças e puxadores ──────────────────────────────────────
+    # ── Drawers: slides and handles ─────────────────────────────────────────
     if num_gavetas > 0:
         chave = "corredica_50" if profundidade_mm > 500 else "corredica_40"
         cat = _catalogo(chave)
@@ -296,7 +296,7 @@ def infer_module_hardware(params: dict[str, Any]) -> list[HardwareItem]:
                 posicao={"por": "frente_gaveta"},
             ))
 
-    # ── Portas de correr: trilhos e roldanas ─────────────────────────────────
+    # ── Sliding doors: tracks and rollers ──────────────────────────────────
     if is_correr and num_portas > 0:
         cat_t = _catalogo("trilho_correr")
         hw.append(HardwareItem(
@@ -309,11 +309,11 @@ def infer_module_hardware(params: dict[str, Any]) -> list[HardwareItem]:
             posicao={"por": "porta_correr", "n_roldanas": 2},
         ))
 
-    # ── Prateleiras: pinos de apoio ──────────────────────────────────────────
+    # ── Shelves: support pins ────────────────────────────────────────────────
     if num_prateleiras > 0:
-        # Cada vão possui sua própria prateleira e cada prateleira usa 4 pinos
-        # (2 em cada lateral/divisória). A contagem de vãos segue a mesma regra
-        # do build_balcao: mínimo estrutural para 3+ portas e máximo n_portas - 1.
+        # Each bay has its own shelf and each shelf uses 4 pins
+        # (2 on each side/divider). Bay count follows the same rule as
+        # build_balcao: structural minimum for 3+ doors and maximum n_portas - 1.
         from .module_geometry import MAX_DOORS, auto_divisoes_for_doors
 
         n_p = max(0, min(MAX_DOORS, num_portas))
@@ -333,7 +333,7 @@ def infer_module_hardware(params: dict[str, Any]) -> list[HardwareItem]:
             posicao={"por": "prateleira", "n_pinos": 4, "vaos": num_vaos},
         ))
 
-    # ── Pé nivelador: apenas se explicitamente solicitado nos parâmetros ──
+    # ── Leveling foot: only if explicitly requested in parameters ──
     tem_pes = bool(params.get("tem_pes_nivelador", False))
     if tem_pes:
         cat = _catalogo("pes_nivelador")
@@ -346,12 +346,12 @@ def infer_module_hardware(params: dict[str, Any]) -> list[HardwareItem]:
 
 
 def serialize_hardware(items: Iterable[HardwareItem]) -> list[dict[str, Any]]:
-    """Converte uma lista de ``HardwareItem`` para dicionários serializáveis."""
+    """Convert an iterable of ``HardwareItem`` to serializable dictionaries."""
     return [it.to_dict() for it in items]
 
 
 def deserialize_hardware(data: Any) -> list[HardwareItem]:
-    """Recria ``HardwareItem``s a partir de dados serializados (ext/JSON)."""
+    """Recreate ``HardwareItem`` instances from serialized data (ext/JSON)."""
     if not isinstance(data, list):
         return []
     itens: list[HardwareItem] = []
@@ -368,13 +368,13 @@ def deserialize_hardware(data: Any) -> list[HardwareItem]:
 def consolidate_hardware(
     entries: Iterable[tuple[Any, list[HardwareItem]]],
 ) -> dict[str, dict[str, Any]]:
-    """Agrega ferragens de vários módulos numa única contagem.
+    """Aggregate hardware across multiple modules into a single count.
 
-    ``entries`` é um iterável de ``(chave_modulo, [HardwareItem, ...])``. A
-    chave do módulo evita contar a mesma ferragem duas vezes quando várias
-    peças de um mesmo módulo aparecem na cutlist.
+    ``entries`` is an iterable of ``(module_key, [HardwareItem, ...])``. The
+    module key avoids counting the same hardware twice when multiple parts from
+    the same module appear in the cutlist.
 
-    Retorna ``{codigo: {"tipo", "nome", "quantidade", "preco_unitario", "total"}}``.
+    Returns ``{code: {"tipo", "nome", "quantidade", "preco_unitario", "total"}}``.
     """
     resultado: dict[str, dict[str, Any]] = {}
     for _chave_modulo, items in entries:
@@ -399,5 +399,5 @@ def consolidate_hardware(
 
 
 def hardware_total_preco(consolidado: dict[str, dict[str, Any]]) -> float:
-    """Soma o preço total de todas as ferragens consolidadas."""
+    """Sum the total price of all consolidated hardware items."""
     return round(sum(float(e.get("total", 0.0)) for e in consolidado.values()), 2)

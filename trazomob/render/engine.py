@@ -61,6 +61,7 @@ class _ExportWorker(QObject):
         clay_mode: bool,
         selected_only: bool,
         sun_softness: float,
+        prepare_only: bool = False,
     ):
         super().__init__()
         self.scene = scene
@@ -76,6 +77,7 @@ class _ExportWorker(QObject):
         self.clay_mode = clay_mode
         self.selected_only = selected_only
         self.sun_softness = sun_softness
+        self.prepare_only = prepare_only
 
     def run(self):
         try:
@@ -228,6 +230,7 @@ class _ExportWorker(QObject):
                 "clay_mode": self.clay_mode,
                 "exposure": 0.0 if self.preset in ("dia", "noturno", "estudio") else -0.1,
                 "blend_file": str(work_dir / "cena_marcenaria_trazomob.blend"),
+                "prepare_only": self.prepare_only,
             }
 
             job_path = work_dir / "job.json"
@@ -239,22 +242,25 @@ class _ExportWorker(QObject):
 
 
 class TrazoMobRenderEngine(QObject):
-    """Orquestra a criação do job e o processo em background do Blender."""
+    """Orchestrates job creation and the background Blender process."""
 
     progress_updated = Signal(int, str)  # percent (0..100 or -1 for indeterminate), message
-    render_finished = Signal(str)  # Caminho da imagem gerada
+    render_finished = Signal(str)  # Path to generated image
+    prepare_finished = Signal(str)  # Path to prepared .blend file
     render_failed = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._process: QProcess | None = None
         self._output_path: str | None = None
+        self._blend_path: str | None = None
+        self._prepare_only: bool = False
         self._export_thread: QThread | None = None
         self._export_worker: _ExportWorker | None = None
 
     @staticmethod
     def get_blender_executable() -> str | None:
-        """Localiza o executável do Blender no sistema operacional."""
+        """Locates the Blender executable on the operating system."""
         settings = QSettings()
         custom = settings.value("render/blender_path", "")
         if custom and os.path.isfile(custom):
@@ -290,7 +296,8 @@ class TrazoMobRenderEngine(QObject):
         material_overrides: dict | None = None,
         clay_mode: bool = False,
         selected_only: bool = False,
-        sun_softness: float = 2.5
+        sun_softness: float = 2.5,
+        prepare_only: bool = False,
     ) -> bool:
         """Inicia a renderização fotorrealista via Blender em segundo plano."""
         blender_exe = self.get_blender_executable()
@@ -314,6 +321,8 @@ class TrazoMobRenderEngine(QObject):
         work_dir.mkdir(parents=True, exist_ok=True)
 
         # Inicia a preparação e exportação do GLB numa QThread dedicada para não travar a UI
+        self._prepare_only = prepare_only
+        self._blend_path = str(work_dir / "cena_marcenaria_trazomob.blend")
         self._export_thread = QThread(self)
         self._export_worker = _ExportWorker(
             scene=scene,
@@ -329,6 +338,7 @@ class TrazoMobRenderEngine(QObject):
             clay_mode=clay_mode,
             selected_only=selected_only,
             sun_softness=sun_softness,
+            prepare_only=prepare_only,
         )
         self._current_blender_exe = blender_exe
         self._export_worker.moveToThread(self._export_thread)
@@ -405,14 +415,14 @@ class TrazoMobRenderEngine(QObject):
         self._process.start(blender_exe, args)
 
     def _on_process_started(self):
-        """Reduz a prioridade do processo do Blender para manter a interface fluida."""
+        """Lowers the Blender process priority to keep the UI responsive."""
         if self._process:
             pid = self._process.processId()
             if pid:
                 _set_process_low_priority(pid)
 
     def cancel(self):
-        """Cancela a preparação e a renderização se estiverem em andamento."""
+        """Cancels ongoing preparation and rendering."""
         if self._export_thread is not None and self._export_thread.isRunning():
             self._export_thread.quit()
             self._export_thread.wait(1000)
@@ -480,6 +490,14 @@ class TrazoMobRenderEngine(QObject):
         self._process.readAllStandardError()
 
     def _on_finished(self, exit_code, exit_status):
+        if self._prepare_only:
+            if exit_code == 0 and self._blend_path and os.path.isfile(self._blend_path):
+                self.progress_updated.emit(100, "✅ Cena preparada para o Blender!")
+                self.prepare_finished.emit(self._blend_path)
+            else:
+                self.render_failed.emit("A preparação da cena para o Blender foi interrompida ou falhou.")
+            return
+
         if exit_code == 0 and self._output_path and os.path.isfile(self._output_path):
             self.progress_updated.emit(100, "✅ Imagem foto-realista concluída!")
             self.render_finished.emit(self._output_path)

@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""Módulo de Compatibilidade Retroativa e Auto-Migração para o TrazoMob.
+"""Backward Compatibility and Auto-Migration Module for TrazoMob.
 
-Garante que qualquer arquivo ou modelo construído em versões anteriores do plugin:
-1. Tenha todos os metadados dinâmicos necessários restaurados e atualizados;
-2. Calcule automaticamente dimensões físicas (L, A, P) a partir da malha geométrica caso ausentes;
-3. Atualize o esquema de versão interna (schema_version = 2);
-4. Assegure que as portas, frentes e caixarias funcionem com snap magnético, cotas e alinhamento de paredes;
-5. Detecte módulos antigos ao abrir documentos ou ao carregar a cena, sem alterar ou corromper geometrias do usuário.
+Ensures that any file or model built in earlier plugin versions:
+1. Has all required dynamic metadata restored and updated;
+2. Automatically computes physical dimensions (W, H, D) from the geometry mesh if missing;
+3. Upgrades the internal schema version (schema_version = 2);
+4. Ensures doors, fronts, and carcasses work with magnetic snap, dimensions, and wall alignment;
+5. Detects legacy modules when opening documents or loading the scene, without altering or corrupting user geometry.
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from core.group import Group, iter_placements
 
 CURRENT_SCHEMA_VERSION = 2
 
-# Valores padrão seguros para garantir integridade caso faltem no arquivo antigo
+# Safe default values to guarantee integrity if missing in the legacy file
 DEFAULT_MODULE_PARAMS: dict[str, Any] = {
     "espessura": 15.0,
     "material": "MDF Branco TX 15mm",
@@ -43,7 +43,7 @@ DEFAULT_MODULE_PARAMS: dict[str, Any] = {
 
 
 def compute_geometry_bounds(group: Group) -> tuple[float, float, float, float, float, float] | None:
-    """Calcula os limites em metros (min_x, max_x, min_y, max_y, min_z, max_z) da geometria real."""
+    """Compute bounds in meters (min_x, max_x, min_y, max_y, min_z, max_z) of the actual geometry."""
     min_x, max_x = float("inf"), float("-inf")
     min_y, max_y = float("inf"), float("-inf")
     min_z, max_z = float("inf"), float("-inf")
@@ -70,7 +70,7 @@ def compute_geometry_bounds(group: Group) -> tuple[float, float, float, float, f
 
 
 def deduce_module_type_from_name(name: str) -> str:
-    """Infere o tipo do módulo a partir do nome caso a chave 'tipo' esteja ausente."""
+    """Infer module type from its name if the 'tipo' key is missing."""
     n = (name or "").lower()
     if "gavet" in n:
         return "gaveteiro"
@@ -92,11 +92,11 @@ def deduce_module_type_from_name(name: str) -> str:
 
 
 def migrate_legacy_group(group: Group) -> bool:
-    """Verifica e migra um grupo (módulo mestre, peça de marcenaria ou parede) para o schema do TrazoMob.
+    """Verify and migrate a group (master module, woodworking part, or wall) to the TrazoMob schema.
 
-    Normaliza campos ausentes ou incompletos.
+    Normalizes missing or incomplete fields.
 
-    Retorna True se o grupo sofreu alguma atualização/migração.
+    Returns True if the group underwent any update/migration.
     """
     if not isinstance(group, Group):
         return False
@@ -107,24 +107,24 @@ def migrate_legacy_group(group: Group) -> bool:
 
     migrated = False
 
-    # ── 1. MIGRAÇÃO DETALHADA SE FOR UM MÓDULO MESTRE ──
+    # ── 1. DETAILED MIGRATION IF IT IS A MASTER MODULE ──
     cc_data = ext.get("trazomob_module")
     if cc_data is not None and isinstance(cc_data, dict):
         schema_v = int(cc_data.get("schema_version", 1))
 
-        # Recupera ou deduz tipo
+        # Recover or infer type
         tipo = cc_data.get("tipo")
         if not tipo:
             tipo = deduce_module_type_from_name(getattr(group, "name", ""))
             cc_data["tipo"] = tipo
             migrated = True
 
-        # Normaliza campo rot_z consistente
+        # Normalize consistent rot_z field
         if "rotacao" in cc_data and "rot_z" not in cc_data:
             cc_data["rot_z"] = float(cc_data["rotacao"]) % 360.0
             migrated = True
 
-        # Garante dimensões (largura, altura, profundidade) a partir da malha física se ausentes ou zeradas
+        # Ensure dimensions (largura, altura, profundidade) from physical mesh if missing or zeroed
         b = compute_geometry_bounds(group)
         if b is not None:
             geom_w_mm = round((b[1] - b[0]) * 1000.0)
@@ -149,13 +149,13 @@ def migrate_legacy_group(group: Group) -> bool:
                 cc_data["altura"] = geom_h_mm
                 migrated = True
 
-        # Preenche chaves padrão faltantes (compatibilidade com UI e Builder)
+        # Fill missing default keys (compatibility with UI and Builder)
         for k, v in DEFAULT_MODULE_PARAMS.items():
             if k not in cc_data:
                 cc_data[k] = v
                 migrated = True
 
-        # Salva versão do schema atualizada
+        # Save updated schema version
         if schema_v < CURRENT_SCHEMA_VERSION:
             cc_data["schema_version"] = CURRENT_SCHEMA_VERSION
             migrated = True
@@ -163,13 +163,13 @@ def migrate_legacy_group(group: Group) -> bool:
     return migrated
 
 
-# Alias de compatibilidade
+# Compatibility alias
 migrate_legacy_module = migrate_legacy_group
 
 
 def migrate_legacy_lights(scene, viewport=None) -> int:
-    """Detecta luzes salvas no documento antigo (render_blender / document_data) que ainda não
-    possuem um Group 3D nativo correspondente na cena e as converte automaticamente."""
+    """Detect lights saved in the legacy document (render_blender / document_data) that do not yet
+    have a corresponding native 3D Group in the scene and convert them automatically."""
     if viewport is None or scene is None:
         return 0
 
@@ -188,7 +188,7 @@ def migrate_legacy_lights(scene, viewport=None) -> int:
     if not doc_lights:
         return 0
 
-    # Verifica quais luzes já possuem Group 3D na cena
+    # Check which lights already have a 3D Group in the scene
     existing_3d_positions = []
     for g in _iter_groups_recursive(getattr(scene, "groups", [])):
         ext = getattr(g, "ext", None)
@@ -202,7 +202,7 @@ def migrate_legacy_lights(scene, viewport=None) -> int:
         pos = lt.get("pos")
         if not pos:
             continue
-        # Se já existe um Group 3D nesta mesma posição, não duplica
+        # If a 3D Group already exists at this same position, do not duplicate
         already_has_group = any(
             abs(pos[0] - ep[0]) < 1e-3 and abs(pos[1] - ep[1]) < 1e-3 and abs(pos[2] - ep[2]) < 1e-3
             for ep in existing_3d_positions
@@ -230,16 +230,16 @@ def migrate_legacy_lights(scene, viewport=None) -> int:
 
 
 def _iter_groups_recursive(groups):
-    """Percorre grupos e todos os seus descendentes (Ambiente/Pavimento etc.)."""
+    """Traverse groups and all their descendants (Room/Floor, etc.)."""
     for g in groups or []:
         yield g
         yield from _iter_groups_recursive(getattr(g, "children", None) or [])
 
 
 def migrate_scene_trazomob_entities(scene, viewport=None) -> int:
-    """Varre todos os grupos da cena e aplica a migração em módulos, paredes e luzes legadas.
+    """Scan all scene groups and apply migration to legacy modules, walls, and lights.
 
-    Retorna o número de grupos atualizados.
+    Returns the number of updated groups.
     """
     if scene is None:
         return 0
@@ -249,7 +249,7 @@ def migrate_scene_trazomob_entities(scene, viewport=None) -> int:
         if migrate_legacy_group(g):
             count += 1
 
-    # Converte luzes legadas do documento para objetos 3D reais
+    # Convert legacy document lights into real 3D objects
     if viewport is not None:
         l_count = migrate_legacy_lights(scene, viewport=viewport)
         count += l_count

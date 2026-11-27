@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""Catálogo de módulos paramétricos de marcenaria para TrazoMob."""
+"""Parametric woodworking module catalog for TrazoMob."""
 from __future__ import annotations
 
 import re
@@ -703,23 +703,23 @@ MODULE_CATALOG = {
 }
 
 
-#: Categoria virtual onde os módulos salvos pelo usuário aparecem.
+#: Virtual category where user-saved modules appear.
 USER_MODULE_CATEGORY = "⭐ Meus Módulos"
 
 
 def modulos_usuario() -> list[dict]:
-    """Módulos salvos pelo usuário (lidos das preferências persistentes)."""
+    """User-saved modules (loaded from persistent preferences)."""
     from .preferences import TrazoMobPreferencesManager
 
     return TrazoMobPreferencesManager.get_instance().get_user_modules()
 
 
 def iter_modulos_todos():
-    """Itera o catálogo estático e os módulos do usuário, marcando a origem.
+    """Iterate over the static catalog and user modules, tagging their origin.
 
-    Cada item recebe ``usuario`` (bool) e ``categoria`` (a categoria do
-    catálogo, ou ``USER_MODULE_CATEGORY`` para os módulos pessoais). A galeria
-    e o ribbon usam esses campos para exibir a seção "Meus Módulos".
+    Each item receives ``usuario`` (bool) and ``categoria`` (the catalog
+    category, or ``USER_MODULE_CATEGORY`` for personal modules). The gallery
+    and ribbon use these fields to display the "My Modules" section.
     """
     for categoria, itens in MODULE_CATALOG.items():
         for item in itens:
@@ -729,7 +729,7 @@ def iter_modulos_todos():
 
 
 def buscar_modulo(module_id: str, incluir_usuario: bool = True) -> dict | None:
-    """Busca um módulo pelo ``id`` no catálogo estático e (opcional) no usuário."""
+    """Look up a module by ``id`` in the static catalog and (optionally) user modules."""
     for categoria, itens in MODULE_CATALOG.items():
         for item in itens:
             if item.get("id") == module_id:
@@ -742,7 +742,7 @@ def buscar_modulo(module_id: str, incluir_usuario: bool = True) -> dict | None:
 
 
 def _novo_id_usuario(nome: str, existentes: set[str]) -> str:
-    """Gera um ``id`` único e legível (slug) para um módulo do usuário."""
+    """Generate a unique, readable ``id`` (slug) for a user module."""
     texto = unicodedata.normalize("NFKD", nome or "")
     texto = "".join(c for c in texto if not unicodedata.combining(c))
     slug = re.sub(r"[^a-z0-9]+", "_", texto.lower()).strip("_") or "modulo"
@@ -760,18 +760,18 @@ def build_user_module(
     nome: str,
     existentes: set[str] | None = None,
 ) -> dict:
-    """Monta um módulo pessoal a partir de um item do catálogo e dos parâmetros do formulário.
+    """Build a personal module from a catalog item and form parameters.
 
-    ``base`` é o item de catálogo de origem (fornece flags como ``has_portas``),
-    ``params`` são os parâmetros coletados da UI e ``nome`` é o nome escolhido
-    pelo usuário. O ``id`` resultante é único dentro de ``existentes``.
+    ``base`` is the source catalog item (provides flags such as ``has_portas``),
+    ``params`` are the parameters collected from the UI, and ``nome`` is the name
+    chosen by the user. The resulting ``id`` is unique within ``existentes``.
     """
     novo = dict(base)
     nome_base = str(novo.get("nome") or novo.get("id") or "módulo")
 
-    # Esquadrias salvas como "Meus Módulos" precisam continuar apontando para o
-    # modelo .igz de origem: o id gerado (``user_porta_*``) nao tem o prefixo
-    # exigido pelo CabinetBuilder e nao existe no _ESQUADRIA_FILES.
+    # Window/door openings saved as "My Modules" must continue pointing to the
+    # source .igz model: the generated id (``user_porta_*``) lacks the prefix
+    # required by CabinetBuilder and does not exist in _ESQUADRIA_FILES.
     id_origem = str(base.get("id") or "")
     if id_origem.startswith(("porta_", "janela_")):
         novo["base_id"] = id_origem

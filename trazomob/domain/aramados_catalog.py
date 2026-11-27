@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Catálogo paramétrico e geometria 3D para ferragens e aramados internos."""
+"""Parametric catalog and 3D geometry for internal hardware and wirework accessories."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -11,7 +11,7 @@ from ..builders.mesh_utils import create_board_group
 
 @dataclass(frozen=True)
 class AramadoSpec:
-    """Especificação de um acessório aramado/ferragem interna."""
+    """Specification of an internal wirework/hardware accessory."""
 
     id: str
     label: str
@@ -87,7 +87,7 @@ def list_compatible_aramados(
     altura_mm: float,
     category: str | None = None,
 ) -> list[AramadoSpec]:
-    """Retorna os aramados compatíveis com as dimensões e categoria informadas."""
+    """Return wirework accessories compatible with the given dimensions and category."""
     res: list[AramadoSpec] = []
     for spec in ARAMADOS_CATALOG.values():
         if category and spec.category != category:
@@ -108,7 +108,7 @@ def build_aramado_group(
     altura_mm: float,
     origin: tuple[float, float, float] = (0.0, 0.0, 0.0),
 ) -> Group:
-    """Constrói a representação 3D do aramado interno dentro do vão do módulo."""
+    """Build the 3D representation of the internal wirework accessory inside the module opening."""
     spec = ARAMADOS_CATALOG[aramado_id]
     w_m = max(0.10, (largura_mm - 40.0) / 1000.0)
     d_m = max(0.15, (prof_mm - 60.0) / 1000.0)

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""Caixaria e componentes estruturais do CabinetBuilder."""
+"""Carcass and structural components for CabinetBuilder."""
 from __future__ import annotations
 
 from typing import Any
@@ -13,7 +13,7 @@ from ..domain.materials_catalog import get_material_color
 
 
 class CaixaMixin:
-    """Fundos, gavetas e a caixa modular base dos modulos."""
+    """Back panels, drawers, and the base modular carcass for modules."""
 
     @staticmethod
     def get_material_color(material: str) -> tuple[float, float, float]:
@@ -27,12 +27,13 @@ class CaixaMixin:
         recuo_fundo_mm: float = 10.0,
         esp_travessa_traseira_mm: float = 0.0,
     ) -> float:
-        """Calcula o desconto traseiro (em metros) até a face frontal do fundo.
+        """Calculates the rear setback (in meters) up to the front face of the back panel.
 
-        Garante que partes internas (prateleiras, divisórias, gavetas) fiquem rigorosamente
-        no vão útil interno, encostando na face do fundo sem nunca invadi-lo ou ultrapassá-lo.
-        Quando há travessa traseira (esp_travessa_traseira_mm > 0), o fundo encosta diretamente
-        atrás dela (recuo igual à espessura da travessa traseira).
+        Ensures internal parts (shelves, dividers, drawers) fit strictly within
+        the clear internal opening, resting flush against the back panel face
+        without ever intersecting or protruding past it.
+        When a rear stretcher is present (esp_travessa_traseira_mm > 0), the
+        back panel rests directly behind it (setback equal to the rear stretcher thickness).
         """
         recuo_efetivo_mm = esp_travessa_traseira_mm if esp_travessa_traseira_mm > 0 else recuo_fundo_mm
         if tipo_fundo == "rasgo":
@@ -61,13 +62,13 @@ class CaixaMixin:
         material_fundo: str | None = None,
         esp_travessa_traseira_mm: float = 0.0,
     ) -> Group | None:
-        """Gera a peça de fundo com os parâmetros de marcenaria TrazoMob.
+        """Generates the back panel part using TrazoMob cabinetry parameters.
 
-        Suporta:
-        - 'rasgo': Canal / rasgo embutido nas laterais e base, com recuo traseiro
-          (encostando diretamente atrás da travessa traseira quando ela existir).
-        - 'sobreposto': Chapa pregada / parafusada por trás.
-        - 'sem_fundo': Sem geração de peça.
+        Supports:
+        - 'rasgo': Recessed dado/groove in the sides and base, with rear setback
+          (resting directly behind the rear stretcher when present).
+        - 'sobreposto': Panel nailed / screwed onto the rear.
+        - 'sem_fundo': No back panel part generated.
         """
         if tipo_fundo == "sem_fundo":
             return None
@@ -81,14 +82,14 @@ class CaixaMixin:
         recuo_m = recuo_efetivo_mm / 1000.0
 
         if tipo_fundo == "sobreposto":
-            # Sobreposto: cobre a traseira total (menos folga de esquadro)
+            # Surface-mounted: covers the full rear (minus squareness clearance)
             comp_m = max(0.05, altura_total_caixa_m - folga_m)
             larg_m = max(0.05, largura_total_m - folga_m)
             px = ox + (folga_m / 2.0)
             py = oy + prof_total_m - E_fundo
             pz = oz_caixa + (folga_m / 2.0)
         else:
-            # Canal / Rasgo: avança nos rasgos das laterais e base e desconta folga
+            # Dado / Groove: extends into the side and base grooves and deducts clearance
             larg_chapa_mm = (largura_interna_m * 1000.0) + (2.0 * prof_rasgo_mm) - folga_fundo_mm
             alt_chapa_mm = (altura_interna_m * 1000.0) + (2.0 * prof_rasgo_mm) - folga_fundo_mm
             larg_m = max(0.05, larg_chapa_mm / 1000.0)
@@ -132,11 +133,11 @@ class CaixaMixin:
         operacoes: list[dict[str, Any]] | None = None,
         ctx: ModuloMaterialContext | None = None,
     ) -> Group:
-        """Objeto canônico universal: Prateleira interna com furações padronizadas nos topos.
+        """Universal canonical object: Internal shelf with standardized end drilling.
 
-        Padrão marcenaria:
-        - Fita de borda na frente (fita_c1=True) ou personalizada em outras faces.
-        - Usinagens nos topos esquerdo e direito para pinos/cavilhas ou suportes (Ø8mm ou Ø5mm).
+        Cabinetry standard:
+        - Edge banding on the front (fita_c1=True) or customized on other faces.
+        - Machining on the left and right ends for pins/dowels or shelf supports (Ø8mm or Ø5mm).
         """
         sx, sy, sz = size
         prof_prat_mm = abs(sy) * 1000.0
@@ -195,7 +196,7 @@ class CaixaMixin:
         operacoes: list[dict[str, Any]] | None = None,
         ctx: ModuloMaterialContext | None = None,
     ) -> Group:
-        """Objeto canônico universal: Lateral Esquerda da caixaria."""
+        """Universal canonical object: Carcass Left Side."""
         if ctx is not None:
             spec = ChapaSpec.resolve(
                 nome=name,
@@ -236,7 +237,7 @@ class CaixaMixin:
         operacoes: list[dict[str, Any]] | None = None,
         ctx: ModuloMaterialContext | None = None,
     ) -> Group:
-        """Objeto canônico universal: Lateral Direita da caixaria."""
+        """Universal canonical object: Carcass Right Side."""
         if ctx is not None:
             spec = ChapaSpec.resolve(
                 nome=name,
@@ -277,7 +278,7 @@ class CaixaMixin:
         operacoes: list[dict[str, Any]] | None = None,
         ctx: ModuloMaterialContext | None = None,
     ) -> Group:
-        """Objeto canônico universal: Base Inferior da caixaria."""
+        """Universal canonical object: Carcass Bottom Panel."""
         if ctx is not None:
             spec = ChapaSpec.resolve(
                 nome=name,
@@ -318,7 +319,7 @@ class CaixaMixin:
         operacoes: list[dict[str, Any]] | None = None,
         ctx: ModuloMaterialContext | None = None,
     ) -> Group:
-        """Objeto canônico universal: Tampo Superior fechado da caixaria."""
+        """Universal canonical object: Closed Carcass Top Panel."""
         if ctx is not None:
             spec = ChapaSpec.resolve(
                 nome=name,
@@ -353,7 +354,7 @@ class CaixaMixin:
         operacoes: list[dict[str, Any]] | None = None,
         ctx: ModuloMaterialContext | None = None,
     ) -> Group:
-        """Objeto canônico universal: Chapa de Fundo (6mm ou 15mm, rasgado ou sobreposto)."""
+        """Universal canonical object: Back Panel (6mm or 15mm, grooved or surface-mounted)."""
         mat = material or "MDF Fundo 6mm"
         if ctx is not None:
             spec = ChapaSpec.resolve(
@@ -398,9 +399,9 @@ class CaixaMixin:
         afastamento_cavilha_traseiro_mm: float = 50.0,
         ctx: ModuloMaterialContext | None = None,
     ) -> Group:
-        """Objeto canônico universal: Divisória vertical intermediária interna de qualquer móvel.
+        """Universal canonical object: Internal vertical intermediate divider for any cabinet.
 
-        Permite gerar furações técnicas de cavilha em cima (topo superior) e/ou embaixo (topo inferior).
+        Allows generating technical dowel drilling on top (upper end) and/or bottom (lower end).
         """
         ops_list: list[dict[str, Any]] = list(operacoes) if operacoes else []
         if cavilha_topo_superior or cavilha_topo_inferior:
@@ -457,7 +458,7 @@ class CaixaMixin:
         operacoes: list[dict[str, Any]] | None = None,
         ctx: ModuloMaterialContext | None = None,
     ) -> Group:
-        """Objeto canônico universal: Divisória horizontal intermediária fixa de separação de nichos/vãos."""
+        """Universal canonical object: Fixed horizontal intermediate divider separating niches/openings."""
         if ctx is None:
             ctx = ModuloMaterialContext(material_caixa=material, material_fita_caixa=material_fita)
         spec = ChapaSpec.resolve(
@@ -497,7 +498,7 @@ class CaixaMixin:
         operacoes: list[dict[str, Any]] | None = None,
         ctx: ModuloMaterialContext | None = None,
     ) -> Group:
-        """Objeto canônico universal: Travessa Estrutural (deitada ou em pé)."""
+        """Universal canonical object: Structural Stretcher (flat or upright)."""
         if ctx is not None:
             spec = ChapaSpec.resolve(
                 nome=name,
@@ -549,10 +550,10 @@ class CaixaMixin:
         door_side: str | None = None,
         ctx: ModuloMaterialContext | None = None,
     ) -> Group:
-        """Objeto canônico universal: Porta de Abrir Esquerda (dobradiças na esquerda, puxador na direita).
+        """Universal canonical object: Left Hinged Door (hinges on the left, handle on the right).
 
-        ``door_side`` permite marcar a peça como ``"single"`` (porta única), caso em
-        que o lado de abertura ainda pode ser invertido pelo módulo mestre.
+        ``door_side`` allows marking the part as ``"single"`` (single door), in which
+        case the opening side can still be inverted by the master module.
         """
         ops = list(operacoes) if operacoes is not None else []
         if gerar_furacao and not ops:
@@ -619,7 +620,7 @@ class CaixaMixin:
         door_side: str | None = None,
         ctx: ModuloMaterialContext | None = None,
     ) -> Group:
-        """Objeto canônico universal: Porta de Abrir Direita (dobradiças na direita, puxador na esquerda)."""
+        """Universal canonical object: Right Hinged Door (hinges on the right, handle on the left)."""
         ops = list(operacoes) if operacoes is not None else []
         if gerar_furacao and not ops:
             from ..production.machining import make_hinge_cup_holes
@@ -684,12 +685,12 @@ class CaixaMixin:
         operacoes: list[dict[str, Any]] | None = None,
         ctx: ModuloMaterialContext | None = None,
     ) -> Group:
-        """Objeto canônico universal: Porta Basculante (abertura superior com pistão a gás, puxador na base inferior)."""
+        """Universal canonical object: Flip-Up Door (top-opening with gas piston, handle at the bottom edge)."""
         ops = list(operacoes) if operacoes is not None else []
         if gerar_furacao and not ops:
             larg_porta_mm = size[0] * 1000.0
             alt_porta_mm = size[2] * 1000.0
-            # Canecos no topo da porta basculante (100mm das pontas laterais, 21.5mm da borda superior)
+            # Hinge cups at the top of the flip-up door (100mm from side ends, 21.5mm from top edge)
             recuo_topo_mm = 21.5
             y_caneco = alt_porta_mm - recuo_topo_mm
             pontos_x = [100.0, max(132.0, larg_porta_mm - 100.0)]
@@ -775,7 +776,7 @@ class CaixaMixin:
         operacoes: list[dict[str, Any]] | None = None,
         ctx: ModuloMaterialContext | None = None,
     ) -> Group:
-        """Objeto canônico universal: Frente de Gaveta Externa."""
+        """Universal canonical object: External Drawer Front."""
         if ctx is None:
             ctx = ModuloMaterialContext(material_frentes=material, material_fita_frentes=material_fita)
         spec = ChapaSpec.resolve(
@@ -821,10 +822,10 @@ class CaixaMixin:
         material_fundo_gaveta: str = "MDF Fundo 6mm",
         esp_fundo_gaveta_mm: float = 6.0,
     ) -> list[Group]:
-        """Gera as peças da caixa de gaveta interna delegando para o CanonicalDrawerBuilder.
+        """Generates the internal drawer box parts by delegating to CanonicalDrawerBuilder.
 
-        Mantido para total retrocompatibilidade, garantindo que o CanonicalDrawerBuilder
-        seja a única fonte de verdade para a caixa de gaveta e seus fundos.
+        Kept for full backward compatibility, ensuring CanonicalDrawerBuilder
+        is the single source of truth for the drawer box and its bottoms.
         """
         from .drawers import CanonicalDrawerBuilder
         return CanonicalDrawerBuilder.build_caixa_gaveta(
@@ -852,10 +853,10 @@ class CaixaMixin:
         prof_mm: float,
         esp_mm: float = 15.0,
         rodape_mm: float = 0.0,
-        tipo_topo: str = "fechado",  # "fechado" (tampo superior) ou "travessas" (travessas frontal/traseira)
+        tipo_topo: str = "fechado",  # "fechado" (top panel) or "travessas" (front/rear stretchers)
         material: str = "MDF Branco TX 15mm",
         offset: tuple[float, float, float] = (0.0, 0.0, 0.0),
-        # Parâmetros de Travessas (quando tipo_topo == "travessas")
+        # Stretcher parameters (when tipo_topo == "travessas")
         larg_travessa_frontal_mm: float = 70.0,
         larg_travessa_traseira_mm: float = 70.0,
         travessa_frontal_em_pe: bool = False,
@@ -865,18 +866,18 @@ class CaixaMixin:
         fita_travessas_modo: str = "frontal_1L",
         fita_travessas_faces: dict[str, bool] | None = None,
         material_fita_travessas: str | None = None,
-        # Fita da caixaria (Laterais, Base e Tampo)
+        # Carcass edge banding (Sides, Bottom, and Top)
         fita_caixa_modo: str = "frontal_1L",
         material_fita_caixa: str | None = None,
-        # Parâmetros do Fundo TrazoMob
+        # TrazoMob Back Panel parameters
         tem_fundo: bool = True,
-        tipo_fundo: str = "rasgo",  # "rasgo", "sobreposto", "sem_fundo"
+        tipo_fundo: str = "rasgo",  # "rasgo" (grooved), "sobreposto" (surface-mounted), "sem_fundo" (no back panel)
         esp_fundo_mm: float = 6.0,
         recuo_fundo_mm: float = 10.0,
         prof_rasgo_mm: float = 5.0,
         folga_fundo_mm: float = 2.0,
         material_fundo: str | None = None,
-        # Furações técnicas e Dispositivos de Junção
+        # Technical drilling and Joining Hardware
         gerar_furacao: bool = True,
         dispositivo_fixacao: str = "minifix_cavilha",
         afastamento_fixacao_frontal_mm: float = 50.0,
@@ -888,29 +889,29 @@ class CaixaMixin:
         recuo_prateleira_frontal_mm: float = 0.0,
         alturas_calcos_esq_mm: list[float] | None = None,
         alturas_calcos_dir_mm: list[float] | None = None,
-        tipo_fixacao_calco: str = "parafuso",  # "parafuso" (Ø2.5x2.5mm marcação guia) ou "euro" (Ø5.0x11.5mm)
-        # Divisórias verticais: centros em X (relativos à base, ox + E) para
-        # transportar as cavilhas do topo inferior da divisória para a base.
+        tipo_fixacao_calco: str = "parafuso",  # "parafuso" (Ø2.5x2.5mm pilot mark) or "euro" (Ø5.0x11.5mm)
+        # Vertical dividers: X centers (relative to the base, ox + E) to
+        # transfer dowels from the divider's bottom end to the bottom panel.
         divisorias_x_mm: list[float] | None = None,
         divisorias_prof_mm: float | None = None,
         divisorias_esp_mm: float | None = None,
         ctx: ModuloMaterialContext | None = None,
     ) -> tuple[list[Group], dict]:
-        """Motor central e universal para construção paramétrica de caixarias de marcenaria.
+        """Core universal engine for parametric construction of cabinetry carcasses.
 
-        Padroniza a fabricação de caixas tanto para armários, roupeiros e aéreos (com tampo fechado)
-        quanto para balcões inferiores de cozinha (com travessas superiores).
+        Standardizes carcass fabrication for tall/wall cabinets and wardrobes (with closed top)
+        as well as kitchen base cabinets (with top stretchers).
 
-        Gera:
-        - Lateral Esquerda e Lateral Direita
-        - Base Inferior
-        - Tampo Superior Fechado (se tipo_topo == 'fechado')
-          OU Travessas Frontal e Traseira (se tipo_topo == 'travessas')
-        - Rodapé Frontal estrutural (se rodape_mm > 0)
-        - Fundo TrazoMob embutido/sobreposto (se tem_fundo e tipo_fundo != 'sem_fundo')
-        - Operações de Usinagem completas:
-          * Junções por Minifix / Cavilha / Confirmat (nas laterais para base e topo)
-          * Rasgos/ranhuras do fundo de 6mm (nas laterais, base e tampo)
+        Generates:
+        - Left Side and Right Side
+        - Bottom Panel
+        - Closed Top Panel (if tipo_topo == 'fechado')
+          OR Front and Rear Stretchers (if tipo_topo == 'travessas')
+        - Structural Front Toe Kick (if rodape_mm > 0)
+        - TrazoMob recessed/surface-mounted Back Panel (if tem_fundo and tipo_fundo != 'sem_fundo')
+        - Complete Machining Operations:
+          * Cam lock / Dowel / Confirmat joints (on the sides for bottom and top)
+          * 6mm back panel grooves/dados (on the sides, bottom, and top)
         """
         ox, oy, oz = offset
         L, A, P, E, R = largura_mm / 1000.0, altura_mm / 1000.0, prof_mm / 1000.0, esp_mm / 1000.0, rodape_mm / 1000.0
@@ -921,24 +922,24 @@ class CaixaMixin:
         LTT = larg_travessa_traseira_mm / 1000.0
         E_trav = (esp_travessas_mm / 1000.0) if esp_travessas_mm is not None else E
 
-        # Resolução da fita de borda da caixaria (Laterais, Base e Tampo)
+        # Carcass edge banding resolution (Sides, Bottom, and Top)
         modo_fita_cx = (fita_caixa_modo or "frontal_1L").lower()
         if modo_fita_cx == "sem_fita":
             f_cx_c1, f_cx_c2, f_cx_l1, f_cx_l2 = False, False, False, False
         elif modo_fita_cx == "4l":
             f_cx_c1, f_cx_c2, f_cx_l1, f_cx_l2 = True, True, True, True
         elif modo_fita_cx == "2l":
-            # 2 bordos longos (frontal e traseiro)
+            # 2 long edges (front and rear)
             f_cx_c1, f_cx_c2, f_cx_l1, f_cx_l2 = True, True, False, False
         else:
-            # "frontal_1L" (Padrão marcenaria: topo/frente visível)
+            # "frontal_1L" (Cabinetry standard: visible front edge)
             f_cx_c1, f_cx_c2, f_cx_l1, f_cx_l2 = True, False, True, False
 
-        # Material e cor da fita de borda da caixa
+        # Carcass edge banding material and color
         mat_fita_cx = material_fita_caixa or material
         cor_fita_cx = cls.get_material_color(mat_fita_cx) if material_fita_caixa else None
 
-        # Furações dos dispositivos de montagem e usinagens de rasgo nas peças
+        # Assembly hardware drilling and groove machining on the parts
         ops_lateral = []
         ops_base = []
         ops_tampo = []
@@ -953,8 +954,8 @@ class CaixaMixin:
             )
             usar_mini = ("minifix" in str(dispositivo_fixacao).lower())
 
-            # 1. Furação de junção da base inferior na lateral
-            # make_cabinet_joint_holes retorna conectores ao longo da profundidade da junta
+            # 1. Bottom-to-side joint drilling
+            # make_cabinet_joint_holes returns connectors along the joint depth
             ops_lateral.extend([
                 o.to_dict() for o in make_cabinet_joint_holes(
                     comprimento_junta_mm=prof_mm,
@@ -970,7 +971,7 @@ class CaixaMixin:
                 )
             ])
 
-            # Furação na Base Inferior (face_tambor="topo" para os tambores ficarem na face interna/superior da base, virados para dentro do móvel)
+            # Drilling on the Bottom Panel (face_tambor="topo" so cam housings sit on the inner/upper face of the base, facing inside the cabinet)
             ops_base_e, ops_base_d, ops_base_f = make_horizontal_board_edge_holes(
                 prof_chapa_mm=prof_mm,
                 largura_chapa_mm=(largura_interna * 1000.0),
@@ -985,9 +986,9 @@ class CaixaMixin:
             )
             ops_base.extend([o.to_dict() for o in ops_base_e + ops_base_d + ops_base_f])
 
-            # 1b. Transporte das cavilhas das divisórias para a base:
-            # furos correspondentes na face superior da base (Ø8 x 11mm),
-            # alinhados aos furos do topo inferior de cada divisória.
+            # 1b. Transfer of divider dowels to the bottom panel:
+            # matching holes on the upper face of the base (Ø8 x 11mm),
+            # aligned with the holes on the bottom end of each divider.
             if divisorias_x_mm:
                 from ..production.machining import make_vertical_divider_joint_holes
                 prof_div_mm = float(divisorias_prof_mm or (prof_mm - recuo_fundo_mm))
@@ -1018,7 +1019,7 @@ class CaixaMixin:
                             ),
                         })
 
-            # 2. Se for tampo fechado, furação de junção do topo superior na lateral e no tampo
+            # 2. If closed top, top-to-side joint drilling on the side and top panel
             if tipo_topo == "fechado":
                 pos_topo_mm = max(0.0, (altura_caixa * 1000.0) - (esp_mm / 2.0))
                 for o in make_cabinet_joint_holes(
@@ -1035,7 +1036,7 @@ class CaixaMixin:
                 ):
                     ops_lateral.append(o.to_dict())
 
-                # Furação no Tampo Superior (face_tambor="base" para os tambores ficarem na face interna/inferior do tampo, virados para dentro do móvel)
+                # Drilling on the Top Panel (face_tambor="base" so cam housings sit on the inner/lower face of the top, facing inside the cabinet)
                 ops_tampo_e, ops_tampo_d, ops_tampo_f = make_horizontal_board_edge_holes(
                     prof_chapa_mm=prof_mm,
                     largura_chapa_mm=(largura_interna * 1000.0),
@@ -1050,8 +1051,8 @@ class CaixaMixin:
                 )
                 ops_tampo.extend([o.to_dict() for o in ops_tampo_e + ops_tampo_d + ops_tampo_f])
 
-            # 3. Se fundo embutido com rasgo, gera usinagem de canal nas peças da caixa
-            # Só substitui recuo_fundo_mm pela espessura da travessa traseira quando ela está em pé
+            # 3. If recessed grooved back panel, generate groove machining on the carcass parts
+            # Only replaces recuo_fundo_mm with rear stretcher thickness when it is upright
             esp_traseira_calc_mm = (E_trav * 1000.0) if (tipo_topo != "fechado" and travessa_traseira_em_pe) else 0.0
             recuo_canal_efetivo_mm = esp_traseira_calc_mm if esp_traseira_calc_mm > 0 else recuo_fundo_mm
 
@@ -1084,7 +1085,7 @@ class CaixaMixin:
                     )
                     ops_tampo.append(canal_tampo.to_dict())
 
-            # 4. Furações de cavilhas para prateleiras internas transportadas para as faces internas das laterais
+            # 4. Dowel drilling for internal shelves transferred to the inner faces of the sides
             if alturas_prateleiras_mm:
                 from ..production.machining import make_shelf_side_holes
                 prof_p_mm = prof_prateleira_mm if prof_prateleira_mm is not None else (prof_mm - recuo_canal_efetivo_mm - 20.0)
@@ -1099,7 +1100,7 @@ class CaixaMixin:
                     )
                     ops_lateral.extend([o.to_dict() for o in ops_prat_lat])
 
-        # Fechamento superior: Tampo Fechado VS Travessas
+        # Top closure: Closed Top VS Stretchers
         ops_trav_f = []
         ops_trav_t = []
         if tipo_topo != "fechado" and gerar_furacao:
@@ -1108,8 +1109,8 @@ class CaixaMixin:
             larg_trav_t_mm = (LTT * 1000.0) if not travessa_traseira_em_pe else (E_trav * 1000.0)
             compr_trav_mm = largura_interna * 1000.0
 
-            # 1. Usinagens nas próprias travessas (2 furos por ponta na cabeça da travessa a 25mm de cada face)
-            # Para travessas deitadas, face do tambor minifix é "base" (embaixo). Para em pé, face "traseira" (lado de dentro).
+            # 1. Machining on the stretchers themselves (2 holes per end on the stretcher end face at 25mm from each edge)
+            # For flat stretchers, cam lock drum face is "base" (underneath). For upright stretchers, face "traseira" (inside).
             face_tb_f = "base" if not travessa_frontal_em_pe else "traseira"
             ops_trav_f = [
                 o.to_dict() for o in make_stretcher_joint_holes(
@@ -1136,9 +1137,9 @@ class CaixaMixin:
                 )
             ]
 
-            # 2. Usinagens correspondentes nas laterais da caixa (2 furos por travessa nas laterais)
+            # 2. Matching machining on the carcass sides (2 holes per stretcher on the sides)
             if not travessa_frontal_em_pe:
-                # Deitada: espalhada em Y de 0 até LTF, altura Z no centro da espessura da travessa
+                # Flat: spread along Y from 0 to LTF, Z height at the center of the stretcher thickness
                 pos_z_tf_mm = (altura_caixa * 1000.0) - (E_trav * 1000.0 / 2.0)
                 pos_y_tf_base_mm = 0.0
                 ops_lat_tf = make_stretcher_joint_holes(
@@ -1152,8 +1153,8 @@ class CaixaMixin:
                     posicao_lateral_z_mm=pos_z_tf_mm,
                 )
             else:
-                # Em pé: espessura E_trav em Y (de 0 a E_trav), altura Z espalhada de (A - LTF) a A
-                # Furos ficam a 25mm da borda inferior e 25mm da borda superior da travessa em Z
+                # Upright: thickness E_trav along Y (from 0 to E_trav), Z height spread from (A - LTF) to A
+                # Holes are placed 25mm from the bottom edge and 25mm from the top edge of the stretcher along Z
                 p1_z = (altura_caixa * 1000.0) - (LTF * 1000.0) + 25.0
                 p2_z = (altura_caixa * 1000.0) - 25.0
                 py_tf = E_trav * 1000.0 / 2.0
@@ -1223,7 +1224,7 @@ class CaixaMixin:
             for o in ops_lat_tt:
                 ops_lateral.append(o.to_dict())
 
-        # Operações específicas para Lateral Esquerda e Direita (ex: marcações de calço de dobradiça)
+        # Specific operations for Left and Right Sides (e.g., hinge mounting plate marks)
         ops_lateral_esq = list(ops_lateral)
         ops_lateral_dir = list(ops_lateral)
         if gerar_furacao:
@@ -1246,7 +1247,7 @@ class CaixaMixin:
                 )
                 ops_lateral_dir.extend([o.to_dict() for o in ops_h_dir])
 
-        # Criação do contexto de material da caixaria
+        # Carcass material context creation
         ctx_modulo = ctx if ctx is not None else ModuloMaterialContext(
             material_caixa=material,
             material_fita_caixa=material_fita_caixa,
@@ -1298,13 +1299,13 @@ class CaixaMixin:
                 ctx=ctx_modulo,
             ))
         else:
-            # Material e espessura específicos das travessas (se definidos, caso contrário herda da caixa)
+            # Specific material and thickness for stretchers (if defined, otherwise inherits from carcass)
             mat_trav = material_travessas or material
             cor_trav = cls.get_material_color(mat_trav)
             mat_fita_tr = material_fita_travessas or mat_trav
             cor_fita_tr = cls.get_material_color(mat_fita_tr) if material_fita_travessas else None
 
-            # Resolução das fitas de borda das travessas
+            # Stretcher edge banding resolution
             modo_fita = (fita_travessas_modo or "frontal_1L").lower()
             if modo_fita == "sem_fita":
                 f_c1_tf, f_c2_tf, f_l1_tf, f_l2_tf = False, False, False, False
@@ -1328,7 +1329,7 @@ class CaixaMixin:
                 f_c1_tf, f_c2_tf, f_l1_tf, f_l2_tf = True, False, False, False
                 f_c1_tt, f_c2_tt, f_l1_tt, f_l2_tt = False, False, False, False
 
-            # Travessa frontal (em pé / vertical ou deitada / horizontal)
+            # Front stretcher (upright / vertical or flat / horizontal)
             if travessa_frontal_em_pe:
                 groups.append(cls.build_travessa_peca(
                     name=f"{prefixo} - Travessa Frontal Em Pe",
@@ -1348,7 +1349,7 @@ class CaixaMixin:
                     operacoes=ops_trav_f,
                 ))
 
-            # Travessa traseira (em pé / vertical ou deitada / horizontal)
+            # Rear stretcher (upright / vertical or flat / horizontal)
             if travessa_traseira_em_pe:
                 groups.append(cls.build_travessa_peca(
                     name=f"{prefixo} - Travessa Traseira Em Pe",
@@ -1368,7 +1369,7 @@ class CaixaMixin:
                     operacoes=ops_trav_t,
                 ))
 
-        # Rodapé Frontal
+        # Front Toe Kick
         if R > 0.01:
             spec_rodape = ChapaSpec.resolve(
                 nome=f"{prefixo} - Rodape Frontal",
@@ -1384,7 +1385,7 @@ class CaixaMixin:
                 color=cor,
             ))
 
-        # Geração integrada do Fundo (se solicitado)
+        # Integrated Back Panel generation (if requested)
         fundo_grp = cls.build_fundo_board(
             prefixo=prefixo,
             largura_interna_m=largura_interna,
@@ -1465,7 +1466,7 @@ class CaixaMixin:
         material_fundo: str | None = None,
         ctx: ModuloMaterialContext | None = None,
     ) -> tuple[list[Group], dict]:
-        """Wrapper de compatibilidade para módulos inferiores de cozinha com travessas."""
+        """Compatibility wrapper for kitchen base cabinets with stretchers."""
         return cls.build_caixa_modular(
             prefixo=prefixo,
             largura_mm=largura_mm,

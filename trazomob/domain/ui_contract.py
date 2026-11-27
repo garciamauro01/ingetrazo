@@ -145,10 +145,11 @@ CANTOS_LADO_CEGO_TIPOS: frozenset[str] = frozenset({"balcao_canto"})
 
 
 def should_show_config_gaveteiro(tipo: str) -> bool:
-    """Return True when the gaveteiro width/side controls must be visible.
+    """Return True when the drawer bank width/side controls must be visible.
 
-    Aplica-se ao balcão misto e ao rack nicho com gaveta, que compartilham os
-    parâmetros ``largura_gaveteiro`` e ``lado_gaveteiro``.
+    Applies to mixed base cabinets (``balcao_misto``) and niche racks with a
+    drawer (``rack_nicho_gaveta``), which share the ``largura_gaveteiro`` and
+    ``lado_gaveteiro`` parameters.
     """
     return str(tipo).lower() in ("balcao_misto", "rack_nicho_gaveta")
 

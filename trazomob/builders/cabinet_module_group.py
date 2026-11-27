@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""Orquestracao de montagem do CabinetBuilder."""
+"""Assembly orchestration for CabinetBuilder."""
 from __future__ import annotations
 
 import logging
@@ -18,7 +18,7 @@ logger = logging.getLogger("trazomob.cabinet_module_group")
 
 
 class ModuleGroupMixin:
-    """Montagem completa do grupo mestre de um modulo."""
+    """Complete master group assembly for a module."""
 
     @classmethod
     def build_module_group(cls, params: dict[str, Any], offset: tuple[float, float, float] = (0.0, 0.0, 0.0)) -> Group:
@@ -32,7 +32,7 @@ class ModuleGroupMixin:
         material_frentes = params.get("material_frentes", material)
         esp_frentes_mm = float(params.get("espessura_frentes", params.get("esp_frentes_mm", esp_mm)))
 
-        # Configurações de Fundo TrazoMob
+        # TrazoMob Back Panel Settings
         tipo_fundo = params.get("tipo_fundo")
         if not tipo_fundo:
             tipo_fundo = "rasgo" if params.get("tem_fundo", True) else "sem_fundo"
@@ -173,7 +173,7 @@ class ModuleGroupMixin:
                 rot_z=r_z,
             )
 
-        # Módulo Mestre (Container)
+        # Master Module (Container)
         master = Group(Mesh(), name=module_name)
         from PySide6.QtGui import QMatrix4x4
         master.xform = QMatrix4x4()
@@ -201,9 +201,9 @@ class ModuleGroupMixin:
                     sy_p = p_meta.get("espessura", 15.0) / 1000.0
                     sz_p = p_meta.get("comprimento", (max(zs) - oz_p) * 1000.0) / 1000.0
                     p_name_dir = p.name if "dir" in p.name.lower() else f"{p.name} (Dir)"
-                    # A porta foi construída como esquerda: ao invertê-la para a
-                    # direita, as usinagens (canecos) também precisam ser refletidas
-                    # no eixo X, senão as dobradiças ficam no lado oposto ao puxador.
+                    # The door was built as a left door: when flipping it to the
+                    # right, the machining (hinge cups) must also be mirrored on
+                    # the X axis, otherwise hinges end up opposite the handle.
                     ops_espelhadas = []
                     for op in p_meta.get("operacoes", []):
                         copia = dict(op)
@@ -260,7 +260,7 @@ class ModuleGroupMixin:
         if getattr(master, "ext", None) is None:
             master.ext = {}
 
-        # Guarda parâmetros dinâmicos para reedição posterior
+        # Store dynamic parameters for subsequent re-editing
         save_params["offset"] = offset
         save_params["material_frentes"] = material_frentes
         save_params["espessura_frentes"] = esp_frentes_mm
@@ -277,11 +277,11 @@ class ModuleGroupMixin:
         from ..domain.schema import set_module_data
         set_module_data(master, save_params)
 
-        # ── Ferragens do módulo (dobradiças, corrediças, trilhos, etc.) ──────
-        # Gravado em ext para sobreviver a reaberturas/edições e ser lido por
-        # cutlist, orçamento e relatórios sem depender de heurística por nome.
-        # Aceita lista explícita vinda do diálogo (edição do usuário); caso
-        # contrário, infere automaticamente a partir dos parâmetros.
+        # ── Module hardware (hinges, drawer slides, tracks, etc.) ──────────
+        # Stored in ext so it survives reopenings/edits and is read by cutlist,
+        # quote, and reports without relying on name-based heuristics.
+        # Accepts an explicit list from the dialog (user edit); otherwise,
+        # infers automatically from the parameters.
         try:
             from ..domain.hardware import (
                 deserialize_hardware,
@@ -295,7 +295,7 @@ class ModuleGroupMixin:
                 _hw = infer_module_hardware(save_params)
             if _hw:
                 master.ext["trazomob_hardware"] = serialize_hardware(_hw)
-                # Representação 3D esquemática (excluída do cutlist)
+                # Schematic 3D representation (excluded from cutlist)
                 if bool(save_params.get("hardware_3d_visible", True)):
                     try:
                         from ..builders.hardware_geometry import (
@@ -305,15 +305,15 @@ class ModuleGroupMixin:
                     except Exception:
                         logger.debug("Falha ao construir ferragens 3D do módulo", exc_info=True)
         except Exception:
-            # Ferragens nunca devem impedir a construção do módulo.
+            # Hardware must never prevent module construction.
             logger.debug("Falha ao consolidar ferragens do módulo", exc_info=True)
 
-        # Registra a relação exata do centro não-rotacionado com o offset para reconstruções perfeitas
+        # Record the exact relationship between the unrotated center and offset for exact rebuilds
         from ..domain.module_geometry import get_module_carcass_bounds
         cb_unrot = get_module_carcass_bounds(master)
         if tipo == "peca_prateleiras_avulsas":
-            # Para prateleiras avulsas, o vão delimitado total informado pelo usuário (L_mm x P_mm x A_mm)
-            # deve ser preservado como bounding box de referência do vão
+            # For standalone shelves, the total bounded opening given by the user (L_mm x P_mm x A_mm)
+            # must be preserved as the opening's reference bounding box
             L_u = float(L_mm) / 1000.0
             P_u = float(P_mm) / 1000.0
             A_u = float(A_mm) / 1000.0
@@ -341,10 +341,10 @@ class ModuleGroupMixin:
                 float(cb_unrot[5] - cb_unrot[4]),
             )
 
-        # Espelhamento paramétrico: reflete a geometria já construída no eixo
-        # local X, antes da rotação. O parâmetro ``mirror_x`` fica gravado no
-        # ``ext`` (via save_params) para que toda reconstrução volte espelhada
-        # — portas, puxadores, fita de borda e usinagens acompanham.
+        # Parametric mirroring: reflects the already-built geometry across the
+        # local X axis, before rotation. The ``mirror_x`` parameter is stored in
+        # ``ext`` (via save_params) so every rebuild returns mirrored
+        # — doors, handles, edge banding, and machining follow.
         if bool(params.get("mirror_x", False)):
             from ..builders.mirror import mirror_module_geometry
             if cb_unrot is not None:
@@ -353,14 +353,14 @@ class ModuleGroupMixin:
                 plano_x = float(offset[0]) + (float(L_mm) / 2000.0)
             mirror_module_geometry(master, plano_x)
 
-        # Se houver rotação 3D livre (rot_matrix_3d) ou rotação em Z solicitada nos parâmetros
+        # If free 3D rotation (rot_matrix_3d) or Z rotation is requested in parameters
         rot_z = float(params.get("rot_z", params.get("rotacao", 0.0)) or 0.0) % 360.0
         save_params["rot_z"] = rot_z
 
-        # Faces horizontais do snap (superior/inferior) tombam a peça 90° em
-        # torno do eixo X local, para que o topo/base fique plano contra a
-        # parede. A inclinação é derivada de ``snap_parede`` a cada
-        # reconstrução e acompanha a troca de face no diálogo.
+        # Horizontal snap faces (top/bottom) tilt the part 90° around the
+        # local X axis so the top/bottom lies flat against the wall.
+        # The tilt is derived from ``snap_parede`` on every rebuild and
+        # follows face changes in the dialog.
         from ..domain.snap_contract import snap_face_tilt_deg
         tilt_x = snap_face_tilt_deg(params.get("snap_parede"))
 
@@ -407,10 +407,10 @@ class ModuleGroupMixin:
             if abs(rot_z) > 1e-4:
                 cls.rotate_module(master, rot_z, center=None, update_param=False)
 
-        # ``set_module_data`` publica uma cópia dos parâmetros; tudo o que é
-        # calculado DEPOIS dele (span não-rotacionado, rot_z, rot_matrix_3d)
-        # ficaria só em ``save_params`` e nunca chegaria ao documento.
-        # ``update_module_data`` altera o dicionário já publicado no lugar.
+        # ``set_module_data`` publishes a copy of the parameters; anything
+        # computed AFTER it (unrotated span, rot_z, rot_matrix_3d)
+        # would stay only in ``save_params`` and never reach the document.
+        # ``update_module_data`` mutates the already-published dict in place.
         from ..domain.schema import update_module_data
         update_module_data(master, save_params)
 

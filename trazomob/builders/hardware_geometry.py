@@ -1,17 +1,17 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""Geometria 3D simplificada de ferragens.
+"""Simplified 3D hardware geometry.
 
-Cada ferragem é criada como um grupo filho do módulo (``Group``) e marcada em
-``ext["trazomob"]["kind"] = "hardware"``. Isso permite:
+Each hardware item is created as a child group of the module (``Group``) and
+marked in ``ext["trazomob"]["kind"] = "hardware"``. This makes it possible to:
 
-* localizá-la facilmente (``is_hardware_group``);
-* excluí-la do cutlist / caixaria / cálculos de área;
-* ocultá-la no viewport se desejado (``hidden=True``).
+* locate it easily (``is_hardware_group``);
+* exclude it from cutlist / carcass / area calculations;
+* hide it in the viewport if desired (``hidden=True``).
 
-São geometrias *esquemáticas*: suficientes para visualizar onde vão as
-dobradiças, corrediças, trilhos e pés, sem depender de um CAD paramétrico por
-fornecedor.
+These are *schematic* geometries: sufficient to visualize where hinges, drawer
+slides, tracks, and feet are placed, without depending on vendor-specific
+parametric CAD.
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ _COLOR_IMEX = (0.55, 0.58, 0.64)
 
 
 def is_hardware_group(group: Any) -> bool:
-    """Indica se ``group`` é uma representação 3D de ferragem."""
+    """Indicates whether ``group`` is a 3D hardware representation."""
     if group is None:
         return False
     ext = getattr(group, "ext", None)
@@ -51,7 +51,7 @@ def is_hardware_group(group: Any) -> bool:
 
 def hardware_row(name: str, key: str, mesh: Mesh, module_tag: str = "",
                  linked_piece: str | None = None) -> Group:
-    """Cria um grupo filho que representa uma ferragem."""
+    """Creates a child group representing a hardware item."""
     tm: dict[str, Any] = {
         "kind": "hardware",
         "hardware_code": key,
@@ -68,7 +68,7 @@ def hardware_row(name: str, key: str, mesh: Mesh, module_tag: str = "",
     return g
 
 
-# ------------------------------------------------------------- primitivas
+# ------------------------------------------------------------- primitives
 
 def _bounds(mesh: Mesh | None):
     if mesh is None or not getattr(mesh, "vertices", None):
@@ -116,7 +116,7 @@ def _add_oriented_box(
     l_h: float,
     color: tuple[float, float, float] = _COLOR_METAL_ESCURO,
 ) -> None:
-    """Cria uma caixa 3D orientada arbitrariamente no espaço."""
+    """Creates an arbitrarily oriented 3D box in space."""
     v = [
         p0,
         p0 + u_len * l_len,
@@ -195,7 +195,7 @@ def _add_cylinder_z(
 
 
 def _hinge_positions(altura_m: float, n: int) -> list[float]:
-    """Posições Z (m) das dobradiças, com afastamento de 100 mm dos cantos."""
+    """Z positions (m) of the hinges, with 100 mm inset from the corners."""
     h = float(altura_m or 0.0)
     if h <= 0:
         return []
@@ -207,7 +207,7 @@ def _hinge_positions(altura_m: float, n: int) -> list[float]:
 
 
 def _drawer_index_from_name(name: str | None) -> int | None:
-    """Extrai o índice 1-based da gaveta a partir do nome da peça."""
+    """Extracts the 1-based drawer index from the part name."""
     import re
     low = (name or "").lower()
     m = re.search(r"(?:gaveta|frente)\s*(\d+)", low)
@@ -229,12 +229,12 @@ def _add_telescopic_slide_outer(
     length: float,
     cz: float,
 ) -> None:
-    """Desenha o trilho externo fixo na lateral do móvel (perfil C de aço zincado com abas e batente traseiro)."""
-    h_out = 0.045       # 45 mm de altura padrão de corrediça telescópica
-    w_web = 0.0022      # espessura da alma
-    w_flange = 0.0115   # largura total das abas superior/inferior (total ~12.7 mm)
-    t_flange = 0.0022   # espessura da dobra superior/inferior
-    t_lip = 0.0045      # aba de retenção das esferas
+    """Draws the outer rail fixed to the cabinet side (zinc-plated steel C-channel with flanges and rear stop)."""
+    h_out = 0.045       # 45 mm standard telescopic drawer slide height
+    w_web = 0.0022      # web thickness
+    w_flange = 0.0115   # total top/bottom flange width (total ~12.7 mm)
+    t_flange = 0.0022   # top/bottom bend thickness
+    t_lip = 0.0045      # ball-bearing retention lip
 
     z_bot = cz - h_out * 0.5
     z_top = cz + h_out * 0.5
@@ -248,15 +248,15 @@ def _add_telescopic_slide_outer(
         x_fl = x_wall - w_flange
         x_lip = x_wall - w_flange
 
-    # Alma vertical aparafusada na lateral do armário
+    # Vertical web screwed to the cabinet side
     _add_box(mesh, x_web, y0, z_bot, w_web, length, h_out, _COLOR_METAL_ESCURO)
-    # Aba horizontal inferior e superior do perfil C
+    # Bottom and top horizontal flanges of the C-channel
     _add_box(mesh, x_fl, y0, z_bot, w_flange, length, t_flange, _COLOR_METAL_CLARO)
     _add_box(mesh, x_fl, y0, z_top - t_flange, w_flange, length, t_flange, _COLOR_METAL_CLARO)
-    # Dobra frontal de retenção (guias de esferas superior e inferior)
+    # Front retention bend (upper and lower ball-bearing guides)
     _add_box(mesh, x_lip, y0, z_bot + t_flange, 0.0018, length, t_lip, _COLOR_IMEX)
     _add_box(mesh, x_lip, y0, z_top - t_flange - t_lip, 0.0018, length, t_lip, _COLOR_IMEX)
-    # Amortecedor / batente traseiro escuro no fim do curso
+    # Dark rear bumper / end-of-travel stop
     _add_box(
         mesh,
         x_fl,
@@ -277,7 +277,7 @@ def _add_telescopic_slide_middle(
     length: float,
     cz: float,
 ) -> None:
-    """Desenha a gaiola intermediária de esferas (corre a 50% do curso da gaveta)."""
+    """Draws the intermediate ball-bearing cage (travels at 50% of drawer stroke)."""
     h_mid = 0.032
     w_mid = 0.0045
     z_bot = cz - h_mid * 0.5
@@ -286,9 +286,9 @@ def _add_telescopic_slide_middle(
     else:
         x0 = x_wall - 0.0032 - w_mid
 
-    # Perfil intermediário
+    # Intermediate profile
     _add_box(mesh, x0, y0 + 0.006, z_bot, w_mid, max(0.06, length - 0.012), h_mid, _COLOR_IMEX)
-    # Abas de rolamento superior e inferior
+    # Upper and lower bearing flanges
     _add_box(mesh, x0, y0 + 0.006, z_bot, w_mid + 0.002, max(0.06, length - 0.012), 0.0025, _COLOR_METAL_CLARO)
     _add_box(mesh, x0, y0 + 0.006, z_bot + h_mid - 0.0025, w_mid + 0.002, max(0.06, length - 0.012), 0.0025, _COLOR_METAL_CLARO)
 
@@ -301,23 +301,23 @@ def _add_telescopic_slide_inner(
     length: float,
     cz: float,
 ) -> None:
-    """Desenha o perfil interno estreito fixado na lateral da caixa de gaveta (corre 100% com a gaveta)."""
+    """Draws the narrow inner profile fixed to the drawer box side (travels 100% with the drawer)."""
     h_in = 0.020
     w_in = 0.0042
     z_bot = cz - h_in * 0.5
     if dir_out < 0:
-        # Lateral esquerda da gaveta: perfil fica à esquerda de x_box (entre x_box - w_in e x_box)
+        # Left drawer side: profile sits to the left of x_box (between x_box - w_in and x_box)
         x0 = x_box - w_in
     else:
-        # Lateral direita da gaveta: perfil fica à direita de x_box (entre x_box e x_box + w_in)
+        # Right drawer side: profile sits to the right of x_box (between x_box and x_box + w_in)
         x0 = x_box
 
-    # Barra interna de aço polido presa na caixa da gaveta
+    # Polished steel inner bar attached to the drawer box
     _add_box(mesh, x0, y0, z_bot, w_in, length, h_in, _COLOR_METAL_CLARO)
-    # Abas horizontais do perfil U interno
+    # Horizontal flanges of the inner U-channel
     _add_box(mesh, x0, y0, z_bot, w_in, length, 0.002, _COLOR_METAL_ESCURO)
     _add_box(mesh, x0, y0, z_bot + h_in - 0.002, w_in, length, 0.002, _COLOR_METAL_ESCURO)
-    # Trava plástica de saque (gatilho preto no meio do perfil)
+    # Plastic release latch (black trigger in the middle of the profile)
     _add_box(
         mesh,
         x0 - (0.0005 if dir_out < 0 else 0.0),
@@ -339,25 +339,25 @@ def _make_corner_drawer_runners(
     p_lat_esq: Group,
     p_lat_dir: Group,
 ) -> list[Group]:
-    """Cria corrediças telescópicas angulares de 3 estágios fixadas nas laterais inclinadas a 45° do Space Corner."""
+    """Creates 3-stage angled telescopic drawer slides fixed to the 45° sloped sides of the Space Corner."""
     groups: list[Group] = []
 
-    # Extrai os vértices das faces internas das laterais inclinadas
+    # Extract vertices of the inner faces of the sloped sides
     vs_e = [v.position for v in getattr(getattr(p_lat_esq, "mesh", None), "vertices", [])]
     vs_d = [v.position for v in getattr(getattr(p_lat_dir, "mesh", None), "vertices", [])]
     if not vs_e or not vs_d:
         return groups
 
-    # Lateral Esquerda face interna: os 2 pontos com menor X positivo (X > 0.005)
+    # Left Side inner face: the 2 points with smallest positive X (X > 0.005)
     pts_e_xy = sorted(list({(round(v.x(), 4), round(v.y(), 4)) for v in vs_e}))
-    # Face interna: segundo ponto em X e quarto ponto em X (com espessura em direção ao interior)
-    # (0.0106, 0.6106) e (0.6106, 0.0106)
+    # Inner face: second X point and fourth X point (with thickness toward the interior)
+    # (0.0106, 0.6106) and (0.6106, 0.0106)
     p0_esq_xy = pts_e_xy[1]
     p1_esq_xy = pts_e_xy[3]
     p0_esq = QVector3D(p0_esq_xy[0], p0_esq_xy[1], 0.0)
     p1_esq = QVector3D(p1_esq_xy[0], p1_esq_xy[1], 0.0)
 
-    # Lateral Direita face interna: (0.4394, 1.0394) e (1.0394, 0.4394)
+    # Right Side inner face: (0.4394, 1.0394) and (1.0394, 0.4394)
     pts_d_xy = sorted(list({(round(v.x(), 4), round(v.y(), 4)) for v in vs_d}))
     p0_dir_xy = pts_d_xy[0]
     p1_dir_xy = pts_d_xy[2]
@@ -366,7 +366,7 @@ def _make_corner_drawer_runners(
 
     v_len_esq = p1_esq - p0_esq
     u_len_esq = v_len_esq.normalized()
-    # Normal que aponta para dentro do armário (face interna)
+    # Normal pointing into the cabinet (inner face)
     u_norm_esq = QVector3D(1.0 / math.sqrt(2.0), 1.0 / math.sqrt(2.0), 0.0)
 
     v_len_dir = p1_dir - p0_dir
@@ -381,7 +381,7 @@ def _make_corner_drawer_runners(
     pt_start_esq = p0_esq + u_len_esq * offset_start
     pt_start_dir = p0_dir + u_len_dir * offset_start
 
-    # Dimensões padrão das corrediças telescópicas
+    # Standard telescopic drawer slide dimensions
     h_out = 0.045
     w_web = 0.0022
     w_flange = 0.0115
@@ -392,7 +392,7 @@ def _make_corner_drawer_runners(
     w_in = 0.0042
     folga_lado = 0.013
 
-    # Agrupa peças por índice de gaveta (frentes e fundo)
+    # Group parts by drawer index (fronts and bottom)
     by_drawer: dict[int, Group] = {}
     for p in pieces:
         pname = str(getattr(p, "name", "") or "")
@@ -406,7 +406,7 @@ def _make_corner_drawer_runners(
         target_group = by_drawer.get(idx)
         target_name = getattr(target_group, "name", f"Space Corner - Gaveta {idx} Frente Esq")
 
-        # Procura a altura Z da gaveta correspondente
+        # Find the Z height of the corresponding drawer
         frentes = [p for p in pieces if f"gaveta {idx}" in str(getattr(p, "name", "")).lower()]
         zs = []
         for fg in frentes:
@@ -415,7 +415,7 @@ def _make_corner_drawer_runners(
                 zs.extend([b[4], b[5]])
         cz = (min(zs) + max(zs)) * 0.5 if zs else (0.15 + i * 0.15)
 
-        # 1. Trilho Interno (corre 100% com a gaveta diagonalmente)
+        # 1. Inner Rail (travels 100% diagonally with the drawer)
         mesh_inner = Mesh()
         z_in = cz - h_in * 0.5
         p_in_esq = pt_start_esq + u_norm_esq * (folga_lado - w_in) + u_h * z_in
@@ -432,7 +432,7 @@ def _make_corner_drawer_runners(
         g_inner.ext["slide_distance"] = 0.45
         groups.append(g_inner)
 
-        # 2. Gaiola Intermediária (corre 50% com a gaveta diagonalmente)
+        # 2. Intermediate Cage (travels 50% diagonally with the drawer)
         mesh_mid = Mesh()
         z_mid = cz - h_mid * 0.5
         p_mid_esq = pt_start_esq + u_norm_esq * 0.0035 + u_h * z_mid
@@ -450,15 +450,15 @@ def _make_corner_drawer_runners(
         g_mid.ext["slide_distance"] = 0.45
         groups.append(g_mid)
 
-        # 3. Trilho Fixo Externo (fixado diretamente sobre a lateral inclinada)
+        # 3. Outer Fixed Rail (mounted directly onto the sloped side)
         mesh_outer = Mesh()
         z_out = cz - h_out * 0.5
         p_out_esq = pt_start_esq + u_h * z_out
         p_out_dir = pt_start_dir + u_h * z_out
-        # Alma do perfil C
+        # C-channel web
         _add_oriented_box(mesh_outer, p_out_esq, u_len_esq, u_norm_esq, u_h, runner_len, w_web, h_out, _COLOR_METAL_ESCURO)
         _add_oriented_box(mesh_outer, p_out_dir, u_len_dir, u_norm_dir, u_h, runner_len, w_web, h_out, _COLOR_METAL_ESCURO)
-        # Abas superior e inferior
+        # Top and bottom flanges
         _add_oriented_box(mesh_outer, p_out_esq, u_len_esq, u_norm_esq, u_h, runner_len, w_flange, t_flange, _COLOR_METAL_CLARO)
         _add_oriented_box(mesh_outer, p_out_esq + u_h * (h_out - t_flange), u_len_esq, u_norm_esq, u_h, runner_len, w_flange, t_flange, _COLOR_METAL_CLARO)
         _add_oriented_box(mesh_outer, p_out_dir, u_len_dir, u_norm_dir, u_h, runner_len, w_flange, t_flange, _COLOR_METAL_CLARO)
@@ -477,27 +477,27 @@ def _make_drawer_runners(
     module_tag: str = "",
     pieces: list[Group] | None = None,
 ) -> list[Group]:
-    """Cria corrediças telescópicas de 3 estágios realistas posicionadas exatamente nas laterais de cada gaveta.
+    """Creates realistic 3-stage telescopic drawer slides positioned exactly on the sides of each drawer.
 
-    Em módulos mistos (ex: ``balcao_misto``), localiza a caixa real de cada gaveta
-    (``Gaveta i - Lat Esq`` e ``Gaveta i - Lat Dir``) para posicionar os trilhos
-    exatamente no vão do gaveteiro (seja à esquerda ou à direita), evitando colocar
-    trilhos na lateral do vão das portas.
+    In mixed cabinets (e.g., ``balcao_misto``), locates the actual box of each drawer
+    (``Gaveta i - Lat Esq`` and ``Gaveta i - Lat Dir``) to place the tracks
+    precisely in the drawer opening (whether on the left or right), avoiding placing
+    tracks on the side of the door opening.
 
-    Em gaveteiros de canto em L (Space Corner / balcao_canto_gaveteiro_l), posiciona
-    as corrediças orientadas a 45° fixadas exatamente sobre as laterais inclinadas
-    do móvel, acompanhando perfeitamente a extração diagonal das gavetas.
+    In L-shaped corner drawer banks (Space Corner / balcao_canto_gaveteiro_l), positions
+    the slides oriented at 45° mounted directly on the sloped sides of the
+    cabinet, cleanly following the diagonal extraction of the drawers.
 
-    Gera 3 estágios por gaveta:
-    1. Trilho Externo (fixo na lateral/divisória do móvel)
-    2. Gaiola Intermediária (acompanha 50% da abertura da gaveta via ``slide_scale=0.5``)
-    3. Trilho Interno (fixado na lateral da caixa da gaveta, acompanha 100% da abertura)
+    Generates 3 stages per drawer:
+    1. Outer Rail (fixed to the cabinet side/divider)
+    2. Intermediate Cage (follows 50% of drawer opening via ``slide_scale=0.5``)
+    3. Inner Rail (fixed to the drawer box side, follows 100% of opening)
     """
     n = max(int(num_gavetas or 0), 0)
     if n == 0:
         return []
 
-    # Detecta se é o Gaveteiro de Canto em L (Space Corner)
+    # Detect whether this is the L-shaped Corner Drawer Bank (Space Corner)
     tag_low = (module_tag or name or "").lower()
     is_space_corner = ("space_corner" in tag_low or "canto_gaveteiro" in tag_low or
                        any("space corner" in str(getattr(p, "name", "")).lower() for p in (pieces or [])))
@@ -514,7 +514,7 @@ def _make_drawer_runners(
     default_length = max(0.15, (max_y - min_y) - 0.075)
     groups: list[Group] = []
 
-    # Agrupa peças por índice de gaveta (1..n)
+    # Group parts by drawer index (1..n)
     by_drawer: dict[int, dict[str, tuple[Group, tuple[float, ...]]]] = {}
     targets: dict[int, str] = {}
     for p in pieces or []:
@@ -537,7 +537,7 @@ def _make_drawer_runners(
             dmap["frente"] = (p, b)
         elif "fundo" in low:
             dmap["fundo"] = (p, b)
-        # Prioriza vincular à Frente ou à Lateral da gaveta
+        # Prioritize linking to the drawer Front or Side
         if idx not in targets or ("frente" in low and "contra" not in low):
             targets[idx] = pname
 
@@ -549,11 +549,11 @@ def _make_drawer_runners(
         if "lat_esq" in dmap and "lat_dir" in dmap:
             _, b_esq = dmap["lat_esq"]
             _, b_dir = dmap["lat_dir"]
-            # Face externa esquerda da caixa da gaveta = b_esq[0]
-            # Face externa direita da caixa da gaveta = b_dir[1]
+            # Left outer face of the drawer box = b_esq[0]
+            # Right outer face of the drawer box = b_dir[1]
             x_box_esq = b_esq[0]
             x_box_dir = b_dir[1]
-            # A folga da corrediça telescópica fica entre a lateral do móvel/divisória e a caixa da gaveta (~13mm de cada lado)
+            # Telescopic drawer slide clearance sits between the cabinet side/divider and the drawer box (~13mm per side)
             folga_lado = 0.013
             x_wall_esq = x_box_esq - folga_lado
             x_wall_dir = x_box_dir + folga_lado
@@ -578,7 +578,7 @@ def _make_drawer_runners(
             length = default_length
             cz = min_z + cell * (i + 0.5)
 
-        # 1. Estágio Interno + Intermediário (vinculados ao movimento da gaveta; mantém 1 grupo principal com o nome esperado)
+        # 1. Inner + Intermediate Stage (linked to drawer motion; keeps 1 main group with the expected name)
         mesh_inner = Mesh()
         _add_telescopic_slide_inner(mesh_inner, x_box_esq, -1.0, y_start, length, cz)
         _add_telescopic_slide_inner(mesh_inner, x_box_dir, +1.0, y_start, length, cz)
@@ -588,7 +588,7 @@ def _make_drawer_runners(
         )
         groups.append(g_inner)
 
-        # 2. Estágio Intermediário (corre a 50% do curso da gaveta)
+        # 2. Intermediate Stage (travels at 50% of drawer stroke)
         mesh_mid = Mesh()
         _add_telescopic_slide_middle(mesh_mid, x_wall_esq, +1.0, y_start, length, cz)
         _add_telescopic_slide_middle(mesh_mid, x_wall_dir, -1.0, y_start, length, cz)
@@ -599,7 +599,7 @@ def _make_drawer_runners(
         g_mid.ext["slide_scale"] = 0.5
         groups.append(g_mid)
 
-        # 3. Estágio Externo fixo no armário/divisória (não possui linked_piece, permanece fixo no móvel!)
+        # 3. Outer Stage fixed to the cabinet/divider (has no linked_piece, stays fixed to the cabinet!)
         mesh_outer = Mesh()
         _add_telescopic_slide_outer(mesh_outer, x_wall_esq, +1.0, y_start, length, cz)
         _add_telescopic_slide_outer(mesh_outer, x_wall_dir, -1.0, y_start, length, cz)
@@ -616,13 +616,13 @@ def _make_sliding_tracks(
     name: str, key: str, bounds: tuple[float, ...], num_rails: int,
     module_tag: str = "",
 ) -> Group | None:
-    """Trilhos superior e inferior para portas de correr."""
+    """Top and bottom tracks for sliding doors."""
     n = max(int(num_rails or 0), 0)
     if n == 0:
         return None
     min_x, max_x, min_y, max_y, min_z, max_z = bounds
     w = max_x - min_x
-    # duas vias por trilho (trilho duplo)
+    # two channels per track (double track)
     num_channels = 2
     mesh = Mesh()
     for z in (min_z + 0.02, max_z - 0.022):
@@ -657,9 +657,9 @@ def build_module_hardware_3d(
     pieces: list[Group] | None = None,
     params: dict[str, Any] | None = None,
 ) -> list[Group]:
-    """Cria grupos 3D esquemáticos de ferragem e os anexa ao módulo.
+    """Creates schematic 3D hardware groups and attaches them to the module.
 
-    Retorna a lista de grupos criados. Nunca lança exceção.
+    Returns the list of created groups. Never raises an exception.
     """
     if master is None:
         return []
@@ -681,7 +681,7 @@ def build_module_hardware_3d(
     if not items:
         return []
 
-    # Aceita tanto lista de dicts quanto HardwareItem
+    # Accepts either a list of dicts or HardwareItem
     try:
         from ..domain.hardware import HardwareItem  # noqa: F401  (type check only)
     except Exception:
@@ -696,7 +696,7 @@ def build_module_hardware_3d(
     module_tag = str(params.get("tipo", "Módulo"))
     by_key = {getattr(it, "key", None): it for it in items}
 
-    # limites do módulo (caixaria, aproximadamente, incluindo frentes)
+    # module bounds (carcass, approximately, including fronts)
     xs: list[float] = []
     ys: list[float] = []
     zs: list[float] = []
@@ -708,7 +708,7 @@ def build_module_hardware_3d(
 
     criadas: list[Group] = []
 
-    # ── Dobradiças 35mm (Caneco + Braço Articulado + Calço Cruciforme) ──
+    # ── 35mm Hinges (Cup + Articulated Arm + Cruciform Mounting Plate) ──
     dobra = by_key.get("dobradica_35mm")
     if dobra is not None and bb_by_piece:
         door_seq = 0
@@ -735,18 +735,18 @@ def build_module_hardware_3d(
             is_rear = bool(p_tm.get("is_rear_door") or (p_ext and p_ext.get("is_rear_door")) or "verso" in str(getattr(p, "name", "")).lower())
             is_left = (d_side == "left")
 
-            # Em portas normais (frontais), a face interna onde fica o caneco e a lateral é p_max_y.
-            # Em portas do verso (traseiras), a face interna voltada para o armário é p_min_y.
+            # On regular (front) doors, the inner face holding the cup and side is p_max_y.
+            # On rear ("verso") doors, the inner face facing the cabinet is p_min_y.
             y_inner = p_min_y if is_rear else p_max_y
             dir_y_arm = -1.0 if is_rear else 1.0
 
-            # Centro X do caneco (a 22.5 mm da borda da dobradiça)
+            # Hinge cup X center (22.5 mm from the hinge edge)
             x_cup = (p_min_x + 0.0225) if is_left else (p_max_x - 0.0225)
-            # Face interna da lateral/divisória adjacente (~12 mm para dentro a partir da borda da porta)
+            # Inner face of adjacent side/divider (~12 mm inward from the door edge)
             x_wall_in = (p_min_x + 0.012) if is_left else (p_max_x - 0.012)
 
             for hz in zs_hinge:
-                # Caneco Ø35mm embutido/aparente na face interna da porta + flange oval
+                # Ø35mm cup recessed/surface on the inner face of the door + oval flange
                 y_c0 = (y_inner - 0.003) if is_rear else (y_inner - 0.002)
                 y_c1 = (y_inner + 0.002) if is_rear else (y_inner + 0.003)
                 _add_cylinder_y(mesh_cup, x_cup, hz, y_c0, y_c1, 0.0175, _COLOR_METAL_CLARO, segs=14)
@@ -762,19 +762,19 @@ def build_module_hardware_3d(
                     0.052,
                     _COLOR_IMEX,
                 )
-                # Pescoço articulado saindo do caneco em direção à lateral
+                # Articulated neck extending from the cup toward the side panel
                 y_neck = (y_inner - 0.014) if is_rear else y_inner
                 if is_left:
                     _add_box(mesh_cup, x_wall_in, y_neck, hz - 0.007, max(0.006, x_cup - x_wall_in), 0.014, 0.014, _COLOR_METAL_CLARO)
                 else:
                     _add_box(mesh_cup, x_cup, y_neck, hz - 0.007, max(0.006, x_wall_in - x_cup), 0.014, 0.014, _COLOR_METAL_CLARO)
 
-                # Calço cruciforme e braço fixo na lateral/divisória (37 mm para dentro do armário)
+                # Cruciform mounting plate and fixed arm on the side/divider (37 mm inside the cabinet)
                 x_plate = x_wall_in if is_left else (x_wall_in - 0.004)
                 y_plate = (y_inner - 0.022 - 0.024) if is_rear else (y_inner + 0.022)
-                # Placa base cruciforme vertical (parafusos a 37mm da borda, espaçados 32mm em Z)
+                # Vertical cruciform base plate (screws at 37mm from the edge, spaced 32mm along Z)
                 _add_box(mesh_plate, x_plate, y_plate, hz - 0.024, 0.004, 0.024, 0.048, _COLOR_METAL_ESCURO)
-                # Corpo do braço de regulagem clipado no calço
+                # Adjustable arm body clipped onto the mounting plate
                 x_arm = x_wall_in if is_left else (x_wall_in - 0.009)
                 y_arm = (y_inner - 0.003 - 0.052) if is_rear else (y_inner + 0.003)
                 _add_box(mesh_plate, x_arm, y_arm, hz - 0.008, 0.009, 0.052, 0.016, _COLOR_METAL_CLARO)
@@ -797,7 +797,7 @@ def build_module_hardware_3d(
                 linked_piece=None,
             ))
 
-    # ── Corrediças ──────────────────────────────────────────────────
+    # ── Drawer Slides ───────────────────────────────────────────────
     corredica = None
     if "corredica_40" in by_key:
         corredica = by_key["corredica_40"]
@@ -805,7 +805,7 @@ def build_module_hardware_3d(
         corredica = by_key["corredica_50"]
     num_gavetas = int(params.get("num_gavetas", 0) or 0)
     tipo_lower = str(params.get("tipo", "")).lower()
-    # balcao_forno construído sem gaveta e módulos de cama (corrediças laterais) não devem renderizar corrediças 3D frontais.
+    # balcao_forno built without a drawer and bed modules (side slides) must not render front 3D slides.
     if tipo_lower == "balcao_forno" and not bool(params.get("tem_gaveta", True)):
         num_gavetas = 0
     if tipo_lower.startswith("cama_") or tipo_lower in ("bicama", "beliche"):
@@ -817,7 +817,7 @@ def build_module_hardware_3d(
         ):
             criadas.append(g)
 
-    # ── Trilhos ─────────────────────────────────────────────────────
+    # ── Sliding Tracks ──────────────────────────────────────────────
     trilho = by_key.get("trilho_correr")
     num_portas = int(params.get("num_portas", 0) or 0)
     if trilho is not None and full is not None and "correr" in str(params.get("tipo", "")).lower():
@@ -825,7 +825,7 @@ def build_module_hardware_3d(
         if g is not None:
             criadas.append(g)
 
-    # ── Kit Porta-Tempero Aramado ───────────────────────────────────
+    # ── Wire Spice Rack Kit ─────────────────────────────────────────
     kit_tempero = by_key.get("kit_porta_tempero_aramado")
     if kit_tempero is not None and full is not None:
         target_front = None
@@ -845,37 +845,37 @@ def build_module_hardware_3d(
         z_base = min_z + 0.04
 
         mesh_basket = Mesh()
-        # 1. Guias telescópicas inferiores fixadas na lateral/base
+        # 1. Bottom telescopic guides mounted to the side/base
         _add_box(mesh_basket, min_x + 0.012, y_ini + 0.01, z_base - 0.01, 0.012, prof_kit, 0.035, _COLOR_IMEX)
 
-        # 2. Estrutura vertical do cesto (chassi aramado)
+        # 2. Vertical basket frame (wire chassis)
         _add_cylinder_z(mesh_basket, min_x + 0.025, y_ini + 0.02, z_base, z_base + alt_kit, 0.005, color_wire, segs=10)
         _add_cylinder_z(mesh_basket, min_x + 0.025, y_ini + prof_kit - 0.02, z_base, z_base + alt_kit, 0.005, color_wire, segs=10)
         _add_cylinder_y(mesh_basket, min_x + 0.025, z_base + alt_kit, y_ini + 0.02, y_ini + prof_kit - 0.02, 0.005, color_wire, segs=10)
 
-        # 3. Suportes de fixação na contra-face da frente da gaveta
+        # 3. Mounting brackets on the inner face of the drawer front
         _add_box(mesh_basket, cx - larg_kit/2, y_ini - 0.012, z_base + 0.05, larg_kit, 0.012, 0.025, _COLOR_IMEX)
         _add_box(mesh_basket, cx - larg_kit/2, y_ini - 0.012, z_base + alt_kit - 0.06, larg_kit, 0.012, 0.025, _COLOR_IMEX)
 
-        # 4. Duas bandejas aramadas (Inferior e Superior)
+        # 4. Two wire trays (Bottom and Top)
         for h_b in [z_base + 0.02, z_base + alt_kit * 0.55]:
-            # Contorno retangular superior da bandeja
+            # Upper rectangular perimeter of the tray
             x1, x2 = cx - larg_kit / 2, cx + larg_kit / 2
             y1, y2 = y_ini + 0.01, y_ini + prof_kit - 0.01
             h_barreira = 0.065
-            # Aros perimetrais
+            # Perimeter rims
             _add_box(mesh_basket, x1, y1, h_b, larg_kit, 0.004, 0.004, color_wire)
             _add_box(mesh_basket, x1, y2 - 0.004, h_b, larg_kit, 0.004, 0.004, color_wire)
             _add_box(mesh_basket, x1, y1, h_b, 0.004, prof_kit - 0.02, 0.004, color_wire)
             _add_box(mesh_basket, x2 - 0.004, y1, h_b, 0.004, prof_kit - 0.02, 0.004, color_wire)
 
-            # Gradil superior de contenção (borda alta)
+            # Upper containment rail (tall rim)
             _add_box(mesh_basket, x1, y1, h_b + h_barreira, larg_kit, 0.004, 0.004, color_wire)
             _add_box(mesh_basket, x1, y2 - 0.004, h_b + h_barreira, larg_kit, 0.004, 0.004, color_wire)
             _add_box(mesh_basket, x1, y1, h_b + h_barreira, 0.004, prof_kit - 0.02, 0.004, color_wire)
             _add_box(mesh_basket, x2 - 0.004, y1, h_b + h_barreira, 0.004, prof_kit - 0.02, 0.004, color_wire)
 
-            # Arames verticais da grade
+            # Vertical guard wires
             step_y = 0.06
             curr_y = y1 + step_y
             while curr_y < y2 - 0.02:
@@ -883,7 +883,7 @@ def build_module_hardware_3d(
                 _add_cylinder_z(mesh_basket, x2 - 0.002, curr_y, h_b, h_b + h_barreira, 0.002, color_wire, segs=8)
                 curr_y += step_y
 
-            # Arames longitudinais do fundo da bandeja
+            # Longitudinal tray bottom wires
             step_x = 0.025
             curr_x = x1 + 0.015
             while curr_x < x2 - 0.01:
@@ -899,7 +899,7 @@ def build_module_hardware_3d(
         )
         criadas.append(g_kit)
 
-    # ── Pés niveladores ─────────────────────────────────────────────
+    # ── Leveling Feet ───────────────────────────────────────────────
     pes = by_key.get("pes_nivelador")
     if pes is not None and full is not None:
         g = _make_feet(module_tag, "pes_nivelador", full, int(pes.quantidade or 4), module_tag)

@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""Componente de Página de Aba (CollapsibleSection) para a Sidebar do TrazoMob.
+"""Tab Page Component (CollapsibleSection) for the TrazoMob Sidebar.
 
-Fornece um container enxuto de página de aba com QFormLayout integrado
-e controle de visibilidade e tooltip da aba no QTabWidget pai, sem cabeçalho redundante.
+Provides a lean tab page container with an integrated QFormLayout and
+visibility/tooltip control on the parent QTabWidget, without a redundant header.
 """
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (
 
 
 class CollapsibleSection(QWidget):
-    """Página de aba enxuta com QFormLayout integrado."""
+    """Lean tab page with integrated QFormLayout."""
 
     toggled = Signal(bool)
 
@@ -38,16 +38,16 @@ class CollapsibleSection(QWidget):
         self._tab_widget: QTabWidget | None = None
         self._tab_index: int = -1
 
-        # Mantido oculto apenas para compatibilidade de chamadas a set_badge()
+        # Kept hidden only for compatibility with set_badge() calls
         self._lbl_badge = QLabel("", self)
         self._lbl_badge.setVisible(False)
 
-        # Layout Principal da Página da Aba (direto ao conteúdo, sem barra de título redundante)
+        # Main Tab Page Layout (straight to content, no redundant title bar)
         self._main_layout = QVBoxLayout(self)
         self._main_layout.setContentsMargins(2, 4, 2, 4)
         self._main_layout.setSpacing(6)
 
-        # ─── CONTAINER DE CONTEÚDO DO FORMULÁRIO ───
+        # ─── FORM CONTENT CONTAINER ───
         self._content_area = QFrame(self)
         self._content_area.setObjectName("tabSectionContent")
         self._content_area.setStyleSheet(
@@ -73,7 +73,7 @@ class CollapsibleSection(QWidget):
         self._main_layout.addStretch(1)
 
     def bind_tab(self, tab_widget: QTabWidget, index: int) -> None:
-        """Associa esta página ao índice correspondente no QTabWidget."""
+        """Associates this page with the corresponding index in the QTabWidget."""
         self._tab_widget = tab_widget
         self._tab_index = index
 

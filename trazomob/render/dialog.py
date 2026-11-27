@@ -114,6 +114,7 @@ class TrazoMobRenderDialog(QDialog):
         self._engine = TrazoMobRenderEngine(self)
         self._engine.progress_updated.connect(self._on_progress)
         self._engine.render_finished.connect(self._on_finished)
+        self._engine.prepare_finished.connect(self._on_prepare_finished)
         self._engine.render_failed.connect(self._on_failed)
 
         self._current_image_path: str | None = None
@@ -307,9 +308,8 @@ class TrazoMobRenderDialog(QDialog):
         self.btn_save.clicked.connect(self._save_image)
         h_status.addWidget(self.btn_save)
 
-        self.btn_open_blender = QPushButton("🟠 Abrir no Blender...")
-        self.btn_open_blender.setEnabled(False)
-        self.btn_open_blender.setToolTip("Abre a cena completa com shaders PBR e luzes configuradas diretamente no Blender.")
+        self.btn_open_blender = QPushButton(tr("🟠 Abrir no Blender..."))
+        self.btn_open_blender.setToolTip(tr("Abre a cena completa com shaders PBR e luzes configuradas diretamente no Blender."))
         self.btn_open_blender.clicked.connect(self._open_in_blender)
         h_status.addWidget(self.btn_open_blender)
 
@@ -340,7 +340,7 @@ class TrazoMobRenderDialog(QDialog):
 
         main_layout.addLayout(view_layout, 1)
 
-    def _start_render(self):
+    def _start_render(self, _checked: bool = False, *, prepare_only: bool = False):
         preset_keys = ["dia", "tarde", "noturno", "estudio", "escuro"]
         preset = preset_keys[self.cb_preset.currentIndex()]
 
@@ -390,7 +390,8 @@ class TrazoMobRenderDialog(QDialog):
             material_overrides=self._material_overrides,
             clay_mode=clay,
             selected_only=sel_only,
-            sun_softness=sun_soft
+            sun_softness=sun_soft,
+            prepare_only=prepare_only,
         )
         if not ok:
             self._reset_buttons()
@@ -615,7 +616,7 @@ class TrazoMobRenderDialog(QDialog):
     def _on_progress(self, percent: int, msg: str):
         self.lbl_status.setText(msg)
         if percent < 0:
-            # Modo indeterminado (marcador animado pulsante se samples não numéricos)
+            # Indeterminate mode (pulsing marquee when samples are non-numeric)
             self.progress_bar.setRange(0, 0)
         else:
             if self.progress_bar.maximum() == 0:
@@ -643,17 +644,31 @@ class TrazoMobRenderDialog(QDialog):
         self.lbl_status.setText("❌ Falha na renderização.")
         QMessageBox.warning(self, "Render Foto-Realista", err_msg)
 
-    def _open_in_blender(self):
-        blend_file = Path(self._current_image_path).parent / "cena_marcenaria_trazomob.blend"
-        if not blend_file.exists():
-            QMessageBox.warning(self, "Abrir no Blender", "O arquivo .blend da cena não foi encontrado.")
-            return
+    def _on_prepare_finished(self, blend_path: str):
+        self._reset_buttons()
+        self.lbl_status.setText(tr("✅ Cena preparada! Abrindo no Blender..."))
         blender_exe = self._engine.get_blender_executable()
         if not blender_exe:
-            QMessageBox.warning(self, "Abrir no Blender", "Executável do Blender não encontrado.")
+            QMessageBox.warning(self, tr("Abrir no Blender"), tr("Executável do Blender não encontrado."))
+            return
+        if not os.path.isfile(blend_path):
+            QMessageBox.warning(self, tr("Abrir no Blender"), tr("O arquivo .blend da cena não foi encontrado."))
             return
         import subprocess
-        subprocess.Popen([blender_exe, str(blend_file)])
+        subprocess.Popen([blender_exe, blend_path])
+
+    def _open_in_blender(self):
+        blender_exe = self._engine.get_blender_executable()
+        if not blender_exe:
+            QMessageBox.warning(self, tr("Abrir no Blender"), tr("Executável do Blender não encontrado."))
+            return
+        if self._current_image_path:
+            blend_file = Path(self._current_image_path).parent / "cena_marcenaria_trazomob.blend"
+            if blend_file.exists():
+                import subprocess
+                subprocess.Popen([blender_exe, str(blend_file)])
+                return
+        self._start_render(prepare_only=True)
 
     def _save_image(self):
         if not self._current_image_path or not os.path.isfile(self._current_image_path):

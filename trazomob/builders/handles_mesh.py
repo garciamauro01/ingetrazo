@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""Utilitários de geração de malhas 3D para chapas de MDF, puxadores e usinagens."""
+"""3D mesh generation utilities for MDF boards, handles, and machining operations."""
 from __future__ import annotations
 
 from core.mesh import Mesh
@@ -9,11 +9,11 @@ from .mesh_utils import _make_box_faces
 
 
 def _get_puxador_rgb(cor: str | tuple[float, float, float] | None) -> tuple[float, float, float]:
-    """Retorna os valores RGB para o acabamento do puxador."""
+    """Return the RGB values for the handle finish."""
     if isinstance(cor, (tuple, list)) and len(cor) >= 3:
         return (float(cor[0]), float(cor[1]), float(cor[2]))
     if not cor:
-        return (0.15, 0.15, 0.18)  # Preto fosco
+        return (0.15, 0.15, 0.18)  # Matte black
     c = str(cor).lower()
     if "inox" in c or "alum" in c or "prata" in c or "cinza" in c:
         return (0.78, 0.80, 0.83)
@@ -36,36 +36,36 @@ def _build_perfil_geometry_legacy(
     rgb: tuple[float, float, float] = (0.15, 0.15, 0.18),
     desc_m: float = 0.035,
 ) -> None:
-    """Gera a geometria 3D realista dos perfis de alumínio (Rometal/TrazoMob/Leo Madeiras).
+    """Generate realistic 3D geometry for aluminum profile handles (Rometal/TrazoMob/Leo Madeiras).
 
-    Modelos suportados:
-    - 'gola': Perfil Gola Côncavo (RM-030) - cava côncava anatômica, aba de fixação de 15.4mm e lábio superior arredondado.
-    - 'facetato': Perfil Facetato / Aba Curva (RM-027) - flange superior de 37mm cobrindo a chapa, aba traseira de 15.5mm e gancho ergonômico frontal curvo de 7.5mm.
-    - 'canal_c': Perfil Central Duplo / Canal C (RM-032) - perfil simétrico de 42mm com canal central e duplo lábio em T (superior e inferior).
-    - 'sp7000': Perfil Haste Reta / SP-7000 - canal U de abraço de 26mm x 13.5mm e haste reta vertical superior saliente de 41mm.
+    Supported models:
+    - 'gola': Concave Gola Profile (RM-030) - ergonomic concave recess, 15.4mm mounting flange, and rounded upper lip.
+    - 'facetato': Faceted / Curved Flange Profile (RM-027) - 37mm top flange covering the board, 15.5mm rear flange, and 7.5mm curved ergonomic front hook.
+    - 'canal_c': Double Center Channel / C-Channel Profile (RM-032) - 42mm symmetrical profile with central channel and double T-lip (top and bottom).
+    - 'sp7000': Straight Blade / SP-7000 Profile - 26mm x 13.5mm wrap-around U-channel and protruding 41mm upper vertical straight blade.
     """
     ox, oy, oz = origin
     sx, sy, sz = size
     mod = (perfil_modelo or "gola").lower()
 
-    # Tons com sutil contraste de sombra/brilho metálico
+    # Tones with subtle shadow/metallic highlight contrast
     rgb_escuro = (max(0.0, rgb[0] * 0.65), max(0.0, rgb[1] * 0.65), max(0.0, rgb[2] * 0.65))
     rgb_destaque = (min(1.0, rgb[0] * 1.15), min(1.0, rgb[1] * 1.15), min(1.0, rgb[2] * 1.15))
 
     if eff_pos == "base":
-        # Perfil horizontal montado na base inferior (portas de armários aéreos e basculantes)
+        # Horizontal profile mounted on the bottom edge (wall cabinet and flip-up doors)
         if "facetato" in mod or "aba" in mod:
-            # RM-027 Facetato na base
+            # RM-027 Faceted profile at bottom
             _make_box_faces(mesh, (ox, oy, oz), (sx, sy, desc_m), rgb)
             _make_box_faces(mesh, (ox, oy - 0.015, oz), (sx, sy + 0.015, 0.002), rgb_destaque)
-            # Gancho virado para cima para puxar por baixo
+            # Upward-facing hook for pulling from underneath
             _make_box_faces(mesh, (ox, oy - 0.015, oz + 0.002), (sx, 0.0025, 0.0075), rgb)
             _make_box_faces(mesh, (ox, oy - 0.0125, oz + 0.007), (sx, 0.005, 0.0025), rgb_escuro)
-            # Aba traseira de fixação (sobe por trás do MDF)
+            # Rear mounting flange (extends upward behind the MDF)
             _make_box_faces(mesh, (ox, oy + sy - 0.0015, oz + desc_m), (sx, 0.0015, 0.0155), rgb)
 
         elif "canal" in mod or "canal_c" in mod or "perfil c" in mod:
-            # RM-032 Canal C Duplo na base
+            # RM-032 Double C-Channel at bottom
             _make_box_faces(mesh, (ox, oy, oz), (sx, sy, desc_m), rgb)
             _make_box_faces(mesh, (ox, oy - 0.0163, oz), (sx, 0.0163, 0.003), rgb_destaque)
             _make_box_faces(mesh, (ox, oy - 0.0163, oz + desc_m - 0.003), (sx, 0.0163, 0.003), rgb_destaque)
@@ -74,16 +74,16 @@ def _build_perfil_geometry_legacy(
             _make_box_faces(mesh, (ox, oy - 0.003, oz + 0.003), (sx, 0.003, max(0.004, desc_m - 0.006)), rgb_escuro)
 
         elif "sp7000" in mod or "haste" in mod:
-            # SP-7000 Haste Reta na base
+            # SP-7000 Straight Blade at bottom
             _make_box_faces(mesh, (ox, oy, oz), (sx, sy, desc_m), rgb)
             _make_box_faces(mesh, (ox, oy - 0.0035, oz), (sx, 0.0035, desc_m), rgb)
             _make_box_faces(mesh, (ox, oy + sy - 0.002, oz + desc_m), (sx, 0.002, 0.012), rgb)
-            # Haste reta se estendendo para baixo além da base
+            # Straight blade extending downward past the bottom edge
             _make_box_faces(mesh, (ox, oy - 0.0035, oz - 0.018), (sx, 0.005, 0.018), rgb_destaque)
             _make_box_faces(mesh, (ox, oy - 0.0025, oz - 0.020), (sx, 0.003, 0.002), rgb)
 
         else:
-            # RM-030 Gola Côncavo na base (invertido para puxar por baixo)
+            # RM-030 Concave Gola at bottom (inverted for pulling from underneath)
             _make_box_faces(mesh, (ox, oy, oz), (sx, sy, desc_m), rgb)
             _make_box_faces(mesh, (ox, oy - 0.006, oz + desc_m * 0.4), (sx, 0.006, desc_m * 0.5), rgb_escuro)
             _make_box_faces(mesh, (ox, oy - 0.012, oz + 0.008), (sx, 0.012, desc_m * 0.4), rgb)
@@ -92,7 +92,7 @@ def _build_perfil_geometry_legacy(
             _make_box_faces(mesh, (ox, oy + sy - 0.0015, oz + desc_m), (sx, 0.0015, 0.0154), rgb)
 
     elif eff_pos in ("extensao", "lateral") and door_side not in ("drawer", "flap"):
-        # Perfil vertical na lateral da porta (ao longo de Z)
+        # Vertical profile along the door side edge (along Z)
         sides_to_build = ("left", "right") if door_side == "both" else (door_side,)
         for cur_side in sides_to_build:
             is_left_side = cur_side in ("left", "single")
@@ -100,7 +100,7 @@ def _build_perfil_geometry_legacy(
             hx = ox + larg_mdf if is_left_side else ox
 
             if "facetato" in mod or "aba" in mod:
-                # RM-027 vertical
+                # Vertical RM-027
                 _make_box_faces(mesh, (hx, oy, oz), (desc_m, sy, sz), rgb)
                 _make_box_faces(mesh, (hx, oy - 0.015, oz), (desc_m, sy + 0.015, sz), rgb)
                 g_x = (hx + desc_m - 0.0025) if is_left_side else hx
@@ -109,7 +109,7 @@ def _build_perfil_geometry_legacy(
                 _make_box_faces(mesh, (fix_x, oy + sy - 0.0015, oz), (0.0155, 0.0015, sz), rgb)
 
             elif "canal" in mod or "canal_c" in mod or "perfil c" in mod:
-                # RM-032 vertical Canal C
+                # Vertical RM-032 C-Channel
                 _make_box_faces(mesh, (hx, oy, oz), (desc_m, sy, sz), rgb)
                 _make_box_faces(mesh, (hx, oy - 0.0163, oz), (desc_m, 0.003, sz), rgb_destaque)
                 _make_box_faces(mesh, (hx, oy - 0.003, oz), (desc_m, 0.003, sz), rgb_escuro)
@@ -117,73 +117,73 @@ def _build_perfil_geometry_legacy(
                 _make_box_faces(mesh, (hx + desc_m - 0.003, oy - 0.0163, oz), (0.003, 0.006, sz), rgb)
 
             elif "sp7000" in mod or "haste" in mod:
-                # SP-7000 vertical
+                # Vertical SP-7000
                 _make_box_faces(mesh, (hx, oy, oz), (desc_m, sy, sz), rgb)
                 _make_box_faces(mesh, (hx, oy - 0.0035, oz), (desc_m, 0.0035, sz), rgb)
                 rod_x = (hx + desc_m) if is_left_side else (hx - 0.018)
                 _make_box_faces(mesh, (rod_x, oy - 0.0035, oz), (0.018, 0.005, sz), rgb_destaque)
 
             else:
-                # RM-030 Gola vertical
+                # Vertical RM-030 Gola
                 _make_box_faces(mesh, (hx, oy, oz), (desc_m, sy, sz), rgb)
                 aba_x = (hx - 0.004) if is_left_side else (hx + desc_m - 0.012)
                 _make_box_faces(mesh, (aba_x, oy - 0.012, oz), (0.016, 0.012, sz), rgb)
                 _make_box_faces(mesh, (aba_x, oy - 0.0175, oz), (0.006, 0.006, sz), rgb_destaque)
 
     else:
-        # eff_pos == "topo" (padrão balcões e frentes de gaveta)
+        # eff_pos == "topo" (default for base cabinets and drawer fronts)
         hz = oz + sz - desc_m
         if "facetato" in mod or "aba" in mod:
-            # RM-027: Facetato / Aba Curva (Imagem 1)
-            # Flange superior plana cobrindo o topo da chapa de MDF e avançando 17mm para frente
+            # RM-027: Faceted / Curved Flange (Image 1)
+            # Flat top flange covering the MDF board top edge and projecting 17mm forward
             _make_box_faces(mesh, (ox, oy - 0.017, oz + sz - 0.002), (sx, sy + 0.017, 0.002), rgb_destaque)
-            # Corpo do perfil preenchendo o corte do MDF
+            # Profile body filling the MDF cutout
             _make_box_faces(mesh, (ox, oy, hz), (sx, sy, desc_m - 0.002), rgb)
-            # Gancho frontal curvo descendo 7.5mm
+            # Curved front hook descending 7.5mm
             _make_box_faces(mesh, (ox, oy - 0.017, oz + sz - 0.0075), (sx, 0.0025, 0.0075), rgb)
-            # Ponta interna do gancho
+            # Inner tip of the hook
             _make_box_faces(mesh, (ox, oy - 0.0145, oz + sz - 0.0075), (sx, 0.004, 0.0025), rgb_escuro)
-            # Aba traseira de fixação (15.5mm descendo atrás do MDF)
+            # Rear mounting flange (15.5mm descending behind the MDF)
             _make_box_faces(mesh, (ox, oy + sy - 0.0015, hz - 0.0155), (sx, 0.0015, 0.0155), rgb)
 
         elif "canal" in mod or "canal_c" in mod or "perfil c" in mod:
-            # RM-032: Canal Duplo / Perfil C Simétrico (Imagem 3)
-            # Fundo do perfil
+            # RM-032: Double Channel / Symmetrical C-Profile (Image 3)
+            # Profile back
             _make_box_faces(mesh, (ox, oy, hz), (sx, sy, desc_m), rgb)
-            # Aba horizontal superior (profundidade 16.3mm)
+            # Upper horizontal flange (16.3mm depth)
             _make_box_faces(mesh, (ox, oy - 0.0163, oz + sz - 0.003), (sx, 0.0163, 0.003), rgb_destaque)
-            # Aba horizontal inferior (profundidade 16.3mm)
+            # Lower horizontal flange (16.3mm depth)
             _make_box_faces(mesh, (ox, oy - 0.0163, hz), (sx, 0.0163, 0.003), rgb_destaque)
-            # Lábio frontal superior em T (4.7mm)
+            # Upper front T-lip (4.7mm)
             _make_box_faces(mesh, (ox, oy - 0.0163, oz + sz - 0.006), (sx, 0.003, 0.006), rgb)
-            # Lábio frontal inferior em T (4.7mm)
+            # Lower front T-lip (4.7mm)
             _make_box_faces(mesh, (ox, oy - 0.0163, hz), (sx, 0.003, 0.006), rgb)
-            # Parede interna do canal (fundo do canal C recuado)
+            # Inner channel wall (recessed C-channel back)
             _make_box_faces(mesh, (ox, oy - 0.003, hz + 0.003), (sx, 0.003, max(0.004, desc_m - 0.006)), rgb_escuro)
 
         elif "sp7000" in mod or "haste" in mod:
-            # SP-7000: Haste Reta Minimalista (Imagem 4)
-            # Canal U abraçando o MDF:
+            # SP-7000: Minimalist Straight Blade (Image 4)
+            # U-channel wrapping the MDF:
             _make_box_faces(mesh, (ox, oy, hz), (sx, sy, desc_m), rgb)
             _make_box_faces(mesh, (ox, oy - 0.0035, hz), (sx, 0.0035, desc_m), rgb)
             _make_box_faces(mesh, (ox, oy + sy - 0.002, hz - 0.010), (sx, 0.002, desc_m + 0.010), rgb)
-            # Haste vertical reta de puxar (eleva-se 18mm acima da porta)
+            # Straight vertical pull blade (rises 18mm above the door)
             _make_box_faces(mesh, (ox, oy - 0.0035, oz + sz), (sx, 0.005, 0.018), rgb_destaque)
-            # Topo arredondado sutil da haste
+            # Subtle rounded top of the blade
             _make_box_faces(mesh, (ox, oy - 0.0025, oz + sz + 0.018), (sx, 0.003, 0.002), rgb)
 
         else:
-            # RM-030: Gola Côncavo Clássico (Imagem 2)
-            # Corpo do perfil
+            # RM-030: Classic Concave Gola (Image 2)
+            # Profile body
             _make_box_faces(mesh, (ox, oy, hz), (sx, sy, desc_m), rgb)
-            # Cava côncava ergonômica em facetas suaves
+            # Ergonomic concave grip recess with smooth facets
             _make_box_faces(mesh, (ox, oy - 0.006, hz + 0.005), (sx, 0.006, desc_m * 0.4), rgb_escuro)
             _make_box_faces(mesh, (ox, oy - 0.012, hz + desc_m * 0.4), (sx, 0.012, desc_m * 0.35), rgb)
-            # Lábio superior arredondado da cava (17.5mm de projeção)
+            # Rounded upper lip of the recess (17.5mm projection)
             _make_box_faces(mesh, (ox, oy - 0.0175, oz + sz - 0.008), (sx, 0.0175, 0.008), rgb_destaque)
-            # Bico descendente do lábio
+            # Downward lip beak
             _make_box_faces(mesh, (ox, oy - 0.0175, oz + sz - 0.013), (sx, 0.0035, 0.005), rgb)
-            # Aba de fixação traseira (15.4mm descendo atrás do MDF)
+            # Rear mounting flange (15.4mm descending behind the MDF)
             _make_box_faces(mesh, (ox, oy + sy - 0.0015, hz - 0.0154), (sx, 0.0015, 0.0154), rgb)
 
 
@@ -197,7 +197,7 @@ def _build_perfil_geometry(
     rgb: tuple[float, float, float] = (0.15, 0.15, 0.18),
     desc_m: float = 0.035,
 ) -> None:
-    """Extruda a seção 2D do perfil (biblioteca editável em perfis.py) ao longo da porta."""
+    """Extrude the 2D profile cross-section (editable library in perfis.py) along the door."""
     from ..profiles.library import extrude_profile, get_profile
 
     perfil = get_profile(perfil_modelo)
@@ -221,10 +221,10 @@ def _add_handle_geometry(
     door_side: str = "single",  # "left", "right", "single", "both", "drawer", "flap"
     is_upper: bool = False,
     puxador_pos: str = "padrao",
-    desconto_perfil_mm: float = 35.0,  # "padrao", "topo", "extensao", "base", "centro"
+    desconto_perfil_mm: float = 35.0,  # Valid values: "padrao", "topo", "extensao", "base", "centro"
     perfil_modelo: str = "gola",
 ):
-    """Adiciona a geometria 3D do puxador (alça, perfil, cava, ponto) à malha da porta ou gaveta."""
+    """Add the 3D handle geometry (bar pull, profile, routed pull, knob) to the door or drawer mesh."""
     tipo = (puxador_tipo or "alca").lower()
     if tipo in ("sem_puxador", "toque", "fecho_toque", "nenhum", "sem"):
         return
@@ -247,7 +247,7 @@ def _add_handle_geometry(
     sx, sy, sz = size
     rgb = _get_puxador_rgb(puxador_cor)
 
-    # Determina a orientação vertical efetiva
+    # Determine the effective vertical orientation
     eff_pos = pos
     if eff_pos in ("padrao", "auto"):
         if is_upper or door_side == "flap":
@@ -269,7 +269,7 @@ def _add_handle_geometry(
         )
 
     elif tipo == "cava":
-        # Cava Usinada 45°
+        # 45° routed finger pull
         cor_cava = (max(0.0, rgb[0] * 0.7), max(0.0, rgb[1] * 0.7), max(0.0, rgb[2] * 0.7))
         if eff_pos in ("extensao", "lateral") and door_side not in ("drawer", "flap"):
             alt = max(0.04, sz - 0.04)
@@ -291,7 +291,7 @@ def _add_handle_geometry(
             _make_box_faces(mesh, (hx, hy, hz), (larg, 0.010, 0.024), cor_cava)
 
     elif tipo == "ponto":
-        # Puxador Ponto / Botão Minimalista
+        # Minimalist knob / button pull
         tam = 0.022
         recuo_x = 0.035
         is_yz_plane = (abs(sx) <= 0.035 and abs(sy) > 0.05 and abs(sz) > 0.05)
@@ -331,14 +331,14 @@ def _add_handle_geometry(
         _make_box_faces(mesh, (hx, hy, hz), (tam, tam, tam), rgb)
 
     else:
-        # Puxador Alça / Barra Linear
+        # Bar pull / linear handle
         is_yz_plane = (abs(sx) <= 0.035 and abs(sy) > 0.05 and abs(sz) > 0.05)
         if is_yz_plane:
-            # Porta orientada no plano YZ (espessura da chapa em X, largura em Y, altura em Z)
-            # A face frontal da porta da Ala Y no Canto L aponta para +X (para fora do balcão)
+            # Door oriented in the YZ plane (board thickness along X, width along Y, height along Z)
+            # The front face of the Y-wing door in an L-corner cabinet points toward +X (outward from the cabinet)
             alt = min(0.18, sz * 0.3)
             recuo_y = 0.035
-            # door_side="left": puxador no lado da quina/livre (+Y); door_side="right": puxador na extremidade frontal (-Y)
+            # door_side="left": handle on the corner/free side (+Y); door_side="right": handle at the front end (-Y)
             hy = oy + recuo_y if door_side == "right" else oy + sy - recuo_y - 0.012
             hz = oz + sz - alt - 0.05
             hx = ox + sx + 0.001
@@ -350,7 +350,7 @@ def _add_handle_geometry(
             hx = ox + (sx - comp) / 2.0
             hy = oy - 0.025
             hz = oz + (sz / 2.0) - 0.006 if eff_pos == "centro" or door_side == "drawer" else (oz + sz - 0.05 if eff_pos == "topo" else oz + 0.04)
-            # Barra horizontal
+            # Horizontal bar
             _make_box_faces(mesh, (hx, hy, hz), (comp, 0.010, 0.012), rgb)
             _make_box_faces(mesh, (hx + 0.015, oy - 0.025, hz + 0.001), (0.012, 0.025, 0.010), rgb)
             _make_box_faces(mesh, (hx + comp - 0.027, oy - 0.025, hz + 0.001), (0.012, 0.025, 0.010), rgb)
@@ -363,7 +363,7 @@ def _add_handle_geometry(
             _make_box_faces(mesh, (hx + 0.015, oy - 0.025, hz + 0.001), (0.012, 0.025, 0.010), rgb)
             _make_box_faces(mesh, (hx + comp - 0.027, oy - 0.025, hz + 0.001), (0.012, 0.025, 0.010), rgb)
         elif eff_pos in ("extensao", "lateral"):
-            # Barra vertical ao longo da extensão da porta
+            # Vertical bar along the door length
             alt = min(0.35, sz * 0.55)
             recuo_x = 0.035
             hx = ox + sx - recuo_x - 0.012 if door_side in ("left", "single") else ox + recuo_x
@@ -373,7 +373,7 @@ def _add_handle_geometry(
             _make_box_faces(mesh, (hx + 0.001, oy - 0.025, hz + 0.015), (0.010, 0.025, 0.012), rgb)
             _make_box_faces(mesh, (hx + 0.001, oy - 0.025, hz + alt - 0.027), (0.010, 0.025, 0.012), rgb)
         elif eff_pos == "base":
-            # Barra horizontal ou vertical na base
+            # Horizontal or vertical bar at the bottom
             alt = min(0.18, sz * 0.3)
             recuo_x = 0.035
             hx = ox + sx - recuo_x - 0.012 if door_side in ("left", "single") else ox + recuo_x
@@ -383,7 +383,7 @@ def _add_handle_geometry(
             _make_box_faces(mesh, (hx + 0.001, oy - 0.025, hz + 0.015), (0.010, 0.025, 0.012), rgb)
             _make_box_faces(mesh, (hx + 0.001, oy - 0.025, hz + alt - 0.027), (0.010, 0.025, 0.012), rgb)
         else:
-            # Topo (horizontal ou vertical no topo)
+            # Top (horizontal or vertical at the top)
             alt = min(0.18, sz * 0.3)
             recuo_x = 0.035
             hx = ox + sx - recuo_x - 0.012 if door_side in ("left", "single") else ox + recuo_x

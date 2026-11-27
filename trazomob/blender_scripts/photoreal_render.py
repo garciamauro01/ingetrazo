@@ -892,6 +892,8 @@ def setup_photoreal_materials(use_bevel=True, material_overrides=None, clay_mode
                 # Superfície que emite luz (LED / Neon / Painel Iluminado / Tela de TV)
                 sub = str(cfg.get("sub_type", "")).lower()
                 is_screen = any(k in sub for k in ("painel", "tv", "tela", "monitor"))
+                custom_emit = cfg.get("emission_strength")
+                custom_emit = max(0.1, float(custom_emit)) if custom_emit is not None else None
                 tex_img_node = next((n for n in nodes if getattr(n, "type", None) == "TEX_IMAGE"), None)
                 emit_sock = bsdf.inputs.get("Emission Color") or bsdf.inputs.get("Emission")
 
@@ -911,7 +913,7 @@ def setup_photoreal_materials(use_bevel=True, material_overrides=None, clay_mode
                         for link in list(getattr(emit_sock, "links", ())):
                             links.remove(link)
                         links.new(tex_img_node.outputs["Color"], emit_sock)
-                        _set_bsdf_prop(bsdf, ("Emission Strength",), 2.4)
+                        _set_bsdf_prop(bsdf, ("Emission Strength",), custom_emit if custom_emit is not None else 2.4)
                         light_col = (0.78, 0.88, 1.0)
                     else:
                         base_inp = bsdf.inputs.get("Base Color")
@@ -930,7 +932,7 @@ def setup_photoreal_materials(use_bevel=True, material_overrides=None, clay_mode
                                 1.0,
                             )
                         _set_bsdf_prop(bsdf, ("Emission Color", "Emission"), emit_col)
-                        _set_bsdf_prop(bsdf, ("Emission Strength",), 2.8)
+                        _set_bsdf_prop(bsdf, ("Emission Strength",), custom_emit if custom_emit is not None else 2.8)
                         light_col = emit_col[:3]
 
                     try:
@@ -947,7 +949,7 @@ def setup_photoreal_materials(use_bevel=True, material_overrides=None, clay_mode
                     else:
                         emit_col = (1.0, 0.95, 0.88, 1.0)
                     _set_bsdf_prop(bsdf, ("Emission Color", "Emission"), emit_col)
-                    _set_bsdf_prop(bsdf, ("Emission Strength",), 8.0)
+                    _set_bsdf_prop(bsdf, ("Emission Strength",), custom_emit if custom_emit is not None else 8.0)
                     try:
                         mat["trazomob_emissive_kind"] = "led"
                         mat["trazomob_emissive_color"] = list(emit_col[:3])
@@ -1828,6 +1830,10 @@ def main():
             say("saved_blend", blend_path)
         except Exception:
             pass
+
+    if job.get("prepare_only"):
+        say("done", blend_path or "")
+        return
 
     say("rendering", f"{w}x{h}", engine_name, f"samples={samples}")
 

@@ -1,14 +1,14 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""Construtor de tamponamentos contínuos de linha e envoltórios para móveis modulados.
+"""Continuous line cover panel and wrap builder for modular furniture.
 
-Permite gerar:
-- Tamponamento Simples (apenas lateral ou apenas topo);
-- Envoltório em L (topo + 1 lateral descendo até o piso/rodapé);
-- Envoltório em U / Gola Contínua (lateral esquerda + topo contínuo unificado + lateral direita).
+Generates:
+- Simple Cover Panel (side only or top only);
+- L-Shaped Wrap (top + 1 side extending down to the floor/toe kick);
+- U-Shaped Wrap / Continuous Gola (left side + unified continuous top + right side).
 
-O tamponamento pode ser aplicado sobre um único módulo ou cobrir uma sequência
-contínua de balcões ou armários adjacentes na cena.
+Cover paneling can be applied over a single module or span a continuous
+sequence of adjacent base cabinets or cabinets in the scene.
 """
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from .chapa_spec import ChapaSpec, ModuloMaterialContext, PapelChapa
 
 
 class TamponamentoLinhaBuilder:
-    """Construtor paramétrico de tamponamentos unificados e contínuos."""
+    """Parametric builder for unified, continuous cover panels."""
 
     @classmethod
     def build_tamponamento_linha(
@@ -29,17 +29,17 @@ class TamponamentoLinhaBuilder:
         prof_mm: float,
         esp_mm: float = 18.0,
         esp_lateral_mm: float | None = None,
-        tipo_envoltorio: str = "u_completo",  # "u_completo", "topo", "lateral_esq", "lateral_dir", "l_esq", "l_dir"
+        tipo_envoltorio: str = "u_completo",  # Options: "u_completo", "topo", "lateral_esq", "lateral_dir", "l_esq", "l_dir"
         material: str = "MDF Carvalho",
         material_fita: str | None = None,
         recuo_frontal_mm: float = 0.0,
-        sobra_frontal_mm: float = 20.0,  # Avanço frontal em relação à caixa para cobrir as portas
+        sobra_frontal_mm: float = 20.0,  # Front overhang relative to the carcass to cover the doors
         offset: tuple[float, float, float] = (0.0, 0.0, 0.0),
         mat_ctx: ModuloMaterialContext | None = None,
     ) -> list[Group]:
-        """Gera as chapas engrossadas de tamponamento para envolver uma linha de módulos.
+        """Generates thickened cover panels to wrap a line of modules.
 
-        Dimensões em mm na entrada, geradas em metros no espaço 3D.
+        Dimensions in mm on input, generated in meters in 3D space.
         """
         esp_t = esp_mm / 1000.0
         esp_lat = (esp_lateral_mm or esp_mm) / 1000.0
@@ -53,7 +53,7 @@ class TamponamentoLinhaBuilder:
         prof_tamp = P + sobra_f - recuo_f
 
         ox, oy, oz = offset
-        oy_tamp = oy - sobra_f  # Projeta para a frente para alinhar com as portas
+        oy_tamp = oy - sobra_f  # Projects forward to align with the doors
 
         if mat_ctx is None:
             mat_ctx = ModuloMaterialContext(
@@ -69,10 +69,10 @@ class TamponamentoLinhaBuilder:
         has_esq = tipo in ("lateral_esq", "u_completo", "l_esq")
         has_dir = tipo in ("lateral_dir", "u_completo", "l_dir")
 
-        # 1. Lateral Esquerda
+        # 1. Left Side
         if has_esq:
-            # A lateral esquerda posiciona-se em ox - esp_lat
-            # Altura cobre até o topo da caixa + espessura do topo (se houver topo sobreposto)
+            # Left side panel is positioned at ox - esp_lat
+            # Height covers up to the carcass top + top panel thickness (if overlaid top exists)
             alt_lat_esq = A + (esp_t if has_topo else 0.0)
             spec_esq = ChapaSpec.resolve(
                 nome="Tamponamento Lateral Esq",
@@ -88,9 +88,9 @@ class TamponamentoLinhaBuilder:
             )
             groups.append(g_esq)
 
-        # 2. Lateral Direita
+        # 2. Right Side
         if has_dir:
-            # A lateral direita posiciona-se em ox + L
+            # Right side panel is positioned at ox + L
             alt_lat_dir = A + (esp_t if has_topo else 0.0)
             spec_dir = ChapaSpec.resolve(
                 nome="Tamponamento Lateral Dir",
@@ -106,11 +106,11 @@ class TamponamentoLinhaBuilder:
             )
             groups.append(g_dir)
 
-        # 3. Topo Contínuo
+        # 3. Continuous Top
         if has_topo:
-            # O tampo cobre a largura dos módulos.
-            # No padrão marcenaria sobreposta (L ou U), o topo cobre os módulos
-            # entre as laterais externas ou sobrepõe a caixa:
+            # The top panel spans the width of the modules.
+            # In the overlaid cabinetry standard (L or U), the top covers the modules
+            # between the outer sides or overlays the carcass:
             larg_topo = L
             x_topo = ox
             spec_topo = ChapaSpec.resolve(

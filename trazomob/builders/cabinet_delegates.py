@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""Delegadores de compatibilidade do CabinetBuilder."""
+"""Compatibility delegates for CabinetBuilder."""
 from __future__ import annotations
 
 from core.group import Group
@@ -16,7 +16,7 @@ from ..builders.wardrobes import WardrobeBuilder as ArmarioBuilder
 
 
 class DelegatesMixin:
-    """Fachadas dos construtores especializados."""
+    """Facades for specialized builders."""
 
     @classmethod
     def build_balcao(cls, *args, **kwargs) -> list[Group]:
@@ -76,57 +76,57 @@ class DelegatesMixin:
 
     @classmethod
     def build_aereo_basculante(cls, *args, **kwargs) -> list[Group]:
-        """Gera aéreo basculante (delegado para AereoTorreBuilder)."""
+        """Generates a flip-up wall cabinet (delegated to AereoTorreBuilder)."""
         return AereoTorreBuilder.build_aereo_basculante(*args, **kwargs)
 
     @classmethod
     def build_aereo_basculante_duplo(cls, *args, **kwargs) -> list[Group]:
-        """Gera aéreo basculante duplo (delegado para AereoTorreBuilder)."""
+        """Generates a double flip-up wall cabinet (delegated to AereoTorreBuilder)."""
         return AereoTorreBuilder.build_aereo_basculante_duplo(*args, **kwargs)
 
     @classmethod
     def build_aereo_microondas(cls, *args, **kwargs) -> list[Group]:
-        """Gera aéreo para microondas (delegado para AereoTorreBuilder)."""
+        """Generates a microwave wall cabinet (delegated to AereoTorreBuilder)."""
         return AereoTorreBuilder.build_aereo_microondas(*args, **kwargs)
 
     @classmethod
     def build_torre_quente(cls, *args, **kwargs) -> list[Group]:
-        """Gera torre quente para fornos e gavetas (delegado para AereoTorreBuilder)."""
+        """Generates a tall oven/appliance cabinet with drawers (delegated to AereoTorreBuilder)."""
         return AereoTorreBuilder.build_torre_quente(*args, **kwargs)
 
     @classmethod
     def build_caixa_geladeira(cls, *args, **kwargs) -> list[Group]:
-        """Gera caixa/fechamento para geladeira com maleiro (delegado para AereoTorreBuilder)."""
+        """Generates a refrigerator enclosure with upper storage cabinet (delegated to AereoTorreBuilder)."""
         return AereoTorreBuilder.build_caixa_geladeira(*args, **kwargs)
 
     @classmethod
     def build_roupeiro_portas_correr(cls, *args, **kwargs) -> list[Group]:
-        """Gera roupeiro de portas de correr (delegado para ArmarioBuilder)."""
+        """Generates a sliding-door wardrobe (delegated to ArmarioBuilder)."""
         return ArmarioBuilder.build_roupeiro_portas_correr(*args, **kwargs)
 
     @classmethod
     def build_roupeiro_cabideiro(cls, *args, **kwargs) -> list[Group]:
-        """Gera roupeiro com cabideiro e maleiro (delegado para ArmarioBuilder)."""
+        """Generates a wardrobe with hanging rod and upper storage (delegated to ArmarioBuilder)."""
         return ArmarioBuilder.build_roupeiro_cabideiro(*args, **kwargs)
 
     @classmethod
     def build_armario_prateleiras(cls, *args, **kwargs) -> list[Group]:
-        """Gera armário com prateleiras e divisórias (delegado para ArmarioBuilder)."""
+        """Generates a cabinet with shelves and dividers (delegated to ArmarioBuilder)."""
         return ArmarioBuilder.build_armario_prateleiras(*args, **kwargs)
 
     @classmethod
     def build_armario_divisoria(cls, *args, **kwargs) -> list[Group]:
-        """Gera armário 2 portas com divisória central (delegado para ArmarioBuilder)."""
+        """Generates a 2-door cabinet with central divider (delegated to ArmarioBuilder)."""
         return ArmarioBuilder.build_armario_divisoria(*args, **kwargs)
 
     @classmethod
     def build_armario_3portas(cls, *args, **kwargs) -> list[Group]:
-        """Gera armário 3 portas com divisórias internas (delegado para ArmarioBuilder)."""
+        """Generates a 3-door cabinet with internal dividers (delegated to ArmarioBuilder)."""
         return ArmarioBuilder.build_armario_3portas(*args, **kwargs)
 
     @classmethod
     def build_armario_maleiro_tamponado(cls, *args, **kwargs) -> list[Group]:
-        """Gera armário maleiro com caixas tamponadas (delegado para ArmarioBuilder)."""
+        """Generates an upper storage cabinet with clad boxes (delegated to ArmarioBuilder)."""
         return ArmarioBuilder.build_armario_maleiro_tamponado(*args, **kwargs)
 
     @classmethod
@@ -135,27 +135,27 @@ class DelegatesMixin:
 
     @classmethod
     def build_bancada_reta(cls, *args, **kwargs) -> list[Group]:
-        """Gera uma bancada reta de pedra (delegado para BancadaBuilder)."""
+        """Generates a straight stone countertop (delegated to BancadaBuilder)."""
         return BancadaBuilder.build_bancada_reta(*args, **kwargs)
 
     @classmethod
     def build_bancada_pia(cls, *args, **kwargs) -> list[Group]:
-        """Gera uma bancada de pia com cuba (delegado para BancadaBuilder)."""
+        """Generates a sink countertop with basin (delegated to BancadaBuilder)."""
         return BancadaBuilder.build_bancada_pia(*args, **kwargs)
 
     @classmethod
     def build_bancada_canto_l(cls, *args, **kwargs) -> list[Group]:
-        """Gera uma bancada em L contínua de pedra (delegado para BancadaBuilder)."""
+        """Generates a continuous L-shaped stone countertop (delegated to BancadaBuilder)."""
         return BancadaBuilder.build_bancada_canto_l(*args, **kwargs)
 
     @classmethod
     def build_bancada_ilha(cls, *args, **kwargs) -> list[Group]:
-        """Gera uma ilha / bancada gourmet 360° (delegado para BancadaBuilder)."""
+        """Generates an island / 360° gourmet countertop (delegated to BancadaBuilder)."""
         return BancadaBuilder.build_bancada_ilha(*args, **kwargs)
 
     @classmethod
     def build_tampao_engrossado_pedra(cls, *args, **kwargs) -> list[Group]:
-        """Gera um tampão engrossado de marmoraria/pedra (delegado para BancadaBuilder)."""
+        """Generates a thickened stonework/stone top panel (delegated to BancadaBuilder)."""
         return BancadaBuilder.build_tampao_engrossado_pedra(*args, **kwargs)
 
     @classmethod
@@ -212,9 +212,9 @@ class DelegatesMixin:
         return TamponamentoLinhaBuilder.build_tamponamento_linha(*args, **kwargs)
 
     # ------------------------------------------------------------------
-    # Esquadrias (portas e janelas): contrato próprio em mm
-    # (largura_mm, altura_mm, esp_parede_mm, ...), fora do contrato de
-    # mobiliário (prof_mm/esp_mm) porque não entram no plano de corte.
+    # Millwork openings (doors and windows): dedicated contract in mm
+    # (largura_mm, altura_mm, esp_parede_mm, ...), outside the furniture
+    # contract (prof_mm/esp_mm) because they do not enter the cut plan.
     # ------------------------------------------------------------------
     @classmethod
     def build_porta_giro(cls, *args, **kwargs) -> Group:

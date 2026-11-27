@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""Gerenciador centralizado de preferências persistentes do usuário para TrazoMob.
+"""Centralized manager for persistent user preferences in TrazoMob.
 
-Armazena em arquivo JSON em %LOCALAPPDATA%/IngeTrazo (Windows) ou ~/.config/ingetrazo (Linux/macOS):
-1. Padrões globais de marcenaria (espessuras, materiais, fita, puxadores, fixação);
-2. Dimensões padrão por tipo ou categoria de módulo (balcões, gaveteiros, aéreos, roupeiros, etc.);
-3. Configurações de réguas e linhas-guia de parede (presets ativos, visibilidade, cotas).
+Stores in a JSON file at %LOCALAPPDATA%/IngeTrazo (Windows) or ~/.config/ingetrazo (Linux/macOS):
+1. Global woodworking defaults (thicknesses, materials, edge banding, handles, fasteners);
+2. Default dimensions by module type or category (base cabinets, drawer banks, wall cabinets, wardrobes, etc.);
+3. Wall ruler and guide-line settings (active presets, visibility, dimensions).
 """
 from __future__ import annotations
 
@@ -23,14 +23,14 @@ PREFERENCES_FILENAME = "trazomob_preferences.json"
 
 logger = logging.getLogger("trazomob.preferences")
 
-# Derivação do PIN: PBKDF2-HMAC-SHA256 com salt aleatório (substitui o SHA-256
-# sem salt, que permitia quebrar um PIN de 4 dígitos por força bruta trivial).
+# PIN derivation: PBKDF2-HMAC-SHA256 with random salt (replaces unsalted
+# SHA-256, which allowed trivial brute-force cracking of a 4-digit PIN).
 PIN_PBKDF2_PREFIX = "pbkdf2_sha256"
 PIN_PBKDF2_ITERATIONS = 200_000
 
 
 def _hash_pin(pin: str) -> str:
-    """Deriva o hash do PIN no formato ``pbkdf2_sha256$iterações$salt$hash``."""
+    """Derive the PIN hash in ``pbkdf2_sha256$iterations$salt$hash`` format."""
     salt = secrets.token_hex(16)
     dk = hashlib.pbkdf2_hmac(
         "sha256", pin.encode("utf-8"), bytes.fromhex(salt), PIN_PBKDF2_ITERATIONS
@@ -39,10 +39,10 @@ def _hash_pin(pin: str) -> str:
 
 
 def _verify_pin(pin: str, stored: str) -> tuple[bool, bool]:
-    """Verifica o PIN. Retorna ``(confere, precisa_migrar)``.
+    """Verify the PIN. Returns ``(matches, needs_migration)``.
 
-    Suporta o formato legado (SHA-256 sem salt) para não invalidar PINs já
-    configurados; quando um hash legado confere, sinaliza migração para PBKDF2.
+    Supports the legacy format (unsalted SHA-256) so existing PINs are not
+    invalidated; when a legacy hash matches, signals migration to PBKDF2.
     """
     stored = stored.strip()
     if stored.startswith(PIN_PBKDF2_PREFIX + "$"):
@@ -61,14 +61,14 @@ def _verify_pin(pin: str, stored: str) -> tuple[bool, bool]:
 
 
 def get_preferences_file_path() -> Path:
-    """Retorna o caminho absoluto do arquivo de preferências do usuário."""
-    # user_log_dir() retorna a pasta base de dados do usuário (ex: %LOCALAPPDATA%/IngeTrazo)
+    """Return the absolute path to the user preferences file."""
+    # user_log_dir() returns the user data base folder (e.g., %LOCALAPPDATA%/IngeTrazo)
     base_dir = user_log_dir()
     return base_dir / PREFERENCES_FILENAME
 
 
 DEFAULT_PREFERENCES: dict[str, Any] = {
-    # ── 1. Padrões Globais de Marcenaria ──
+    # ── 1. Global Woodworking Defaults ──
     "global": {
         "espessura_caixa_mm": 15.0,
         "espessura_frentes_mm": 15.0,
@@ -101,9 +101,9 @@ DEFAULT_PREFERENCES: dict[str, Any] = {
         "recuo_porta_topo_mm": 50.0,
         "fita_travessas_modo": "frontal_1L",
     },
-    # ── 2. Dimensões Padrão por Categoria ou Tipo ──
-    # Se uma chave de tipo (ex: 'balcao', 'aereo') ou categoria (ex: 'inferior') estiver aqui,
-    # novos módulos inseridos usam estas dimensões no lugar do catálogo cru.
+    # ── 2. Default Dimensions by Category or Type ──
+    # If a type key (e.g., 'balcao', 'aereo') or category key (e.g., 'inferior') is set here,
+    # newly inserted modules use these dimensions instead of the raw catalog.
     "module_defaults": {
         "inferior": {
             "altura": 720.0,
@@ -124,7 +124,7 @@ DEFAULT_PREFERENCES: dict[str, Any] = {
             "altura_frontao": 100.0,
         },
     },
-    # ── 3. Réguas e Linhas-guia de Parede ──
+    # ── 3. Wall Rulers and Guide Lines ──
     "wall_guides": {
         "active_preset": "Cozinha",
         "visible": True,
@@ -132,21 +132,21 @@ DEFAULT_PREFERENCES: dict[str, Any] = {
         "snap_enabled": True,
         "custom_presets": {},
     },
-    # ── 4. Meus Módulos (catálogo pessoal do usuário) ──
-    # Lista de módulos salvos pelo usuário (dicts no mesmo formato do
-    # MODULE_CATALOG). Aparecem na galeria e no ribbon como "Meus Módulos".
+    # ── 4. My Modules (user's personal catalog) ──
+    # List of user-saved modules (dicts in the same format as
+    # MODULE_CATALOG). Displayed in the gallery and ribbon as "My Modules".
     "user_modules": [],
-    # ── 5. Precificação e Orçamento (Híbrido + PIN) ──
+    # ── 5. Pricing and Quoting (Hybrid + PIN) ──
     "pricing": {
-        # Segurança: PIN de 4 dígitos em hash SHA-256 (vazio = sem PIN)
+        # Security: 4-digit PIN in SHA-256 hash (empty = no PIN)
         "pin_hash": "",
-        # Modo de cálculo de chapas: "m2_perda" | "inteira"
+        # Sheet calculation mode: "m2_perda" | "inteira"
         "modo_calculo_chapas": "m2_perda",
-        # Fator de perda para cálculo por m² (0.0 = sem acréscimo de perda em testes padrão)
+        # Waste factor for calculation per m² (0.0 = no waste markup in default tests)
         "perda_chapa_percent": 0.0,
-        # Dimensões padrão da chapa inteira da revenda (mm)
+        # Standard dimensions of a full supplier sheet (mm)
         "chapa_padrao_dim": [2750.0, 1850.0],
-        # Preços de chapas por m² (chave = "Material EspessuraMM")
+        # Sheet prices per m² (key = "Material ThicknessMM")
         "chapas_m2": {
             "MDF Branco TX 15mm": 85.00,
             "MDF Fundo 6mm": 45.00,
@@ -159,20 +159,20 @@ DEFAULT_PREFERENCES: dict[str, Any] = {
             "Pedra Granito 20mm": 380.00,
             "Pedra Mármore 20mm": 520.00,
         },
-        # Preços opcionais por chapa inteira da revenda
+        # Optional prices per full supplier sheet
         "chapas_inteiras": {},
-        # Preço da fita de borda por metro linear
+        # Edge banding price per linear meter
         "fita_borda_m": {
             "0.45mm": 1.80,
             "1.0mm": 2.50,
             "2.0mm": 4.20,
         },
-        # Serviços de central de corte terceirizada
+        # Outsourced cutting center services
         "servico_corte_por_chapa": 0.0,
         "servico_fita_por_metro": 0.0,
-        # Linha ativa de ferragens: "economica" | "standard" | "premium"
+        # Active hardware tier: "economica" | "standard" | "premium"
         "linha_ferragem_ativa": "standard",
-        # Preços de ferragens unitários base (Linha Standard)
+        # Base unit hardware prices (Standard Tier)
         "ferragens": {
             "puxador_perfil": 12.00,
             "puxador_ponto": 8.00,
@@ -184,34 +184,34 @@ DEFAULT_PREFERENCES: dict[str, Any] = {
             "parafuso_confirmat": 0.35,
             "pes_nivelador": 2.80,
         },
-        # Multiplicadores de custo por linha de ferragem
+        # Cost multipliers per hardware tier
         "linhas_ferragens_multiplicador": {
             "economica": 0.75,
             "standard": 1.00,
             "premium": 2.20,
         },
-        # Modo de formação de preço de venda: "detalhado" | "multiplicador"
+        # Selling price calculation mode: "detalhado" | "multiplicador"
         "modo_fechamento": "detalhado",
-        # Fator multiplicador simplificado sobre materiais (se modo == "multiplicador")
+        # Simplified multiplier factor on materials (if mode == "multiplicador")
         "fator_multiplicador": 2.80,
-        # Mão de obra por m² de chapa processada (fabricação)
+        # Labor cost per m² of processed board (manufacturing)
         "mao_de_obra_m2": 45.00,
-        # Montagem e instalação
-        "montagem_tipo": "percentual",  # "percentual" | "fixo" | "por_m2"
-        "montagem_valor": 0.0,          # opcional, padrão 0 para retrocompatibilidade
-        # Markup percentual sobre custo direto (ex: 1.35 = 35% de margem)
+        # Assembly and installation
+        "montagem_tipo": "percentual",  # Valid modes: "percentual" | "fixo" | "por_m2"
+        "montagem_valor": 0.0,          # optional, defaults to 0 for backward compatibility
+        # Percentage markup over direct cost (e.g., 1.35 = 35% margin)
         "markup": 1.35,
-        # Impostos (ex: ICMS, IPI, PIS/COFINS) - percentual sobre valor com markup
+        # Taxes (e.g., ICMS, IPI, PIS/COFINS) - percentage over marked-up value
         "impostos_percent": 0.18,
-        # Desconto comercial padrão para pagamento à vista (percentual)
+        # Default commercial discount for cash payment (percentage)
         "desconto_percent": 0.05,
-        # Condições de parcelamento padrão
+        # Default installment terms
         "parcelas_sem_juros": 6,
         "parcelas_max": 12,
-        # Frete fixo ou por m²
-        "frete_tipo": "fixo",  # "fixo" | "por_m2"
+        # Fixed or per-m² shipping
+        "frete_tipo": "fixo",  # Valid types: "fixo" | "por_m2"
         "frete_valor": 150.00,
-        # Dados da empresa para proposta
+        # Company details for proposal
         "empresa": {
             "nome": "Marcenaria TrazoMob",
             "cnpj": "00.000.000/0001-00",
@@ -226,7 +226,7 @@ DEFAULT_PREFERENCES: dict[str, Any] = {
 
 
 class TrazoMobPreferencesManager:
-    """Gerenciador singleton para leitura e escrita segura de preferências do usuário."""
+    """Singleton manager for safe reading and writing of user preferences."""
 
     _instance: TrazoMobPreferencesManager | None = None
 
@@ -242,7 +242,7 @@ class TrazoMobPreferencesManager:
         return cls._instance
 
     def load(self) -> None:
-        """Carrega as preferências do disco com fallback para os valores padrão."""
+        """Load preferences from disk with fallback to default values."""
         import copy
         self._data = copy.deepcopy(DEFAULT_PREFERENCES)
 
@@ -251,18 +251,18 @@ class TrazoMobPreferencesManager:
                 with open(self.filepath, "r", encoding="utf-8") as f:
                     saved = json.load(f)
                     if isinstance(saved, dict):
-                        # Merge recursivo de dicionários
+                        # Recursive dictionary merge
                         for section, values in saved.items():
                             if isinstance(values, dict) and isinstance(self._data.get(section), dict):
                                 self._data[section].update(values)
                             else:
                                 self._data[section] = values
             except Exception as e:
-                # Se corrompido, mantém os defaults
+                # If corrupted, keep defaults
                 logger.warning("Aviso ao carregar preferências: %s", e)
 
     def save(self) -> bool:
-        """Grava as preferências atuais no disco."""
+        """Write current preferences to disk."""
         try:
             self.filepath.parent.mkdir(parents=True, exist_ok=True)
             with open(self.filepath, "w", encoding="utf-8") as f:
@@ -305,9 +305,9 @@ class TrazoMobPreferencesManager:
             wg["custom_presets"] = custom_presets
         self.save()
 
-    # ── Meus Módulos (catálogo pessoal) ──
+    # ── My Modules (personal catalog) ──
     def get_user_modules(self) -> list[dict[str, Any]]:
-        """Retorna a lista de módulos salvos pelo usuário (cópia defensiva)."""
+        """Return the list of user-saved modules (defensive copy)."""
         mods = self._data.setdefault("user_modules", [])
         if not isinstance(mods, list):
             mods = []
@@ -315,12 +315,12 @@ class TrazoMobPreferencesManager:
         return [dict(m) for m in mods if isinstance(m, dict)]
 
     def set_user_modules(self, modules: list[dict[str, Any]]) -> bool:
-        """Substitui toda a coleção de módulos do usuário e persiste."""
+        """Replace the entire collection of user modules and persist."""
         self._data["user_modules"] = [dict(m) for m in modules if isinstance(m, dict)]
         return self.save()
 
     def add_user_module(self, module: dict[str, Any]) -> bool:
-        """Adiciona (ou atualiza, mesmo ``id``) um módulo do usuário e persiste."""
+        """Add (or update, matching ``id``) a user module and persist."""
         module = dict(module)
         module_id = module.get("id")
         mods = [m for m in self.get_user_modules() if m.get("id") != module_id]
@@ -328,37 +328,37 @@ class TrazoMobPreferencesManager:
         return self.set_user_modules(mods)
 
     def remove_user_module(self, module_id: str) -> bool:
-        """Remove um módulo do usuário pelo ``id``. Retorna True se removeu."""
+        """Remove a user module by ``id``. Returns True if removed."""
         mods = self.get_user_modules()
         restantes = [m for m in mods if m.get("id") != module_id]
         if len(restantes) == len(mods):
             return False
         return self.set_user_modules(restantes)
 
-    # ── Precificação (Onda 3 + Híbrido) ──
+    # ── Pricing (Wave 3 + Hybrid) ──
     def get_pricing_config(self) -> dict[str, Any]:
         return self._data.setdefault("pricing", {})
 
     def check_pin(self, pin: str) -> bool:
-        """Verifica se o PIN fornecido confere com o configurado. Retorna True se não houver PIN."""
+        """Verify whether the provided PIN matches the configured one. Returns True if no PIN is set."""
         pricing = self.get_pricing_config()
         stored_hash = pricing.get("pin_hash", "").strip()
         if not stored_hash:
             return True
         ok, precisa_migrar = _verify_pin(pin, stored_hash)
         if ok and precisa_migrar:
-            # Atualiza hashes legados (SHA-256 sem salt) para PBKDF2.
+            # Upgrade legacy hashes (unsalted SHA-256) to PBKDF2.
             pricing["pin_hash"] = _hash_pin(pin.strip())
             self.save()
         return ok
 
     def has_pin(self) -> bool:
-        """Indica se um PIN de proteção foi configurado."""
+        """Indicate whether a protection PIN has been configured."""
         pricing = self.get_pricing_config()
         return bool(pricing.get("pin_hash", "").strip())
 
     def set_pin(self, new_pin: str) -> bool:
-        """Define ou altera o PIN (se new_pin for vazio, remove o PIN)."""
+        """Set or change the PIN (if new_pin is empty, removes the PIN)."""
         pricing = self.get_pricing_config()
         if not new_pin or not new_pin.strip():
             pricing["pin_hash"] = ""
@@ -367,19 +367,19 @@ class TrazoMobPreferencesManager:
         return self.save()
 
     def get_chapa_price_m2(self, material: str, espessura: float) -> float:
-        """Retorna preço por m² da chapa. Chave esperada: 'Material XXmm'."""
+        """Return board price per m². Expected key: 'Material XXmm'."""
         pricing = self.get_pricing_config()
         key = f"{material} {espessura:.0f}mm"
         return pricing.get("chapas_m2", {}).get(key, 0.0)
 
     def get_fita_price_m(self, espessura_fita: float) -> float:
-        """Retorna preço por metro linear da fita de borda."""
+        """Return edge banding price per linear meter."""
         pricing = self.get_pricing_config()
         key = f"{espessura_fita:.2f}mm".replace(".", ",")
         return pricing.get("fita_borda_m", {}).get(key, 0.0)
 
     def get_ferragem_price(self, ferragem_key: str) -> float:
-        """Retorna preço unitário de uma ferragem."""
+        """Return unit price of a hardware item."""
         pricing = self.get_pricing_config()
         return pricing.get("ferragens", {}).get(ferragem_key, 0.0)
 

@@ -1,20 +1,20 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""TrazoMob plugin for IngeTrazo — componentes dinâmicos de marcenaria e plano de corte.
+"""TrazoMob plugin for IngeTrazo — dynamic cabinetry components and cut plan.
 
-Fornece:
-1. Módulos Paramétricos Dinâmicos (estilo TrazoMob):
-   - Balcões inferiores, gaveteiros, armários aéreos e nichos;
-   - Seleção e edição dinâmica em tempo real (redimensionar sem deformar chapas);
-   - Ajustes dimensionais rápidos (+/- 50mm, +/- 100mm);
-2. Extração inteligente de chapas (comprimento, largura, espessura, fitas e veio);
-3. Envio direto para o TrazoMob (cópia com Ctrl+V, CSV e JSON);
-4. Interatividade dinâmica: abrir/fechar portas e gavetas com clique no 3D.
+Provides:
+1. Dynamic Parametric Modules (TrazoMob-style):
+   - Base cabinets, drawer banks, wall cabinets, and open cubbies;
+   - Real-time dynamic selection and editing (resize without distorting boards);
+   - Quick dimensional adjustments (+/- 50mm, +/- 100mm);
+2. Smart board extraction (length, width, thickness, edge banding, and grain direction);
+3. Direct export to TrazoMob (Ctrl+V copy, CSV, and JSON);
+4. Dynamic interactivity: open/close doors and drawers by clicking in 3D.
 
-Este módulo é a fachada pública do plugin: expõe a API (``__all__``), as classes
-de ferramenta descobertas pelo carregador do IngeTrazo e o ponto de entrada
-``setup``. O corpo do ``setup`` vive em :mod:`bootstrap` e o menu de contexto em
-:mod:`context_menu`, para manter este arquivo enxuto.
+This module is the public facade of the plugin: it exposes the API (``__all__``),
+the tool classes discovered by the IngeTrazo loader, and the ``setup`` entry
+point. The body of ``setup`` lives in :mod:`bootstrap` and the context menu in
+:mod:`context_menu`, keeping this file concise.
 """
 from __future__ import annotations
 
@@ -67,7 +67,7 @@ logger = logging.getLogger("trazomob")
 
 
 class TrazoMobTool(Tool):
-    """Ferramenta do menu Extensões para abrir o TrazoMob."""
+    """Extensions menu tool to open TrazoMob."""
     name = "TrazoMob"
     shortcut = None
     description = "Biblioteca de módulos paramétricos de marcenaria e gerador de corte para TrazoMob."
@@ -93,12 +93,12 @@ class TrazoMobTool(Tool):
 
 
 class CabinetInteractTool(_CabinetInteractToolImpl):
-    """Ferramenta de clique interativo para abrir e fechar portas e gavetas no 3D."""
+    """Interactive click tool to open and close doors and drawers in 3D."""
     pass
 
 
 def setup(app) -> None:
-    """Inicializa o plugin TrazoMob registrando barra lateral, toolbar e menus de contexto."""
+    """Initializes the TrazoMob plugin by registering the sidebar, toolbar, and context menus."""
     from .bootstrap import install
 
     install(app, TrazoMobTool, CabinetInteractTool)

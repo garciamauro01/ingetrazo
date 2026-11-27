@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""Utilitários de geração de malhas 3D para chapas de MDF, puxadores e usinagens."""
+"""3D mesh generation utilities for MDF boards, handles, and machining operations."""
 from __future__ import annotations
 
 import json
@@ -26,13 +26,13 @@ def _resolve_texture_path(base_tex_dir: Path, filename: str) -> Path:
     return base_tex_dir / filename
 
 
-# Um rebuild de bancada consulta a textura de cada peça (10-20 chamadas). O
-# catálogo é imutável durante a edição, então cache por (caminho, mtime, tamanho).
+# A countertop rebuild queries each part's texture (10-20 calls). The
+# catalog is immutable during editing, so cache by (path, mtime, size).
 _CATALOG_ENTRIES_CACHE: dict[tuple[str, int, int], list[dict[str, Any]]] = {}
 
 
 def _load_catalog_entries(catalog_path: Path) -> list[dict[str, Any]]:
-    """Lê um catalog.json no máximo uma vez enquanto o arquivo não mudar."""
+    """Read a catalog.json file at most once while the file remains unchanged."""
     try:
         stat = catalog_path.stat()
     except OSError:
@@ -47,7 +47,7 @@ def _load_catalog_entries(catalog_path: Path) -> list[dict[str, Any]]:
         entries = []
     if not isinstance(entries, list):
         entries = []
-    # Evita acumular versões antigas se o catálogo for reescrito várias vezes.
+    # Avoid accumulating stale versions if the catalog is rewritten multiple times.
     if len(_CATALOG_ENTRIES_CACHE) >= 8:
         _CATALOG_ENTRIES_CACHE.clear()
     _CATALOG_ENTRIES_CACHE[key] = entries
@@ -55,7 +55,7 @@ def _load_catalog_entries(catalog_path: Path) -> list[dict[str, Any]]:
 
 
 def _lookup_catalog_texture(base_tex_dir: Path, mat_lower: str) -> dict[str, Any] | None:
-    """Busca textura dinamicamente nos arquivos catalog.json de mdf/ e marmores/."""
+    """Dynamically search for texture in mdf/ and marmores/ catalog.json files."""
     for sub in ("mdf", "marmores"):
         catalog_path = base_tex_dir / sub / "catalog.json"
         for entry in _load_catalog_entries(catalog_path):
@@ -75,7 +75,7 @@ def _lookup_catalog_texture(base_tex_dir: Path, mat_lower: str) -> dict[str, Any
 
 
 def _get_material_texture(material: str) -> dict[str, Any] | None:
-    """Retorna os atributos de textura para materiais de marmoraria/pedra."""
+    """Return texture attributes for stonework/stone materials."""
     mat_lower = (material or "").lower()
     base_tex_dir = Path(__file__).resolve().parents[1] / "assets" / "textures"
 
@@ -84,7 +84,7 @@ def _get_material_texture(material: str) -> dict[str, Any] | None:
         if catalog_hit is not None:
             return catalog_hit
 
-    # 1. Granito Preto São Gabriel / Preto Absoluto
+    # 1. Preto Sao Gabriel / Preto Absoluto Granite
     if "sao gabriel" in mat_lower or "gabriel" in mat_lower:
         tex_path = _resolve_texture_path(base_tex_dir, "granito_preto_sao_gabriel.jpg")
         if tex_path.exists():
@@ -94,37 +94,37 @@ def _get_material_texture(material: str) -> dict[str, Any] | None:
         if tex_path.exists():
             return {"path": str(tex_path), "sw": 0.60, "sh": 0.60}
 
-    # 2. Mármore / Quartzo Calacatta (Veios dourados/cinzas no fundo branco)
+    # 2. Calacatta Marble / Quartz (Gold/gray veins on white background)
     if "calacatta" in mat_lower or "calacata" in mat_lower:
         tex_path = _resolve_texture_path(base_tex_dir, "marmore_calacatta.jpg")
         if tex_path.exists():
             return {"path": str(tex_path), "sw": 0.80, "sh": 0.80}
 
-    # 3. Mármore Nero Marquina (Fundo preto com veios brancos marcantes)
+    # 3. Nero Marquina Marble (Black background with striking white veins)
     if "nero" in mat_lower or "marquina" in mat_lower:
         tex_path = _resolve_texture_path(base_tex_dir, "marmore_nero_marquina.jpg")
         if tex_path.exists():
             return {"path": str(tex_path), "sw": 0.90, "sh": 0.90}
 
-    # 4. Mármore Pietra Grey (Cinza grafite sofisticado com veios finos)
+    # 4. Pietra Grey Marble (Sophisticated graphite gray with fine veins)
     if "pietra" in mat_lower or "grey" in mat_lower:
         tex_path = _resolve_texture_path(base_tex_dir, "marmore_pietra_grey.jpg")
         if tex_path.exists():
             return {"path": str(tex_path), "sw": 0.90, "sh": 0.60}
 
-    # 5. Granito Branco Siena (Claro pontilhado)
+    # 5. Branco Siena Granite (Light speckled)
     if "siena" in mat_lower or "parana" in mat_lower or "branco siena" in mat_lower:
         tex_path = _resolve_texture_path(base_tex_dir, "granito_branco_siena.jpg")
         if tex_path.exists():
             return {"path": str(tex_path), "sw": 0.60, "sh": 0.60}
 
-    # 6. Mármore Armani Gris (Marrom acinzentado luxuoso)
+    # 6. Armani Gris Marble (Luxurious grayish brown)
     if "armani" in mat_lower or "gris" in mat_lower:
         tex_path = _resolve_texture_path(base_tex_dir, "marmore_armani_gris.jpg")
         if tex_path.exists():
             return {"path": str(tex_path), "sw": 0.80, "sh": 0.80}
 
-    # 6b. Novos acabamentos nobres de bancada
+    # 6b. New premium countertop finishes
     if "travertino" in mat_lower or "bege" in mat_lower:
         tex_path = _resolve_texture_path(base_tex_dir, "marmore_travertino_bege.jpg")
         if tex_path.exists():
@@ -155,7 +155,7 @@ def _get_material_texture(material: str) -> dict[str, Any] | None:
         if tex_path.exists():
             return {"path": str(tex_path), "sw": 0.90, "sh": 0.90}
 
-    # 7. MDF Madeirado / Texturas de Marcenaria de Alta Resolução
+    # 7. Woodgrain MDF / High-Resolution Woodworking Textures
     if "autentic" in mat_lower:
         tex_path = _resolve_texture_path(base_tex_dir, "mdf_autentic_arauco.jpg")
         if tex_path.exists():
@@ -189,7 +189,7 @@ def _get_material_texture(material: str) -> dict[str, Any] | None:
         if tex_path.exists():
             return {"path": str(tex_path), "sw": 0.60, "sh": 0.60}
 
-    # Fallback se tiver 'pedra' ou 'granito' genérico
+    # Fallback if generic 'pedra' or 'granito' is present
     if "granito" in mat_lower or "marmore" in mat_lower or "mármore" in mat_lower:
         tex_path = _resolve_texture_path(base_tex_dir, "granito_preto_sao_gabriel.jpg")
         if tex_path.exists():
@@ -212,7 +212,7 @@ def _make_board_mesh(
     piece_name: str = "",
     operacoes: list[dict[str, Any]] | None = None,
 ) -> Mesh:
-    """Cria uma malha de chapa retangular com acabamento visual de fita de borda e usinagem 3D sólida de rasgo do fundo."""
+    """Create a rectangular board mesh with visual edge banding finish and solid 3D back-panel groove machining."""
     ox, oy, oz = origin
     sx, sy, sz = size
     mesh = Mesh()
@@ -232,13 +232,13 @@ def _make_board_mesh(
             max(0.0, min(1.0, color[1] * 0.94)),
             max(0.0, min(1.0, color[2] * 0.94)),
         )
-    cor_mdf_cru = (0.74, 0.58, 0.42)  # Miolo de MDF cru exposto
+    cor_mdf_cru = (0.74, 0.58, 0.42)  # Exposed raw MDF core
 
-    # Identifica orientação da chapa
+    # Identify board orientation
     dims = [abs(sx), abs(sy), abs(sz)]
     min_dim = min(dims)
 
-    # Normaliza lista de operações se vier como MachiningOp dataclass
+    # Normalize operations list if passed as MachiningOp dataclass
     if operacoes:
         raw_ops = []
         for op in operacoes:
@@ -248,7 +248,7 @@ def _make_board_mesh(
                 raw_ops.append(op)
         operacoes = raw_ops
 
-    # Verifica se há operação de rasgo do fundo
+    # Check if there is a back-panel groove operation
     rasgo_op = None
     if operacoes and not is_pedra:
         for op in operacoes:
@@ -259,7 +259,7 @@ def _make_board_mesh(
     cor_rasgo = (0.35, 0.35, 0.38)
 
     if rasgo_op is not None and abs(sx - min_dim) < 1e-5:
-        # Chapa lateral com rasgo vertical de fundo (espessura em X)
+        # Side board with vertical back-panel groove (thickness along X)
         is_direita = "direit" in piece_name.lower() or "right" in piece_name.lower()
         recuo_y_m = float(rasgo_op.get("y", 15.0)) / 1000.0
         larg_canal_m = float(rasgo_op.get("largura", 6.0)) / 1000.0
@@ -275,7 +275,7 @@ def _make_board_mesh(
         cor_l2 = cor_fita if fita_l2 else cor_mdf_cru
 
         if not is_direita:
-            # Lateral Esquerda: face interna em ox + sx (normal +X), rasgo avança em -X
+            # Left Side Panel: inner face at ox + sx (normal +X), groove advances along -X
             xf = ox + sx - prof_canal_m
             py1 = QVector3D(ox + sx, y1, oz)
             py2 = QVector3D(ox + sx, y2, oz)
@@ -299,7 +299,7 @@ def _make_board_mesh(
                 ([r1, r2, s2, s1], cor_rasgo),
             ]
         else:
-            # Lateral Direita: face interna em ox (normal -X), rasgo avança em +X
+            # Right Side Panel: inner face at ox (normal -X), groove advances along +X
             xf = ox + prof_canal_m
             py1 = QVector3D(ox, y1, oz)
             py2 = QVector3D(ox, y2, oz)
@@ -324,7 +324,7 @@ def _make_board_mesh(
             ]
 
     elif rasgo_op is not None and abs(sz - min_dim) < 1e-5:
-        # Chapa horizontal (Base Inferior ou Tampo Superior) com rasgo horizontal ao longo de X
+        # Horizontal board (Bottom Base or Top Panel) with horizontal groove along X
         is_tampo = "tampo" in piece_name.lower() or "upper" in piece_name.lower() or "top" in piece_name.lower()
         recuo_y_m = float(rasgo_op.get("y", 15.0)) / 1000.0
         larg_canal_m = float(rasgo_op.get("largura", 6.0)) / 1000.0
@@ -340,7 +340,7 @@ def _make_board_mesh(
         cor_l2 = cor_fita if fita_l2 else cor_mdf_cru
 
         if not is_tampo:
-            # Base Inferior: rasgo na face SUPERIOR (oz + sz, normal +Z), canal desce para -Z
+            # Bottom Base: groove on TOP face (oz + sz, normal +Z), channel goes down toward -Z
             zf = oz + sz - prof_canal_m
             py1 = QVector3D(ox, y1, oz + sz)
             py2 = QVector3D(ox, y2, oz + sz)
@@ -364,7 +364,7 @@ def _make_board_mesh(
                 ([r1, s1, s2, r2], cor_rasgo),
             ]
         else:
-            # Tampo Superior: rasgo na face INFERIOR (oz, normal -Z), canal sobe para +Z
+            # Top Panel: groove on BOTTOM face (oz, normal -Z), channel goes up toward +Z
             zf = oz + prof_canal_m
             py1 = QVector3D(ox, y1, oz)
             py2 = QVector3D(ox, y2, oz)
@@ -390,58 +390,58 @@ def _make_board_mesh(
 
     elif is_pedra:
         faces_data = [
-            ([p0, p3, p2, p1], color),  # inferior (-Z)
-            ([p4, p5, p6, p7], color),  # superior (+Z)
-            ([p0, p1, p5, p4], color),  # frontal (-Y)
-            ([p2, p3, p7, p6], color),  # traseira (+Y)
-            ([p0, p4, p7, p3], color),  # esquerda (-X)
-            ([p1, p2, p6, p5], color),  # direita (+X)
+            ([p0, p3, p2, p1], color),  # bottom (-Z)
+            ([p4, p5, p6, p7], color),  # top (+Z)
+            ([p0, p1, p5, p4], color),  # front (-Y)
+            ([p2, p3, p7, p6], color),  # rear (+Y)
+            ([p0, p4, p7, p3], color),  # left (-X)
+            ([p1, p2, p6, p5], color),  # right (+X)
         ]
     else:
         if abs(sy - min_dim) < 1e-5:
-            # Chapa vertical frontal (Portas / Frentes de Gaveta)
+            # Front vertical board (Doors / Drawer Fronts)
             cor_c1 = cor_fita if fita_c1 else cor_mdf_cru
             cor_c2 = cor_fita if fita_c2 else cor_mdf_cru
             cor_l1 = cor_fita if fita_l1 else cor_mdf_cru
             cor_l2 = cor_fita if fita_l2 else cor_mdf_cru
 
             faces_data = [
-                ([p0, p3, p2, p1], cor_c1),  # inferior (-Z)
-                ([p4, p5, p6, p7], cor_c2),  # superior (+Z)
-                ([p0, p1, p5, p4], color),   # frontal (-Y)
-                ([p2, p3, p7, p6], color),   # traseira (+Y)
-                ([p0, p4, p7, p3], cor_l1),  # esquerda (-X)
-                ([p1, p2, p6, p5], cor_l2),  # direita (+X)
+                ([p0, p3, p2, p1], cor_c1),  # bottom (-Z)
+                ([p4, p5, p6, p7], cor_c2),  # top (+Z)
+                ([p0, p1, p5, p4], color),   # front (-Y)
+                ([p2, p3, p7, p6], color),   # rear (+Y)
+                ([p0, p4, p7, p3], cor_l1),  # left (-X)
+                ([p1, p2, p6, p5], cor_l2),  # right (+X)
             ]
         elif abs(sx - min_dim) < 1e-5:
-            # Chapa lateral (espessura em X)
+            # Side board (thickness along X)
             cor_c1 = cor_fita if fita_c1 else cor_mdf_cru
             cor_c2 = cor_fita if fita_c2 else cor_mdf_cru
             cor_l1 = cor_fita if fita_l1 else cor_mdf_cru
             cor_l2 = cor_fita if fita_l2 else cor_mdf_cru
 
             faces_data = [
-                ([p0, p3, p2, p1], cor_l1),  # inferior (-Z)
-                ([p4, p5, p6, p7], cor_l2),  # superior (+Z)
-                ([p0, p1, p5, p4], cor_c1),  # frontal (-Y)
-                ([p2, p3, p7, p6], cor_c2),  # traseira (+Y)
-                ([p0, p4, p7, p3], color),   # esquerda (-X)
-                ([p1, p2, p6, p5], color),   # direita (+X)
+                ([p0, p3, p2, p1], cor_l1),  # bottom (-Z)
+                ([p4, p5, p6, p7], cor_l2),  # top (+Z)
+                ([p0, p1, p5, p4], cor_c1),  # front (-Y)
+                ([p2, p3, p7, p6], cor_c2),  # rear (+Y)
+                ([p0, p4, p7, p3], color),   # left (-X)
+                ([p1, p2, p6, p5], color),   # right (+X)
             ]
         else:
-            # Chapa horizontal / base / prateleira (espessura em Z)
+            # Horizontal board / base / shelf (thickness along Z)
             cor_c1 = cor_fita if fita_c1 else cor_mdf_cru
             cor_c2 = cor_fita if fita_c2 else cor_mdf_cru
             cor_l1 = cor_fita if fita_l1 else cor_mdf_cru
             cor_l2 = cor_fita if fita_l2 else cor_mdf_cru
 
             faces_data = [
-                ([p0, p3, p2, p1], color),   # inferior (-Z)
-                ([p4, p5, p6, p7], color),   # superior (+Z)
-                ([p0, p1, p5, p4], cor_c1),  # frontal (-Y)
-                ([p2, p3, p7, p6], cor_c2),  # traseira (+Y)
-                ([p0, p4, p7, p3], cor_l1),  # esquerda (-X)
-                ([p1, p2, p6, p5], cor_l2),  # direita (+X)
+                ([p0, p3, p2, p1], color),   # bottom (-Z)
+                ([p4, p5, p6, p7], color),   # top (+Z)
+                ([p0, p1, p5, p4], cor_c1),  # front (-Y)
+                ([p2, p3, p7, p6], cor_c2),  # rear (+Y)
+                ([p0, p4, p7, p3], cor_l1),  # left (-X)
+                ([p1, p2, p6, p5], cor_l2),  # right (+X)
             ]
 
     for pts, c in faces_data:
@@ -454,7 +454,7 @@ def _make_board_mesh(
 
 
 def _make_box_faces(mesh: Mesh, origin: tuple[float, float, float], size: tuple[float, float, float], color: tuple[float, float, float]):
-    """Adiciona as 6 faces de um bloco 3D retangular à malha."""
+    """Add the 6 faces of a 3D rectangular block to the mesh."""
     ox, oy, oz = origin
     sx, sy, sz = size
     p0 = QVector3D(ox, oy, oz)
@@ -467,12 +467,12 @@ def _make_box_faces(mesh: Mesh, origin: tuple[float, float, float], size: tuple[
     p7 = QVector3D(ox, oy + sy, oz + sz)
 
     faces_pts = [
-        [p0, p3, p2, p1],  # inferior (-Z)
-        [p4, p5, p6, p7],  # superior (+Z)
-        [p0, p1, p5, p4],  # frontal (-Y)
-        [p2, p3, p7, p6],  # traseira (+Y)
-        [p0, p4, p7, p3],  # esquerda (-X)
-        [p1, p2, p6, p5],  # direita (+X)
+        [p0, p3, p2, p1],  # bottom (-Z)
+        [p4, p5, p6, p7],  # top (+Z)
+        [p0, p1, p5, p4],  # front (-Y)
+        [p2, p3, p7, p6],  # rear (+Y)
+        [p0, p4, p7, p3],  # left (-X)
+        [p1, p2, p6, p5],  # right (+X)
     ]
     for pts in faces_pts:
         f = mesh.add_face(pts)
@@ -482,19 +482,19 @@ def _make_box_faces(mesh: Mesh, origin: tuple[float, float, float], size: tuple[
 def _contorno_retangular_xy(
     x0: float, y0: float, w: float, h: float, raio: float = 0.0, segmentos: int = 8,
 ) -> list[tuple[float, float]]:
-    """Contorno 2D (anti-horário, visto de +Z) de um retângulo de canto reto ou arredondado.
+    """2D contour (counter-clockwise, viewed from +Z) of a square or rounded-corner rectangle.
 
-    Usado para o recorte de cuba na pedra e para o contorno da bacia. Com ``raio`` > 0
-    cada canto vira um arco de 90° discretizado em ``segmentos`` partes.
+    Used for the stone sink cutout and basin contour. With ``raio`` > 0
+    each corner becomes a 90° arc discretized into ``segmentos`` parts.
     """
     r = max(0.0, min(raio, (w / 2.0) - 1e-4, (h / 2.0) - 1e-4))
     if r < 1e-4:
         return [(x0, y0), (x0 + w, y0), (x0 + w, y0 + h), (x0, y0 + h)]
     centros = [
-        (x0 + w - r, y0 + r, -90.0),      # canto inferior direito
-        (x0 + w - r, y0 + h - r, 0.0),    # canto superior direito
-        (x0 + r, y0 + h - r, 90.0),       # canto superior esquerdo
-        (x0 + r, y0 + r, 180.0),          # canto inferior esquerdo
+        (x0 + w - r, y0 + r, -90.0),      # bottom-right corner
+        (x0 + w - r, y0 + h - r, 0.0),    # top-right corner
+        (x0 + r, y0 + h - r, 90.0),       # top-left corner
+        (x0 + r, y0 + r, 180.0),          # bottom-left corner
     ]
     pts: list[tuple[float, float]] = []
     for cx, cy, a0 in centros:
@@ -513,11 +513,11 @@ def _make_slab_with_holes_mesh(
     cor_recorte: tuple[float, float, float] | None = None,
     texture: dict[str, Any] | None = None,
 ) -> Mesh:
-    """Cria uma chapa maciça INTEIRIÇA com recortes vazados reais (furos na face superior e inferior).
+    """Create a SINGLE-PIECE solid slab with true through-cutouts (holes on top and bottom faces).
 
-    - Face superior/inferior: um único polígono com ``hole_loops`` (triangulado por earcut).
-    - Paredes externas: 4 quads (bordas polidas).
-    - Paredes do recorte: 1 quad por segmento do contorno, voltados para o vão do recorte.
+    - Top/bottom face: a single polygon with ``hole_loops`` (triangulated by earcut).
+    - Outer walls: 4 quads (polished edges).
+    - Cutout walls: 1 quad per contour segment, facing into the cutout opening.
     """
     mesh = Mesh()
     z1 = z0 + espessura
@@ -528,7 +528,7 @@ def _make_slab_with_holes_mesh(
         (x0 + largura, y0 + profundidade), (x0, y0 + profundidade),
     ]
 
-    # Face superior (+Z): contorno anti-horário, furos horários
+    # Top face (+Z): counter-clockwise contour, clockwise holes
     f_top = mesh.add_face(
         [QVector3D(x, y, z1) for x, y in externo],
         [[QVector3D(x, y, z1) for x, y in reversed(furo)] for furo in furos_xy] or None,
@@ -537,7 +537,7 @@ def _make_slab_with_holes_mesh(
     if texture:
         f_top.attrs["texture"] = dict(texture)
 
-    # Face inferior (-Z): orientação invertida
+    # Bottom face (-Z): reversed orientation
     f_bot = mesh.add_face(
         [QVector3D(x, y, z0) for x, y in reversed(externo)],
         [[QVector3D(x, y, z0) for x, y in furo] for furo in furos_xy] or None,
@@ -546,7 +546,7 @@ def _make_slab_with_holes_mesh(
     if texture:
         f_bot.attrs["texture"] = dict(texture)
 
-    # Paredes externas (normal para fora)
+    # Outer walls (outward normal)
     n = len(externo)
     for i in range(n):
         ax, ay = externo[i]
@@ -559,7 +559,7 @@ def _make_slab_with_holes_mesh(
         if texture:
             f.attrs["texture"] = dict(texture)
 
-    # Paredes internas do recorte (normal apontando para o vão)
+    # Inner cutout walls (normal pointing into the opening)
     for furo in furos_xy:
         m = len(furo)
         for i in range(m):
@@ -584,10 +584,10 @@ def _make_bowl_mesh(
     segmentos: int = 12,
     mat_name: str = "Cuba Inox",
 ) -> Mesh:
-    """Cria a bacia de uma cuba como um sólido de casca fechada (estanque / manifold).
+    """Create a sink basin as a closed-shell solid (watertight / manifold).
 
-    O contorno do topo coincide com o recorte da pedra (cuba de embutir sob a pedra).
-    A parede e o fundo possuem espessura de chapa (2mm), formando um sólido 100% fechado.
+    The top contour matches the stone cutout (undermount sink under the countertop).
+    The wall and bottom have sheet thickness (2mm), forming a 100% closed solid.
     """
     mesh = Mesh()
     esp_chapa = 0.002
@@ -620,7 +620,7 @@ def _make_bowl_mesh(
         at_out, bt_out = topo_out[i], topo_out[i_next]
         af_out, bf_out = fundo_out[i], fundo_out[i_next]
 
-        # Parede interna (normal apontando para dentro da bacia)
+        # Inner wall (normal pointing into the basin)
         f_in = mesh.add_face([
             QVector3D(bf_in[0], bf_in[1], z_fundo_in),
             QVector3D(af_in[0], af_in[1], z_fundo_in),
@@ -630,7 +630,7 @@ def _make_bowl_mesh(
         f_in.attrs["color"] = cor_parede
         f_in.attrs["mat"] = mat_name
 
-        # Parede externa (normal apontando para fora da bacia)
+        # Outer wall (normal pointing outward from the basin)
         f_out = mesh.add_face([
             QVector3D(af_out[0], af_out[1], z_fundo_out),
             QVector3D(bf_out[0], bf_out[1], z_fundo_out),
@@ -640,7 +640,7 @@ def _make_bowl_mesh(
         f_out.attrs["color"] = cor_parede
         f_out.attrs["mat"] = mat_name
 
-        # Borda superior de fechamento (anel entre parede externa e interna)
+        # Top closing rim (ring between outer and inner wall)
         f_rim = mesh.add_face([
             QVector3D(at_out[0], at_out[1], z_topo),
             QVector3D(bt_out[0], bt_out[1], z_topo),
@@ -650,12 +650,12 @@ def _make_bowl_mesh(
         f_rim.attrs["color"] = cor_parede
         f_rim.attrs["mat"] = mat_name
 
-    # Fundo interno (normal +Z)
+    # Inner bottom (+Z normal)
     f_fundo_in = mesh.add_face([QVector3D(x, y, z_fundo_in) for x, y in fundo_in])
     f_fundo_in.attrs["color"] = cor_fundo
     f_fundo_in.attrs["mat"] = mat_name
 
-    # Fundo externo (normal -Z)
+    # Outer bottom (-Z normal)
     f_fundo_out = mesh.add_face([QVector3D(x, y, z_fundo_out) for x, y in reversed(fundo_out)])
     f_fundo_out.attrs["color"] = cor_fundo
     f_fundo_out.attrs["mat"] = mat_name
@@ -668,17 +668,17 @@ def _make_gourmet_faucet_mesh(
     cor_detalhe: tuple[float, float, float] = (0.25, 0.25, 0.27),
     segmentos: int = 24,
 ) -> Mesh:
-    """Gera um modelo 3D realista de torneira monocomando gourmet com bica alta em arco curvo.
+    """Generate a realistic 3D model of a single-lever gourmet faucet with a high curved arc spout.
 
-    Utiliza resolução cilíndrica de 24 segmentos (padrão de círculos do IngeTrazo/SketchUp)
-    para garantir reflexos suaves e contínuos em renderizadores fotorrealistas.
+    Uses 24-segment cylindrical resolution (IngeTrazo/SketchUp circle standard)
+    to ensure smooth, continuous reflections in photorealistic renderers.
 
-    Inclui:
-    - Base cilíndrica com anel cromado de vedação;
-    - Corpo vertical cilíndrico esguio;
-    - Alavanca monocomando cilíndrica inclinada 45°;
-    - Bica em pescoço de ganso / arco suave em 90° avançando sobre a cuba;
-    - Arejador com ponteira detalhada.
+    Includes:
+    - Cylindrical base with chrome sealing ring;
+    - Slender vertical cylindrical body;
+    - Cylindrical single-lever handle tilted at 45°;
+    - Gooseneck spout / smooth 90° arc extending over the sink;
+    - Aerator with detailed nozzle tip.
     """
     mesh = Mesh()
     bx, by, bz = base_center
@@ -694,31 +694,31 @@ def _make_gourmet_faucet_mesh(
             QVector3D(cx + r * math.cos(2 * math.pi * i / segs), cy + r * math.sin(2 * math.pi * i / segs), z1)
             for i in range(segs)
         ]
-        # Tampa inferior
+        # Bottom cap
         f0 = mesh.add_face(list(reversed(circ0)))
         f0.attrs["color"] = color
         f0.attrs["mat"] = mat_name
-        # Tampa superior
+        # Top cap
         f1 = mesh.add_face(circ1)
         f1.attrs["color"] = color
         f1.attrs["mat"] = mat_name
-        # Parede cilíndrica
+        # Cylindrical wall
         for i in range(segs):
             i_next = (i + 1) % segs
             f = mesh.add_face([circ0[i], circ0[i_next], circ1[i_next], circ1[i]])
             f.attrs["color"] = color
             f.attrs["mat"] = mat_name
 
-    # 1. Base / Canopla de fixação (raio 24mm, altura 12mm)
+    # 1. Base / Mounting escutcheon (radius 24mm, height 12mm)
     add_cylinder(bx, by, bz, bz + 0.012, 0.024, cor_cromo, mat_name="Metal Cromado", segs=segmentos)
 
-    # 2. Corpo inferior do misturador (raio 18mm, altura 70mm)
+    # 2. Lower mixer body (radius 18mm, height 70mm)
     add_cylinder(bx, by, bz + 0.0122, bz + 0.082, 0.018, cor_cromo, mat_name="Metal Cromado", segs=segmentos)
 
-    # 3. Alavanca monocomando lateral (haste cilíndrica saindo na diagonal +Y/+X)
+    # 3. Side single-lever handle (cylindrical stem exiting diagonally +Y/+X)
     lx0, ly0, lz0 = bx + 0.015, by, bz + 0.055
     add_cylinder(lx0, ly0, lz0, lz0 + 0.008, 0.009, cor_preto, mat_name="Metal Preto", segs=segmentos)
-    # Haste da alavanca com seção cilíndrica real (16 segmentos)
+    # Lever stem with true cylindrical cross-section (16 segments)
     haste_len = 0.055
     segs_haste = 16
     r_haste = 0.004
@@ -750,43 +750,43 @@ def _make_gourmet_faucet_mesh(
     f_end.attrs["color"] = cor_cromo
     f_end.attrs["mat"] = "Metal Cromado"
 
-    # 4. Coluna vertical da bica (raio 12mm, sobe até 240mm)
+    # 4. Vertical spout column (radius 12mm, rises to 240mm)
     z_col_topo = bz + 0.240
     add_cylinder(bx, by, bz + 0.0822, z_col_topo, 0.012, cor_cromo, mat_name="Metal Cromado", segs=segmentos)
 
-    # 5. Bica Curva em Arco Suave (pescoço de ganso suave virando -Y sobre a cuba)
+    # 5. Smooth Curved Arc Spout (gentle gooseneck turning -Y over the sink)
     r_tubo = 0.011
     r_curva = 0.085
     z_arco_base = z_col_topo + 0.0002
-    num_passos = 16  # Passos longitudinais mais refinados ao longo da curva
+    num_passos = 16  # Finer longitudinal steps along the curve
 
-    # Gera seções circulares ao longo do arco de 0 a 140 graus
+    # Generate circular cross-sections along the arc from 0 to 140 degrees
     secoes = []
     for s in range(num_passos + 1):
         ang_deg = 180.0 * s / num_passos
         ang_rad = math.radians(ang_deg)
-        # O arco gira no plano YZ
+        # The arc rotates in the YZ plane
         cy = by - r_curva * (1.0 - math.cos(ang_rad * 0.8))
         cz = z_arco_base + r_curva * math.sin(ang_rad * 0.8)
 
-        # Vetores tangentes para orientar a seção circular do tubo
+        # Tangent vectors to orient the circular cross-section of the tube
         tang_y = -math.sin(ang_rad * 0.8)
         tang_z = math.cos(ang_rad * 0.8)
-        # Normal no plano YZ
+        # Normal in the YZ plane
         norm_y = -tang_z
         norm_z = tang_y
 
         circ = []
         for i in range(segmentos):
             phi = 2.0 * math.pi * i / segmentos
-            # Deslocamento em X (perpendicular ao plano YZ) e no vetor normal
+            # Offset along X (perpendicular to YZ plane) and along the normal vector
             dx = r_tubo * math.cos(phi)
             dy = r_tubo * math.sin(phi) * norm_y
             dz = r_tubo * math.sin(phi) * norm_z
             circ.append(QVector3D(bx + dx, cy + dy, cz + dz))
         secoes.append(circ)
 
-    # Tampas das extremidades do arco para fechar o volume (normais para fora do tubo)
+    # End caps of the arc to close the volume (normals pointing outward from tube)
     f_arc0 = mesh.add_face(secoes[0])
     f_arc0.attrs["color"] = cor_cromo
     f_arc0.attrs["mat"] = "Metal Cromado"
@@ -794,7 +794,7 @@ def _make_gourmet_faucet_mesh(
     f_arc1.attrs["color"] = cor_cromo
     f_arc1.attrs["mat"] = "Metal Cromado"
 
-    # Conecta quads entre as seções do arco (normais para fora do tubo)
+    # Connect quads between arc cross-sections (normals pointing outward from tube)
     for s in range(num_passos):
         c0 = secoes[s]
         c1 = secoes[s + 1]
@@ -804,18 +804,18 @@ def _make_gourmet_faucet_mesh(
             f.attrs["color"] = cor_cromo
             f.attrs["mat"] = "Metal Cromado"
 
-    # 6. Arejador / Ponteira vertical cromada no final da bica
+    # 6. Aerator / Vertical chrome nozzle tip at the end of the spout
     ponta_circ = secoes[-1]
     ponta_centro = QVector3D(
         sum(p.x() for p in ponta_circ) / len(ponta_circ),
         sum(p.y() for p in ponta_circ) / len(ponta_circ),
         sum(p.z() for p in ponta_circ) / len(ponta_circ),
     )
-    # Arejador cilíndrico reto vertical descendo 25mm
+    # Straight vertical cylindrical aerator descending 25mm
     ay = ponta_centro.y()
     az = ponta_centro.z() - 0.0002
     add_cylinder(bx, ay, az - 0.025, az, 0.013, cor_cromo, mat_name="Metal Cromado", segs=segmentos)
-    # Difusor de saída cinza grafite
+    # Graphite gray outlet diffuser
     add_cylinder(bx, ay, az - 0.0282, az - 0.0252, 0.011, cor_preto, mat_name="Metal Preto", segs=segmentos)
 
     return mesh
@@ -854,27 +854,27 @@ def create_board_group(
     operacoes: list[dict[str, Any]] | None = None,
     spec: Any | None = None,
 ) -> Group:
-    """Cria uma peça (Group) com geometria 3D, puxadores opcionais e metadados de marcenaria.
+    """Create a part (Group) with 3D geometry, optional handles, and woodworking metadata.
 
-    API de baixo nível (medidas em **metros**). Para o caminho canônico, prefira
-    :func:`build_chapa` (metros) ou :func:`build_chapa_mm` (milímetros), que recebem
-    um :class:`ChapaSpec` resolvido.
+    Low-level API (dimensions in **meters**). For the canonical path, prefer
+    :func:`build_chapa` (meters) or :func:`build_chapa_mm` (millimeters), which accept
+    a resolved :class:`ChapaSpec`.
 
-    Para puxadores do tipo Perfil de Alumínio:
-    - Desconta a chapa de MDF (padrão marcenaria: 35mm), integrando o perfil ao vão da porta/gaveta;
-    - Gera a geometria realista do modelo selecionado (Gola RM-030, Facetato RM-027, Canal C RM-032, SP-7000);
-    - Remove a fita de borda no lado onde o perfil é encaixado;
-    - Registra a medida real cortada nos metadados para envio ao TrazoMob.
+    For Aluminum Profile handles:
+    - Deducts the MDF board (woodworking standard: 35mm), integrating the profile into the door/drawer opening;
+    - Generates realistic geometry for the selected model (Gola RM-030, Facetato RM-027, Canal C RM-032, SP-7000);
+    - Removes edge banding on the side where the profile is fitted;
+    - Records the actual cut size in metadata for export to TrazoMob.
     """
     from ..domain.materials_catalog import get_material_color
 
-    # Resolução automática da cor visual e fita de borda via catálogo oficial de materiais
+    # Automatic resolution of visual color and edge banding via official materials catalog
     if color is None:
         color = get_material_color(material)
     if cor_fita is None and material_fita:
         cor_fita = get_material_color(material_fita)
 
-    # Converte qualquer objeto MachiningOp para dict padrão
+    # Convert any MachiningOp object to standard dict
     if operacoes:
         normalized_ops = []
         for op in operacoes:
@@ -903,7 +903,7 @@ def create_board_group(
     ox, oy, oz = origin
     sx, sy, sz = size
 
-    # Validação e limitação rígida aos limites da chapa de MDF (com refilo de limpeza)
+    # Validation and strict clamping to MDF sheet limits (with perimeter cleaning trim)
     from ..domain.materials_catalog import clamp_peca_to_sheet_limits
     sx, sy, sz = clamp_peca_to_sheet_limits(sx, sy, sz, material=material)
     size = (sx, sy, sz)
@@ -916,7 +916,7 @@ def create_board_group(
         kw in name_lower for kw in ("bancada", "moldura seca", "saia", "frontao", "frontão")
     )
 
-    # Se for Puxador Perfil Integrado: desconta a chapa de MDF e integra o perfil com geometria realista
+    # For Integrated Profile Handle: deduct MDF board and integrate profile with realistic geometry
     if tipo_pux == "perfil":
         pos = (puxador_pos or "padrao").lower()
         eff_pos = pos
@@ -934,11 +934,11 @@ def create_board_group(
         tex_mat = _get_material_texture(material)
 
         if eff_pos == "base":
-            # Perfil integrado na base (comum em armários aéreos)
+            # Profile integrated at the bottom (common on wall cabinets)
             alt_mdf = max(0.02, sz - desc_m)
             mdf_origin = (ox, oy, oz + desc_m)
             mdf_size = (sx, sy, alt_mdf)
-            fita_c1 = False  # Sem fita na base onde entra o perfil
+            fita_c1 = False  # No edge banding at the bottom where the profile fits
 
             mesh = _make_board_mesh(
                 mdf_origin, mdf_size, color=color,
@@ -956,13 +956,13 @@ def create_board_group(
             )
 
         elif eff_pos in ("extensao", "lateral") and door_side not in ("drawer", "flap"):
-            # Perfil vertical na extensão lateral da porta
+            # Vertical profile along the side extension of the door
             if door_side == "both":
                 larg_mdf = max(0.02, sx - 2.0 * desc_m)
                 mdf_origin = (ox + desc_m, oy, oz)
                 mdf_size = (larg_mdf, sy, sz)
-                fita_l1 = False  # Sem fita na borda esquerda
-                fita_l2 = False  # Sem fita na borda direita
+                fita_l1 = False  # No edge banding on the left edge
+                fita_l2 = False  # No edge banding on the right edge
                 mesh = _make_board_mesh(
                     mdf_origin, mdf_size, color=color,
                     fita_c1=fita_c1, fita_c2=fita_c2, fita_l1=fita_l1, fita_l2=fita_l2,
@@ -973,7 +973,7 @@ def create_board_group(
                 larg_mdf = max(0.02, sx - desc_m)
                 mdf_origin = (ox, oy, oz)
                 mdf_size = (larg_mdf, sy, sz)
-                fita_l2 = False  # Sem fita na borda direita
+                fita_l2 = False  # No edge banding on the right edge
                 mesh = _make_board_mesh(
                     mdf_origin, mdf_size, color=color,
                     fita_c1=fita_c1, fita_c2=fita_c2, fita_l1=fita_l1, fita_l2=fita_l2,
@@ -984,7 +984,7 @@ def create_board_group(
                 larg_mdf = max(0.02, sx - desc_m)
                 mdf_origin = (ox + desc_m, oy, oz)
                 mdf_size = (larg_mdf, sy, sz)
-                fita_l1 = False  # Sem fita na borda esquerda
+                fita_l1 = False  # No edge banding on the left edge
                 mesh = _make_board_mesh(
                     mdf_origin, mdf_size, color=color,
                     fita_c1=fita_c1, fita_c2=fita_c2, fita_l1=fita_l1, fita_l2=fita_l2,
@@ -1002,11 +1002,11 @@ def create_board_group(
             )
 
         else:
-            # Perfil integrado no topo (padrão em balcões e frentes de gaveta)
+            # Profile integrated at the top (default for base cabinets and drawer fronts)
             alt_mdf = max(0.02, sz - desc_m)
             mdf_origin = (ox, oy, oz)
             mdf_size = (sx, sy, alt_mdf)
-            fita_c2 = False  # Sem fita no topo onde entra o perfil
+            fita_c2 = False  # No edge banding at the top where the profile fits
 
             mesh = _make_board_mesh(
                 mdf_origin, mdf_size, color=color,
@@ -1025,7 +1025,7 @@ def create_board_group(
 
         cut_size = mdf_size
     else:
-        # Puxadores sobrepostos / convencionais (Alça, Cava, Ponto, Sem Puxador)
+        # Surface-mounted / conventional handles (Bar pull, Routed pull, Knob, Handleless)
         tex_mat = _get_material_texture(material)
         mesh = _make_board_mesh(
             origin, size, color=color,
@@ -1049,7 +1049,7 @@ def create_board_group(
             )
         cut_size = size
 
-    # Renderiza visualmente as furações técnicas na geometria da peça
+    # Visually render technical drill holes on the part geometry
     if operacoes:
         _render_machining_holes_in_mesh(mesh, origin, cut_size, operacoes, piece_name=name)
 
@@ -1111,7 +1111,7 @@ def create_polygon_board_group(
     espessura_fita: float = 0.45,
     spec: Any | None = None,
 ) -> Group:
-    """Cria uma chapa poligonal (prisma extrudado em Z, ex: base pentagonal de canto chanfrado)."""
+    """Create a polygonal board (Z-extruded prism, e.g., pentagonal base for chamfered corner)."""
     from ..domain.materials_catalog import get_material_color
 
     mesh = Mesh()
@@ -1121,19 +1121,19 @@ def create_polygon_board_group(
     tex_mat = _get_material_texture(material)
 
 
-    # Face superior (+Z): sentido anti-horário
+    # Top face (+Z): counter-clockwise direction
     f_top = mesh.add_face([QVector3D(x, y, z1) for x, y in polygon_xy])
     f_top.attrs["color"] = eff_color
     if tex_mat:
         f_top.attrs["texture"] = dict(tex_mat)
 
-    # Face inferior (-Z): sentido horário (normal apontando para baixo)
+    # Bottom face (-Z): clockwise direction (normal pointing downward)
     f_bot = mesh.add_face([QVector3D(x, y, z0) for x, y in reversed(polygon_xy)])
     f_bot.attrs["color"] = eff_color
     if tex_mat:
         f_bot.attrs["texture"] = dict(tex_mat)
 
-    # Paredes laterais (cada aresta do polígono)
+    # Side walls (each edge of the polygon)
     n = len(polygon_xy)
     for i in range(n):
         ax, ay = polygon_xy[i]
@@ -1192,7 +1192,7 @@ def create_prism_board_group(
     material_fita: str | None = None,
     espessura_fita: float = 0.45,
 ) -> Group:
-    """Cria uma chapa prismática com seção arbitrária no plano XZ extrudada ao longo de Y."""
+    """Create a prismatic board with an arbitrary cross-section in the XZ plane extruded along Y."""
     from PySide6.QtGui import QVector3D
 
     from core.mesh import Mesh
@@ -1205,19 +1205,19 @@ def create_prism_board_group(
     eff_color = color if color is not None else get_material_color(material)
     tex_mat = _get_material_texture(material)
 
-    # Face frontal (y0)
+    # Front face (y0)
     f_front = mesh.add_face([QVector3D(x, y0, z) for x, z in poly_xz])
     f_front.attrs["color"] = eff_color
     if tex_mat:
         f_front.attrs["texture"] = dict(tex_mat)
 
-    # Face traseira (y1)
+    # Rear face (y1)
     f_back = mesh.add_face([QVector3D(x, y1, z) for x, z in reversed(poly_xz)])
     f_back.attrs["color"] = eff_color
     if tex_mat:
         f_back.attrs["texture"] = dict(tex_mat)
 
-    # Bordas laterais
+    # Side edges
     n = len(poly_xz)
     for i in range(n):
         ax, az = poly_xz[i]
@@ -1278,7 +1278,7 @@ def create_cylinder_group(
     color: tuple[float, float, float] | None = None,
     segments: int = 16,
 ) -> Group:
-    """Cria um sólido cilíndrico prismático vertical (ex: pé tubular metálico ou tubo de cabideiro)."""
+    """Create a vertical cylindrical prismatic solid (e.g., tubular metal leg or closet rod tube)."""
     import math
     cx, cy = center_xy
     poly_circle: list[tuple[float, float]] = []

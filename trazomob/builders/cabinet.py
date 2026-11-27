@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""Construtor parametrico 3D de armarios e chapas de MDF (CabinetBuilder)."""
+"""3D parametric builder for cabinets and MDF boards (CabinetBuilder)."""
 from __future__ import annotations
 
 from PySide6.QtGui import QVector3D
@@ -26,7 +26,7 @@ __all__ = [
 
 
 class RotateTrazoMobModuleCommand(Command):
-    """Comando reversível (Undo/Redo) para rotação de módulos e objetos da cena."""
+    """Reversible (Undo/Redo) command for rotating modules and scene objects."""
 
     keeps_paint = True
 
@@ -67,4 +67,4 @@ class CabinetBuilder(
     CaixaMixin,
     CabinetTransformMixin,
 ):
-    """Gera modulos dinamicos e suas pecas componentes."""
+    """Generates dynamic modules and their component parts."""

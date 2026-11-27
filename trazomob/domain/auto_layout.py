@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""Planejamento e posicionamento do preenchimento automático de paredes.
+"""Planning and placement for automatic wall fill.
 
-O planejamento é independente do IngeTrazo: recebe um vão em milímetros e
-devolve a lista de módulos (tipo, largura, portas e divisórias) cujas larguras
-somam exatamente o vão informado. O posicionamento é feito depois de construir
-cada grupo, alinhando a traseira ao plano da face da parede e distribuindo os
-módulos ao longo da direção horizontal da face.
+Planning is independent from IngeTrazo: it takes a span in millimeters and
+returns the list of modules (type, width, doors, and divisions) whose widths
+sum to the exact requested span. Placement happens after building each
+group, aligning the back to the wall face plane and distributing the modules
+along the horizontal direction of the face.
 """
 from __future__ import annotations
 
@@ -18,11 +18,11 @@ from PySide6.QtGui import QVector3D
 
 from ..domain.module_geometry import auto_divisoes_for_doors
 
-#: Largura nominal de referência por porta e por gaveteiro.
+#: Nominal reference width per door and per drawer bank.
 DOOR_WIDTH_MM = 400.0
 DRAWER_WIDTH_MM = 450.0
 
-#: Limites técnicos usados ao distribuir a sobra do vão.
+#: Technical limits used when distributing the span remainder.
 MIN_MODULE_MM = 250.0
 MAX_MODULE_MM = 1800.0
 
@@ -32,7 +32,7 @@ MAX_DOORS_UPPER = 2
 
 @dataclass
 class LayoutModule:
-    """Um módulo planejado para o preenchimento automático."""
+    """A planned module for automatic wall fill."""
 
     tipo: str
     largura_mm: float
@@ -42,7 +42,7 @@ class LayoutModule:
 
 
 # ---------------------------------------------------------------------------
-# Planejamento
+# Planning
 # ---------------------------------------------------------------------------
 
 def _normalizar_categoria(categoria: str) -> str:
@@ -64,7 +64,7 @@ def _normalizar_composicao(composicao: str, categoria: str) -> str:
 
 
 def _dividir_portas(total_portas: int, max_por_modulo: int) -> list[int]:
-    """Divide as portas em módulos equilibrados, respeitando o máximo."""
+    """Distribute doors across balanced modules while respecting the maximum."""
     total = max(1, int(total_portas))
     max_por_modulo = max(1, int(max_por_modulo))
     n_modulos = max(1, math.ceil(total / max_por_modulo))
@@ -78,10 +78,10 @@ def _ajustar_larguras(
     min_mm: float = MIN_MODULE_MM,
     max_mm: float = MAX_MODULE_MM,
 ) -> None:
-    """Distribui a diferença entre a soma nominal e o vão real.
+    """Distribute the difference between nominal sum and actual span.
 
-    A sobra é repartida igualmente entre os módulos que ainda têm folga para
-    crescer (ou diminuir), sem ultrapassar os limites técnicos.
+    The remainder is split evenly among modules that still have headroom to
+    grow (or shrink) without exceeding technical limits.
     """
     if not modulos:
         return
@@ -132,7 +132,7 @@ def _modulos_de_gavetas(
     gavetas_por_modulo: int = 4,
 ) -> list[LayoutModule]:
     n_modulos = max(1, int(vao_mm / DRAWER_WIDTH_MM + 0.5))
-    # Evita módulos abaixo da largura mínima quando o vão é pequeno.
+    # Avoid modules narrower than the minimum width when the span is small.
     while n_modulos > 1 and (vao_mm / n_modulos) < MIN_MODULE_MM:
         n_modulos -= 1
     return [
@@ -149,7 +149,7 @@ def _intercalar(
     portas: Iterable[LayoutModule],
     gavetas: Iterable[LayoutModule],
 ) -> list[LayoutModule]:
-    """Alterna módulos de portas e gavetas, preservando os excedentes."""
+    """Alternate door and drawer modules, keeping any remaining ones."""
     lista_portas = list(portas)
     lista_gavetas = list(gavetas)
     resultado: list[LayoutModule] = []
@@ -167,11 +167,11 @@ def plan_wall_fill(
     composicao: str = "portas",
     porta_nominal_mm: float = DOOR_WIDTH_MM,
 ) -> list[LayoutModule]:
-    """Planeja módulos contíguos cuja soma das larguras fecha o vão.
+    """Plan contiguous modules whose widths sum up to close the span.
 
-    ``categoria``: ``inferior`` ou ``aereo``.
-    ``composicao``: ``portas``, ``misto`` (só inferiores) ou ``gavetas``
-    (só inferiores). Para aéreos a composição é sempre ``portas``.
+    ``categoria``: ``inferior`` or ``aereo``.
+    ``composicao``: ``portas``, ``misto`` (base only), or ``gavetas``
+    (base only). For wall cabinets (``aereo``), composition is always ``portas``.
     """
     vao = float(space_mm)
     if vao < MIN_MODULE_MM:
@@ -193,7 +193,7 @@ def plan_wall_fill(
         return modulos
 
     if composicao == "misto" and vao >= 800.0:
-        # ~60% do vão em balcões com portas e ~40% em gaveteiros.
+        # ~60% of the span in door base cabinets and ~40% in drawer banks.
         modulos_portas = _modulos_de_portas(
             vao * 0.60, "balcao", MAX_DOORS_LOWER, porta_nominal_mm)
         modulos_gavetas = _modulos_de_gavetas(vao * 0.40)
@@ -207,11 +207,11 @@ def plan_wall_fill(
 
 
 # ---------------------------------------------------------------------------
-# Posicionamento na face da parede
+# Placement on the wall face
 # ---------------------------------------------------------------------------
 
 def directions_from_normal(normal: QVector3D) -> tuple[QVector3D, QVector3D]:
-    """Devolve (normal horizontal, direção horizontal da parede)."""
+    """Return (horizontal normal, horizontal wall direction)."""
     n_dir = QVector3D(normal.x(), normal.y(), 0.0)
     if n_dir.length() < 1e-6:
         n_dir = QVector3D(0.0, 1.0, 0.0)
@@ -224,7 +224,7 @@ def face_u_range(
     face_vertices: Iterable[QVector3D],
     u_dir: QVector3D,
 ) -> tuple[float, float]:
-    """Extensão da face ao longo de ``u_dir`` (metros)."""
+    """Face extent along ``u_dir`` (meters)."""
     projs = [QVector3D.dotProduct(p, u_dir) for p in face_vertices]
     if not projs:
         return 0.0, 0.0
@@ -239,7 +239,7 @@ def place_group_on_wall(
     start_u: float,
     z_base: float,
 ) -> None:
-    """Move ``group`` para encostar na parede e começar em ``start_u``."""
+    """Move ``group`` to sit flush against the wall and start at ``start_u``."""
     from ..domain.module_geometry import get_module_carcass_bounds
     from ..interaction.magnetic_drag import get_bounds_min_projection, get_module_bounds
 

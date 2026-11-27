@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""Registro central de construtores de módulos (Registry Pattern) do TrazoMob.
+"""Central registry of module builders (Registry Pattern) for TrazoMob.
 
-Permite registrar de forma polimórfica e extensível os construtores de cada
-tipo de armário, gaveteiro, aéreo, torre, roupeiro, bancada ou peça avulsa,
-eliminando a necessidade de cadeias monolíticas de if/elif no CabinetBuilder.
+Allows polymorphic and extensible registration of builders for each type of
+cabinet, drawer bank, wall cabinet, tall cabinet, wardrobe, countertop, or
+standalone part, eliminating monolithic if/elif chains in CabinetBuilder.
 """
 from __future__ import annotations
 
@@ -13,15 +13,15 @@ from typing import Any
 
 from core.group import Group
 
-# Assinatura de uma função de construção:
-# (cls, params: dict, context: dict) -> Tuple[List[Group], str]  (onde str é o module_name)
+# Signature of a builder function:
+# (cls, params: dict, context: dict) -> Tuple[List[Group], str]  (where str is module_name)
 ModuleBuilderFunc = Callable[[Any, dict[str, Any], dict[str, Any]], tuple[list[Group], str]]
 
 _BUILDER_REGISTRY: dict[str, ModuleBuilderFunc] = {}
 
 
 def register_module_builder(*types: str) -> Callable[[ModuleBuilderFunc], ModuleBuilderFunc]:
-    """Decorador para associar uma função de geração a um ou mais tipos de módulos."""
+    """Decorator to associate a builder function with one or more module types."""
     def decorator(fn: ModuleBuilderFunc) -> ModuleBuilderFunc:
         for t in types:
             if isinstance(t, (list, tuple)):
@@ -34,11 +34,11 @@ def register_module_builder(*types: str) -> Callable[[ModuleBuilderFunc], Module
 
 
 def get_module_builder(tipo: str) -> ModuleBuilderFunc | None:
-    """Retorna o construtor registrado para o tipo solicitado, ou None."""
+    """Return the registered builder for the requested type, or None."""
     return _BUILDER_REGISTRY.get(tipo)
 
 
-# ── REGISTRO DOS CONSTRUTORES CANÔNICOS DE MARCADORES MOVELEIROS ───────────
+# ── REGISTRATION OF CANONICAL FURNITURE MODULE BUILDERS ───────────────────
 
 @register_module_builder("balcao")
 def _build_balcao(cls, params: dict[str, Any], ctx: dict[str, Any]) -> tuple[list[Group], str]:
@@ -1151,7 +1151,7 @@ def _build_armario_maleiro_tamponado(cls, params: dict[str, Any], ctx: dict[str,
 
 
 # -------------------------------------------------------------------------
-# Camas Planejadas
+# Custom Built-in Beds
 # -------------------------------------------------------------------------
 @register_module_builder("cama_gaveteiros")
 def _build_cama_gaveteiros(cls, params: dict[str, Any], ctx: dict[str, Any]) -> tuple[list[Group], str]:

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Gerenciamento padronizado de metadados do TrazoMob em group.ext['trazomob'].
+"""Standardized TrazoMob metadata management in group.ext['trazomob'].
 
-Conforme especificado em docs/plugins.md do IngeTrazo:
+As specified in IngeTrazo's docs/plugins.md:
     group.ext = {app.key: {"kind": "...", ...}}
 """
 from __future__ import annotations
@@ -10,19 +10,19 @@ from typing import Any
 
 
 def get_trazomob(group: Any) -> dict[str, Any]:
-    """Retorna os dados do TrazoMob contidos em group.ext['trazomob'].
+    """Returns the TrazoMob data contained in group.ext['trazomob'].
 
-    Também reconhece de forma transparente objetos legados durante a transição.
+    Also transparently recognizes legacy objects during the transition.
     """
     if not group or not getattr(group, "ext", None) or not isinstance(group.ext, dict):
         return {}
 
-    # 1. Formato padrão oficial: group.ext["trazomob"]
+    # 1. Official standard format: group.ext["trazomob"]
     tm = group.ext.get("trazomob")
     if isinstance(tm, dict):
         return tm
 
-    # 2. Fallback transparente para chaves legadas soltas (para segurança imediata)
+    # 2. Transparent fallback for loose legacy keys (for immediate safety)
     for old_key, kind in (
         ("trazomob_module", "module"),
         ("trazomob_wall", "wall"),
@@ -45,7 +45,7 @@ def get_trazomob(group: Any) -> dict[str, Any]:
 
 
 def set_trazomob(group: Any, kind: str, data: dict[str, Any] | None = None, **kwargs) -> dict[str, Any]:
-    """Define metadados do grupo sob o namespace oficial group.ext['trazomob']."""
+    """Sets group metadata under the official group.ext['trazomob'] namespace."""
     if getattr(group, "ext", None) is None or not isinstance(group.ext, dict):
         group.ext = {}
 
@@ -56,7 +56,7 @@ def set_trazomob(group: Any, kind: str, data: dict[str, Any] | None = None, **kw
     if kwargs:
         tm.update(kwargs)
 
-    # Mantém espelho da chave legada temporariamente para compatibilidade com partes em transição
+    # Temporarily keeps a legacy key mirror for compatibility with parts in transition
     legacy_map = {
         "module": "trazomob_module",
         "wall": "trazomob_wall",
@@ -77,6 +77,6 @@ def set_trazomob(group: Any, kind: str, data: dict[str, Any] | None = None, **kw
 
 
 def is_trazomob_kind(group: Any, kind: str) -> bool:
-    """Verifica rapidamente se o grupo pertence à categoria especificada do TrazoMob."""
+    """Quickly checks whether the group belongs to the specified TrazoMob category."""
     tm = get_trazomob(group)
     return tm.get("kind") == kind

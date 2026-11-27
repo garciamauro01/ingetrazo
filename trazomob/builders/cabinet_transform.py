@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""Operacoes de transformacao 3D do CabinetBuilder."""
+"""3D transformation operations for CabinetBuilder."""
 from __future__ import annotations
 
 import logging
@@ -15,7 +15,7 @@ logger = logging.getLogger("trazomob.cabinet_transform")
 
 
 def _seed_subtree_proto_chunks(node: Any, viewport: Any, visited: set[int] | None = None) -> None:
-    """Preserva chunks ja assados no cache do prototipo antes de promover ``xform``."""
+    """Preserves already-baked chunks in the prototype cache before promoting ``xform``."""
     if node is None or viewport is None:
         return
     cache = getattr(viewport, "_group_chunks", None)
@@ -52,7 +52,7 @@ def _invalidate_transformed_caches(
     scene: Any,
     viewport: Any,
 ) -> None:
-    """Invalida apenas os chunks dos nos alterados, preservando o restante da cena."""
+    """Invalidates only the chunks of modified nodes, preserving the rest of the scene."""
     group_chunks = getattr(viewport, "_group_chunks", None) if viewport is not None else None
     inst_chunks = getattr(viewport, "_inst_chunks", None) if viewport is not None else None
 
@@ -79,18 +79,18 @@ def _invalidate_transformed_caches(
 
 
 def invalidate_replaced_modules_caches(replacements, viewport) -> None:
-    """Invalida só os chunks dos módulos substituídos por ``build_module_group``.
+    """Invalidates only the chunks of modules replaced by ``build_module_group``.
 
-    Um Apply reconstrói o grupo inteiro com novos ids; os chunks antigos
-    (keyed por ``id(group)``/``id(child)``/``id(proxy)``) ficam órfãos. Limpar
-    ``_group_chunks``/``_inst_chunks`` inteiros — como o Apply fazia — força o
-    rebake de VBOs e pick arrays de TODA a cena (paredes, importações grandes),
-    que é a maior parcela dos ~5 s ao trocar a textura da marmoraria. O viewport
-    já revalida os demais grupos em O(1) por ``_mut_serial`` (ver
-    ``Viewport._group_chunk``), então remover somente os ids afetados é
-    suficiente e seguro.
+    An Apply rebuilds the entire group with new ids; old chunks (keyed by
+    ``id(group)``/``id(child)``/``id(proxy)``) become orphaned. Clearing the
+    entire ``_group_chunks``/``_inst_chunks`` — as Apply used to do — forces
+    rebaking VBOs and pick arrays for the ENTIRE scene (walls, large imports),
+    which accounts for most of the ~5 s when changing stonework textures. The
+    viewport already revalidates remaining groups in O(1) via ``_mut_serial``
+    (see ``Viewport._group_chunk``), so removing only the affected ids is
+    sufficient and safe.
 
-    ``replacements`` é uma lista de pares ``(old_group, new_group)``.
+    ``replacements`` is a list of ``(old_group, new_group)`` pairs.
     """
     if not replacements or viewport is None:
         return
@@ -116,7 +116,7 @@ def invalidate_replaced_modules_caches(replacements, viewport) -> None:
     for old_group, _new_group in replacements:
         collect(old_group, set())
 
-    # Proxies de placement são keyed por id(child) e seus chunks por id(proxy).
+    # Placement proxies are keyed by id(child) and their chunks by id(proxy).
     if isinstance(proxies, dict):
         for cid in list(stale):
             proxy = proxies.get(cid)
@@ -142,7 +142,7 @@ def invalidate_replaced_modules_caches(replacements, viewport) -> None:
 
 
 def _rotate_group_ext(ext: Any, m) -> None:
-    """Atualiza vetores auxiliares armazenados no dicionário ``ext`` após rotação."""
+    """Updates auxiliary vectors stored in the ``ext`` dictionary after rotation."""
     if not isinstance(ext, dict):
         return
     if "orig_vertices" in ext:
@@ -167,7 +167,7 @@ def _rotate_group_tree(
     mutated_nodes: list[Any] | None = None,
     promoted_nodes: list[Any] | None = None,
 ) -> None:
-    """Rotaciona um Group em O(1) via ``xform`` quando seguro ou por vertices em modulos."""
+    """Rotates a Group in O(1) via ``xform`` when safe, or per-vertex for modules."""
     if grp is None or id(grp) in visited:
         return
     visited.add(id(grp))
@@ -191,8 +191,8 @@ def _rotate_group_tree(
         _rotate_group_ext(ext_dict, m)
         return
 
-    # Objetos genericos (ex.: modelos 3D importados com xform=None) sao promovidos para xform
-    # em O(1) para evitar iterar dezenas/centenas de milhares de vertices em Python.
+    # Generic objects (e.g., imported 3D models with xform=None) are promoted to xform
+    # in O(1) to avoid iterating over tens/hundreds of thousands of vertices in Python.
     edit_group = getattr(scene, "edit_group", None) if scene is not None else None
     if (
         isinstance(grp, Group)
@@ -240,7 +240,7 @@ def _rotate_group_tree(
 
 
 def _rotate_light_metadata(ext: Any, m, m_dir) -> bool:
-    """Atualiza coordenadas e direção de luminária TrazoMob após rotação."""
+    """Updates coordinates and direction of a TrazoMob light fixture after rotation."""
     if not isinstance(ext, dict) or not isinstance(ext.get("trazomob_light"), dict):
         return False
     lt = ext["trazomob_light"]
@@ -259,7 +259,7 @@ def _rotate_light_metadata(ext: Any, m, m_dir) -> bool:
 
 
 def _rotate_esquadria_metadata(ext: Any, m, axis_vec: QVector3D, degrees: float) -> None:
-    """Sincroniza ``rot_z`` e ``offset`` quando uma esquadria TrazoMob é rotacionada."""
+    """Synchronizes ``rot_z`` and ``offset`` when a TrazoMob window/door frame is rotated."""
     if not isinstance(ext, dict) or not isinstance(ext.get("trazomob_esquadria"), dict):
         return
     esq = ext["trazomob_esquadria"]
@@ -275,11 +275,11 @@ def _rotate_esquadria_metadata(ext: Any, m, axis_vec: QVector3D, degrees: float)
 
 
 class CabinetTransformMixin:
-    """Rotacao e redimensionamento parametrico de modulos e objetos."""
+    """Parametric rotation and resizing of modules and objects."""
 
     @classmethod
     def resolve_rotation_center(cls, target_group: Group) -> QVector3D:
-        """Retorna o ponto central adequado para rotacionar um módulo ou objeto genérico."""
+        """Returns the appropriate center point for rotating a module or generic object."""
         if target_group is None:
             return QVector3D(0.0, 0.0, 0.0)
         ext = getattr(target_group, "ext", None)
@@ -309,20 +309,20 @@ class CabinetTransformMixin:
         viewport=None,
         update_param: bool = True,
     ) -> bool:
-        """Rotaciona um módulo do TrazoMob ou qualquer Group/objeto da cena pelo ângulo em graus.
+        """Rotates a TrazoMob module or any scene Group/object by the angle in degrees.
 
-        Suporta:
-        - Módulo mestre contendo peças em ``module_group.children``.
-        - Qualquer Group genérico, mobília, eletro, instância com ``xform``, luminária ou esquadria.
-        - Peça individual com malha direta ``module_group.mesh``.
-        - Atualização dos metadados e ``orig_vertices`` para preservação da cinemática interativa.
+        Supports:
+        - Master module containing parts in ``module_group.children``.
+        - Any generic Group, furniture item, appliance, instance with ``xform``, light, or window/door frame.
+        - Individual part with direct ``module_group.mesh``.
+        - Metadata and ``orig_vertices`` updates to preserve interactive kinematics.
         """
         if module_group is None:
             return False
 
         from core.history import rotation_matrix
 
-        # Converte o eixo para QVector3D
+        # Convert axis to QVector3D
         if isinstance(axis, QVector3D):
             axis_vec = axis
         else:
@@ -338,7 +338,7 @@ class CabinetTransformMixin:
             else None
         )
 
-        # Determina o centro de rotação efetivo
+        # Determine the effective rotation center
         if center is None:
             center_vec = carcass_center_before
         elif isinstance(center, QVector3D):
@@ -361,7 +361,7 @@ class CabinetTransformMixin:
             promoted_nodes=promoted_nodes,
         )
 
-        # Atualiza a rotação acumulada do módulo se solicitado (evita somar duas vezes durante build_module_group)
+        # Update accumulated module rotation if requested (avoids double-counting during build_module_group)
         if needs_carcass_update:
             from ..domain.schema import live_module_data
             mod_p = live_module_data(module_group)
@@ -372,14 +372,14 @@ class CabinetTransformMixin:
                 eff_deg_z = degrees if ax_norm.z() >= 0.0 else -degrees
                 old_rot = float(mod_p.get("rot_z", 0.0) or 0.0)
                 mod_p["rot_z"] = (old_rot + eff_deg_z) % 360.0
-                # Se já possuía matriz 3D customizada, compõe a rotação Z nela também
+                # If a custom 3D matrix already existed, compose the Z rotation into it as well
                 if "rot_matrix_3d" in mod_p and isinstance(mod_p["rot_matrix_3d"], (list, tuple)) and len(mod_p["rot_matrix_3d"]) == 16:
                     m_prev = QMatrix4x4(*[float(x) for x in mod_p["rot_matrix_3d"]])
                     m_step = rotation_matrix(QVector3D(0.0, 0.0, 0.0), ax_norm, degrees)
                     m_comb = m_step * m_prev
                     mod_p["rot_matrix_3d"] = [float(m_comb(r, c)) for r in range(4) for c in range(4)]
             else:
-                # Rotação 3D livre (em X, Y ou eixo arbitrário): preserva a matriz 3D exata!
+                # Free 3D rotation (around X, Y, or arbitrary axis): preserve the exact 3D matrix!
                 if "rot_matrix_3d" in mod_p and isinstance(mod_p["rot_matrix_3d"], (list, tuple)) and len(mod_p["rot_matrix_3d"]) == 16:
                     m_prev = QMatrix4x4(*[float(x) for x in mod_p["rot_matrix_3d"]])
                 else:
@@ -389,8 +389,8 @@ class CabinetTransformMixin:
                 m_comb = m_step * m_prev
                 mod_p["rot_matrix_3d"] = [float(m_comb(r, c)) for r in range(4) for c in range(4)]
 
-            # Sincroniza o offset base usando o deslocamento real do centro da caixaria (new_center - old_center)
-            # e preservando a relação exata com as dimensões não-rotacionadas da peça/módulo!
+            # Sync base offset using the actual carcass center displacement (new_center - old_center)
+            # while preserving the exact relationship to the unrotated dimensions of the part/module!
             new_carcass_center = m.map(carcass_center_before)
             unrot_span = mod_p.get("_unrot_carcass_span")
             if isinstance(unrot_span, (list, tuple)) and len(unrot_span) == 6:
@@ -439,11 +439,11 @@ class CabinetTransformMixin:
         update_param: bool = True,
         rebuild: bool = True,
     ) -> bool:
-        """Escala um módulo do TrazoMob (e todas as suas peças filhas) em torno de ``center``
-        e sincroniza automaticamente suas dimensões paramétricas (`largura`, `profundidade`, `altura`)
-        e sua âncora (`offset`, `_unrot_carcass_span`) em ``module_group.ext['trazomob_module']``.
-        Se ``rebuild=True`` e ``update_param=True``, regenera parametricamente os componentes filhos
-        para preservar rigorosamente as espessuras de chapas (MDF 15/18mm) e ferragens sem distorção.
+        """Scales a TrazoMob module (and all its child parts) around ``center``
+        and automatically synchronizes its parametric dimensions (`largura`, `profundidade`, `altura`)
+        and its anchor (`offset`, `_unrot_carcass_span`) in ``module_group.ext['trazomob_module']``.
+        If ``rebuild=True`` and ``update_param=True``, parametrically regenerates child components
+        to strictly preserve board thicknesses (MDF 15/18mm) and hardware without distortion.
         """
         if module_group is None:
             return False
@@ -501,15 +501,15 @@ class CabinetTransformMixin:
             s_z = m.mapVector(ez).length()
 
             if s_x > 1e-6 and s_y > 1e-6 and s_z > 1e-6:
-                # Mapeia os fatores de escala locais (s_x, s_y, s_z) para os parâmetros de marcenaria:
+                # Map local scale factors (s_x, s_y, s_z) to cabinetry parameters:
                 if tipo == "peca_lateral":
-                    # Lateral avulsa: X local é espessura (E), Y local é profundidade (P), Z local é altura (A)
+                    # Standalone side panel: local X is thickness (E), local Y is depth (P), local Z is height (A)
                     if abs(s_y - 1.0) > 1e-4 and "profundidade" in mod_p:
                         mod_p["profundidade"] = round(float(mod_p["profundidade"]) * s_y, 2)
                     if abs(s_z - 1.0) > 1e-4 and "altura" in mod_p:
                         mod_p["altura"] = round(float(mod_p["altura"]) * s_z, 2)
                 elif tipo in ("peca_porta", "peca_fundo", "peca_travessa_em_pe", "peca_pilar_quina"):
-                    # Chapa frontal/vertical em XZ: X local é largura (L), Y local é espessura (E), Z local é altura (A)
+                    # Front/vertical panel in XZ: local X is width (L), local Y is thickness (E), local Z is height (A)
                     if abs(s_x - 1.0) > 1e-4 and "largura" in mod_p:
                         mod_p["largura"] = round(float(mod_p["largura"]) * s_x, 2)
                     if abs(s_z - 1.0) > 1e-4 and "altura" in mod_p:
@@ -517,8 +517,8 @@ class CabinetTransformMixin:
                     if abs(s_y - 1.0) > 1e-4 and "profundidade" in mod_p:
                         mod_p["profundidade"] = round(float(mod_p["profundidade"]) * s_y, 2)
                 else:
-                    # Todos os armários, balcões, bancadas, tampo engrossado, base, prateleira, travessa deitada:
-                    # X local é largura (L), Y local é profundidade (P), Z local é altura (A)
+                    # All cabinets, base cabinets, countertops, thickened top, base, shelf, flat stretcher:
+                    # local X is width (L), local Y is depth (P), local Z is height (A)
                     if abs(s_x - 1.0) > 1e-4 and "largura" in mod_p:
                         mod_p["largura"] = round(float(mod_p["largura"]) * s_x, 2)
                     if abs(s_y - 1.0) > 1e-4 and "profundidade" in mod_p:
@@ -526,7 +526,7 @@ class CabinetTransformMixin:
                     if abs(s_z - 1.0) > 1e-4 and "altura" in mod_p:
                         mod_p["altura"] = round(float(mod_p["altura"]) * s_z, 2)
 
-                # Limitação rígida (Clamp) de marcenaria: não permite que dimensões ultrapassem o limite útil da chapa (2720mm)
+                # Hard cabinetry clamp: prevents dimensions from exceeding the usable board limit (2720mm)
                 from ..domain.materials_catalog import CHAPA_MAX_COMPRIMENTO_UTIL_MM
                 for dim_key in ("largura", "altura", "profundidade"):
                     if dim_key in mod_p and isinstance(mod_p[dim_key], (int, float)):
@@ -564,8 +564,8 @@ class CabinetTransformMixin:
                             float(b_after[4]),
                         )
 
-                    # Se solicitado o rearranjo paramétrico, regenera as peças filhas
-                    # mantendo a espessura de chapas de MDF (15/18mm) e ferragens sem distorção.
+                    # If parametric rearrangement is requested, regenerate child parts
+                    # keeping MDF board thickness (15/18mm) and hardware undistorted.
                     if rebuild:
                         try:
                             cls._rebuild_scaled_module_pieces(module_group, mod_p, b_after)
@@ -585,8 +585,8 @@ class CabinetTransformMixin:
         mod_p: dict[str, Any],
         b_after: tuple[float, float, float, float, float, float],
     ) -> None:
-        """Regenera in-place as peças componentes de um módulo de marcenaria escalado,
-        garantindo espessuras nominais fiéis de MDF (15/18mm) e ferragens sem deformação.
+        """Regenerates in-place the component parts of a scaled cabinetry module,
+        ensuring faithful nominal MDF thicknesses (15/18mm) and undistorted hardware.
         """
         from ..builders.cabinet import CabinetBuilder
         from ..domain.module_geometry import get_module_carcass_bounds
@@ -623,7 +623,7 @@ class CabinetTransformMixin:
                         if "hinge_pivot" in t.ext and isinstance(t.ext["hinge_pivot"], QVector3D):
                             t.ext["hinge_pivot"] += shift
 
-        # Atualiza o grupo mestre in-place com a geometria e peças reconstruídas
+        # Update the master group in-place with the rebuilt geometry and parts
         for c in new_mod.children:
             c.owner = module_group
         module_group.children = list(new_mod.children)
@@ -631,7 +631,7 @@ class CabinetTransformMixin:
         if hasattr(new_mod, "mesh") and new_mod.mesh is not None:
             module_group.mesh = new_mod.mesh
         if hasattr(new_mod, "ext") and isinstance(new_mod.ext, dict):
-            # Preserva os metadados calculados
+            # Preserve computed metadata
             for k, val in new_mod.ext.items():
                 if k not in module_group.ext or k in ("trazomob_module", "trazomob_esquadria"):
                     module_group.ext[k] = val

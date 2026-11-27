@@ -1,15 +1,15 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""API pública canônica para construir uma chapa a partir de um :class:`ChapaSpec`.
+"""Canonical public API for building a board from a :class:`ChapaSpec`.
 
-Camadas de unidade do plugin:
+Plugin unit layers:
 
-- **Domínio / catálogo / cutlist:** milímetros (mm);
-- **Geometria 3D:** metros (m).
+- **Domain / catalog / cutlist:** millimeters (mm);
+- **3D geometry:** meters (m).
 
-Use :func:`build_chapa` para a camada de geometria (metros) ou
-:func:`build_chapa_mm` para receber medidas em milímetros e converter na fronteira.
-``create_board_group`` continua sendo a fábrica de baixo nível (metros).
+Use :func:`build_chapa` for the geometry layer (meters) or
+:func:`build_chapa_mm` to accept dimensions in millimeters and convert at the boundary.
+``create_board_group`` remains the low-level factory (meters).
 """
 from __future__ import annotations
 
@@ -27,11 +27,11 @@ def build_chapa(
     size: tuple[float, float, float],
     **kwargs: Any,
 ) -> Group:
-    """Cria uma chapa canônica em **metros** a partir de uma especificação resolvida.
+    """Create a canonical board in **meters** from a resolved specification.
 
-    Material, fitas, espessura da fita, veio e operações vêm de ``spec``.
-    ``kwargs`` aceita os demais parâmetros visuais/geométricos de
-    ``create_board_group`` (cor, puxador, ``door_side`` etc.).
+    Material, edge banding, banding thickness, grain direction, and operations
+    come from ``spec``. ``kwargs`` accepts the remaining visual/geometric
+    parameters of ``create_board_group`` (color, handle, ``door_side``, etc.).
     """
     mat_fita = kwargs.pop("material_fita", spec.material_fita)
     esp_fita = kwargs.pop("espessura_fita", spec.espessura_fita)
@@ -61,7 +61,7 @@ def build_chapa_mm(
     size_mm: tuple[float, float, float],
     **kwargs: Any,
 ) -> Group:
-    """Versão de :func:`build_chapa` que recebe origem e tamanho em **milímetros**."""
+    """Variant of :func:`build_chapa` that accepts origin and size in **millimeters**."""
     return build_chapa(
         spec,
         (

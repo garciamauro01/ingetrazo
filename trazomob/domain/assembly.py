@@ -1,18 +1,19 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""Agrupamento seguro de módulos do TrazoMob (assemblies).
+"""Safe grouping of TrazoMob modules (assemblies).
 
-O IngeTrazo já sabe agrupar grupos (``MakeNestedGroupCommand``) e desagrupar
-(``ExplodeGroupCommand``), mas o resultado não é reconhecido pelo TrazoMob:
+IngeTrazo already knows how to group groups (``MakeNestedGroupCommand``) and
+ungroup them (``ExplodeGroupCommand``), but the result is not recognized by
+TrazoMob:
 
-* a lista de corte só varria ``scene.groups`` — módulos dentro de um grupo
-  desapareciam do cutlist;
-* a barra lateral só encontrava módulos no primeiro nível — selecionar o
-  grupo deixava o editor vazio.
+* the cutlist only scanned ``scene.groups`` — modules inside a group
+  disappeared from the cutlist;
+* the sidebar only found top-level modules — selecting the group left the
+  editor empty.
 
-Este módulo marca o contêiner com ``kind="assembly"`` e oferece a varredura
-recursiva que os leitores usam. As duas operações reutilizam os comandos do
-core, então posição, transformação e undo/redo continuam sendo os do app.
+This module tags the container with ``kind="assembly"`` and provides the
+recursive traversal used by readers. Both operations reuse the core commands,
+so position, transform, and undo/redo remain handled by the app.
 """
 from __future__ import annotations
 
@@ -24,17 +25,17 @@ from core.history import ExplodeGroupCommand, MakeNestedGroupCommand
 
 from ..domain.schema import KIND_MODULE, kind_of
 
-#: ``kind`` gravado no ``ext`` do contêiner que agrupa módulos.
+#: ``kind`` stored in the ``ext`` of the container that groups modules.
 ASSEMBLY_KIND = "assembly"
 
 
 def is_assembly(group: Any) -> bool:
-    """Diz se o grupo é um contêiner de módulos criado por este plugin."""
+    """Returns whether the group is a module container created by this plugin."""
     return kind_of(group) == ASSEMBLY_KIND
 
 
 def is_module(group: Any) -> bool:
-    """Diz se o grupo é um módulo paramétrico (inclusive os legados)."""
+    """Returns whether the group is a parametric module (including legacy ones)."""
     if kind_of(group) == KIND_MODULE:
         return True
     ext = getattr(group, "ext", None)
@@ -44,18 +45,18 @@ def is_module(group: Any) -> bool:
 
 
 def assembly_members(group: Any) -> list[Any]:
-    """Filhos diretos de um assembly (módulos e subgrupos)."""
+    """Direct children of an assembly (modules and subgroups)."""
     if not is_assembly(group):
         return []
     return list(getattr(group, "children", None) or [])
 
 
 def iter_module_groups(roots: Iterable[Any]) -> Iterator[Any]:
-    """Varre a árvore e devolve os módulos paramétricos em qualquer nível.
+    """Walks the tree and yields parametric modules at any depth.
 
-    Não desce para dentro de um módulo: os filhos de um módulo são peças, não
-    módulos. Contêineres nativos (feitos com o "Criar Grupo" do app) também
-    são atravessados, para o cutlist não perder módulos agrupados à mão.
+    Does not descend inside a module: a module's children are parts, not
+    modules. Native containers (created with the app's "Create Group") are
+    also traversed so the cutlist does not lose manually grouped modules.
     """
     for group in roots:
         if group is None:
@@ -69,7 +70,7 @@ def iter_module_groups(roots: Iterable[Any]) -> Iterator[Any]:
 
 
 def _tag_assembly(container: Group, name: str | None = None) -> Group:
-    """Grava o ``kind`` de assembly no contêiner, preservando o que já havia."""
+    """Stores the assembly ``kind`` on the container, preserving existing fields."""
     ext = getattr(container, "ext", None)
     if not isinstance(ext, dict):
         ext = {}
@@ -92,10 +93,10 @@ def build_assembly_command(
     groups: Iterable[Any],
     name: str | None = None,
 ) -> MakeNestedGroupCommand | None:
-    """Prepara o comando que agrupa módulos, ou ``None`` se não há o que agrupar.
+    """Prepares the command that groups modules, or ``None`` if there is nothing to group.
 
-    Devolve o comando (em vez de executá-lo) para o chamador rodá-lo pelo
-    ``viewport.history`` e ganhar undo/redo de graça.
+    Returns the command (instead of executing it) so the caller can run it via
+    ``viewport.history`` and get undo/redo for free.
     """
     members = [g for g in groups if isinstance(g, Group)]
     if len(members) < 2:
@@ -104,17 +105,17 @@ def build_assembly_command(
 
 
 def apply_assembly_tag(container: Group | None, name: str | None = None) -> Group | None:
-    """Marca o contêiner devolvido pelo comando como assembly do TrazoMob."""
+    """Marks the container returned by the command as a TrazoMob assembly."""
     if container is None:
         return None
     return _tag_assembly(container, name)
 
 
 def build_dissolve_command(assembly: Any) -> ExplodeGroupCommand | None:
-    """Prepara o comando que devolve os módulos ao nível do modelo.
+    """Prepares the command that returns modules to the model level.
 
-    O ``ExplodeGroupCommand`` do core levanta os filhos inteiros (com
-    ``xform`` composto) e mantém o undo — nenhum metadado de módulo é tocado.
+    Core's ``ExplodeGroupCommand`` lifts the children intact (with composed
+    ``xform``) and preserves undo — no module metadata is touched.
     """
     if not isinstance(assembly, Group) or not is_assembly(assembly):
         return None
@@ -124,13 +125,13 @@ def build_dissolve_command(assembly: Any) -> ExplodeGroupCommand | None:
 
 
 def modules_in_selection(scene: Any) -> list[Group]:
-    """Módulos selecionados diretamente (ignora peças e contêineres)."""
+    """Directly selected modules (ignores parts and containers)."""
     selection = getattr(scene, "selection", None) or ()
     return [item for item in selection if isinstance(item, Group) and is_module(item)]
 
 
 def selected_assembly(scene: Any) -> Group | None:
-    """Assembly selecionado, se houver exatamente um."""
+    """Selected assembly, if there is exactly one."""
     selection = getattr(scene, "selection", None) or ()
     assemblies = [item for item in selection if isinstance(item, Group) and is_assembly(item)]
     return assemblies[0] if len(assemblies) == 1 else None

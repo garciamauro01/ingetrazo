@@ -1,24 +1,24 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez and IngeTrazo contributors.
-"""Fonte única de verdade dos metadados do TrazoMob em ``group.ext``.
+"""Single source of truth for TrazoMob metadata in ``group.ext``.
 
-Historicamente o plugin grava os mesmos dados em até três chaves —
-``ext["trazomob"]``, ``ext["trazomob_module"]`` e ``ext["trazomob_esquadria"]``
-— com nomes de campo diferentes (``largura`` num, ``largura_mm`` noutro).
-Um leitor que escolhia uma chave e ignorava as outras enxergava um valor
-diferente do mesmo módulo, e um escritor que atualizava só uma delas deixava
-as demais defasadas.
+Historically, the plugin stored the same data in up to three keys —
+``ext["trazomob"]``, ``ext["trazomob_module"]``, and ``ext["trazomob_esquadria"]``
+— with different field names (``largura`` in one, ``largura_mm`` in another).
+A reader that picked one key and ignored the others saw a different value
+for the same module, and a writer that updated only one left the others out
+of sync.
 
-Este módulo centraliza as três decisões:
+This module centralizes the three decisions:
 
-* **qual é o tipo** de um grupo (``kind_of``);
-* **como ler** os parâmetros, seja qual for a chave que os gravou
+* **what kind** a group is (``kind_of``);
+* **how to read** parameters, regardless of which key wrote them
   (``params_of``, ``module_params``, ``esquadria_params``);
-* **como gravar** de modo que as chaves fiquem consistentes
+* **how to write** so that keys stay consistent
   (``set_module_data``, ``set_esquadria_data``, ``update_module_data``).
 
-Regra: código novo lê por estas funções e escreve por ``set_*``/``update_*``.
-Ler ``group.ext["trazomob_module"]`` direto é o que produzia a divergência.
+Rule: new code reads through these functions and writes via ``set_*``/``update_*``.
+Reading ``group.ext["trazomob_module"]`` directly is what caused the divergence.
 """
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ KIND_AMBIENTE = "ambiente"
 KIND_PAVIMENTO = "pavimento"
 KIND_ASSEMBLY = "assembly"
 
-#: Chaves legadas reconhecidas por tipo, na ordem em que ``kind_of`` as testa.
+#: Legacy keys recognized per kind, in the order ``kind_of`` checks them.
 _KIND_KEYS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (KIND_ESQUADRIA, ("trazomob_esquadria",)),
     (KIND_MODULE, ("trazomob_module",)),
@@ -50,9 +50,9 @@ _KIND_KEYS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (KIND_PAVIMENTO, ("trazomob_pavimento",)),
 )
 
-#: Campos canônicos de módulo e os nomes que os representam em cada espelho (bidirecional EN <-> PT).
+#: Canonical module fields and the names representing them in each mirror (bidirectional EN <-> PT).
 _MODULE_ALIASES: dict[str, tuple[str, ...]] = {
-    # Dimensões
+    # Dimensions
     "largura": ("largura", "largura_mm", "width", "width_mm"),
     "altura": ("altura", "altura_mm", "height", "height_mm"),
     "profundidade": ("profundidade", "profundidade_mm", "esp_parede_mm", "depth", "depth_mm"),
@@ -62,7 +62,7 @@ _MODULE_ALIASES: dict[str, tuple[str, ...]] = {
     "depth": ("depth", "depth_mm", "profundidade", "profundidade_mm", "esp_parede_mm"),
     "thickness": ("thickness", "thickness_mm", "espessura", "espessura_mm"),
 
-    # Tipos e estruturas
+    # Types and structures
     "tipo": ("tipo", "type", "module_type"),
     "type": ("type", "module_type", "tipo"),
     "module_type": ("module_type", "type", "tipo"),
@@ -104,7 +104,7 @@ _MODULE_ALIASES: dict[str, tuple[str, ...]] = {
     "fronts_material": ("fronts_material", "material_frentes"),
 }
 
-#: Campos canônicos de esquadria e os nomes que os representam em cada espelho.
+#: Canonical millwork-opening (``esquadria``) fields and the names representing them in each mirror.
 _ESQUADRIA_ALIASES: dict[str, tuple[str, ...]] = {
     "largura_mm": ("largura_mm", "largura"),
     "altura_mm": ("altura_mm", "altura"),
@@ -112,7 +112,7 @@ _ESQUADRIA_ALIASES: dict[str, tuple[str, ...]] = {
     "peitoril_mm": ("peitoril_mm",),
 }
 
-#: Como o espelho ``trazomob_module`` de uma esquadria nomeia cada medida.
+#: How a millwork opening's ``trazomob_module`` mirror names each dimension.
 _ESQUADRIA_TO_MODULE: dict[str, tuple[str, ...]] = {
     "largura": ("largura", "largura_mm"),
     "altura": ("altura", "altura_mm"),
@@ -121,7 +121,7 @@ _ESQUADRIA_TO_MODULE: dict[str, tuple[str, ...]] = {
 
 
 def _ensure_ext(group: Any) -> dict[str, Any] | None:
-    """Garante um ``group.ext`` do tipo dicionário; devolve ``None`` sem grupo."""
+    """Ensures a dict ``group.ext``; returns ``None`` if there is no group."""
     if group is None:
         return None
     ext = getattr(group, "ext", None)
@@ -135,10 +135,10 @@ def _ensure_ext(group: Any) -> dict[str, Any] | None:
 
 
 def kind_of(group: Any) -> str | None:
-    """Tipo de um grupo do TrazoMob, ou ``None`` quando ele não é do plugin.
+    """Kind of a TrazoMob group, or ``None`` when it does not belong to the plugin.
 
-    A chave oficial ``ext["trazomob"]["kind"]`` manda; as chaves legadas são
-    reconhecidas como fallback para documentos gravados antes da unificação.
+    The official key ``ext["trazomob"]["kind"]`` takes precedence; legacy keys
+    are recognized as fallback for documents saved before unification.
     """
     ext = getattr(group, "ext", None)
     if not isinstance(ext, dict):
@@ -157,12 +157,12 @@ def kind_of(group: Any) -> str | None:
 
 
 def is_kind(group: Any, kind: str) -> bool:
-    """Atalho para ``kind_of(group) == kind``."""
+    """Shortcut for ``kind_of(group) == kind``."""
     return kind_of(group) == kind
 
 
 def _merged(group: Any) -> dict[str, Any]:
-    """Une as três chaves sem perder campos: a oficial sobrescreve as legadas."""
+    """Merges the three keys without losing fields: the official key overrides legacy ones."""
     ext = getattr(group, "ext", None)
     out: dict[str, Any] = {}
     if not isinstance(ext, dict):
@@ -171,7 +171,7 @@ def _merged(group: Any) -> dict[str, Any]:
         value = ext.get(key)
         if isinstance(value, dict):
             out.update(value)
-    # A chave oficial vem por último de propósito: em caso de conflito, vence.
+    # The official key comes last intentionally: on conflict, it wins.
     official = ext.get("trazomob")
     if isinstance(official, dict):
         out.update(official)
@@ -180,7 +180,7 @@ def _merged(group: Any) -> dict[str, Any]:
 
 def _with_aliases(data: dict[str, Any],
                   aliases: dict[str, tuple[str, ...]]) -> dict[str, Any]:
-    """Completa os campos canônicos a partir dos nomes alternativos."""
+    """Populates canonical fields from their alternative names."""
     out = dict(data)
     for canonical, sources in aliases.items():
         if out.get(canonical) is not None:
@@ -193,11 +193,11 @@ def _with_aliases(data: dict[str, Any],
 
 
 def params_of(group: Any) -> dict[str, Any]:
-    """Todos os parâmetros do grupo, com os nomes canônicos preenchidos.
+    """All group parameters, with canonical names populated.
 
-    Serve tanto para módulos quanto para esquadrias: os apelidos das duas
-    famílias são aplicados, então ``largura`` e ``largura_mm`` sempre existem
-    quando o valor existe em qualquer espelho.
+    Works for both modules and millwork openings: aliases for both families
+    are applied, so ``largura`` and ``largura_mm`` always exist whenever the
+    value exists in any mirror.
     """
     data = _merged(group)
     data = _with_aliases(data, _MODULE_ALIASES)
@@ -205,31 +205,31 @@ def params_of(group: Any) -> dict[str, Any]:
 
 
 def module_params(group: Any) -> dict[str, Any]:
-    """Parâmetros de um módulo (cópia; para alterar use ``live_module_data``)."""
+    """Module parameters (copy; to mutate in place use ``live_module_data``)."""
     return _with_aliases(_merged(group), _MODULE_ALIASES)
 
 
 def esquadria_params(group: Any) -> dict[str, Any]:
-    """Parâmetros de uma esquadria (cópia)."""
+    """Millwork-opening (``esquadria``) parameters (copy)."""
     return _with_aliases(_merged(group), _ESQUADRIA_ALIASES)
 
 
 def light_params(group: Any) -> dict[str, Any]:
-    """Dados de uma luminária (cópia)."""
+    """Luminaire data (copy)."""
     return dict(get_trazomob(group))
 
 
 def wall_params(group: Any) -> dict[str, Any]:
-    """Dados de uma parede (cópia)."""
+    """Wall data (copy)."""
     return dict(get_trazomob(group))
 
 
 def live_module_data(group: Any) -> dict[str, Any]:
-    """Dicionário **vivo** dos metadados de módulo, mutável no lugar.
+    """**Live** module metadata dictionary, mutable in place.
 
-    Use quando o chamador vai alterar valores (rotação, offset, medidas):
-    as duas chaves apontam para o mesmo dicionário, então a alteração não
-    fica presa a um espelho.
+    Use when the caller will modify values (rotation, offset, dimensions):
+    both keys point to the same dictionary, so changes do not remain trapped
+    in a single mirror.
     """
     ext = _ensure_ext(group)
     if ext is None:
@@ -245,7 +245,7 @@ def live_module_data(group: Any) -> dict[str, Any]:
 
 def set_module_data(group: Any, data: dict[str, Any] | None = None,
                     **kwargs: Any) -> dict[str, Any]:
-    """Grava metadados de módulo nas duas chaves canônicas, com o mesmo dict."""
+    """Writes module metadata to both canonical keys, sharing the same dict."""
     ext = _ensure_ext(group)
     payload = dict(data or {})
     payload.update(kwargs)
@@ -258,12 +258,12 @@ def set_module_data(group: Any, data: dict[str, Any] | None = None,
 
 def update_module_data(group: Any,
                        data: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Atualiza no lugar o dicionário de módulo já publicado (não cria cópia).
+    """Updates an already-published module dictionary in place (does not copy).
 
-    É o caminho para valores calculados depois de ``set_module_data`` — por
-    exemplo o span não-rotacionado da caixaria. Com ``set_trazomob`` (que
-    copiava) esses campos ficavam só na variável local e nunca chegavam ao
-    documento.
+    This is the path for values computed after ``set_module_data`` — for
+    example, the unrotated carcass span. With ``set_trazomob`` (which copied),
+    those fields stayed in the local variable only and never reached the
+    document.
     """
     ext = _ensure_ext(group)
     if ext is None:
@@ -278,11 +278,11 @@ def update_module_data(group: Any,
 
 def set_esquadria_data(group: Any, data: dict[str, Any] | None = None,
                        **kwargs: Any) -> dict[str, Any]:
-    """Grava metadados de esquadria nas três chaves, com os apelidos certos.
+    """Writes millwork-opening metadata across all three keys with matching aliases.
 
-    ``trazomob`` fica com o ``kind`` e os nomes ``*_mm``; ``trazomob_esquadria``
-    mantém o formato histórico; ``trazomob_module`` recebe os apelidos
-    ``largura``/``altura``/``profundidade`` que os leitores antigos esperam.
+    ``trazomob`` holds ``kind`` and the ``*_mm`` names; ``trazomob_esquadria``
+    keeps the historical format; ``trazomob_module`` receives the
+    ``largura``/``altura``/``profundidade`` aliases expected by legacy readers.
     """
     ext = _ensure_ext(group)
     payload = dict(data or {})
@@ -302,10 +302,11 @@ def set_esquadria_data(group: Any, data: dict[str, Any] | None = None,
 
 def update_esquadria_data(group: Any,
                           data: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Atualiza metadados de esquadria mantendo as três chaves coerentes.
+    """Updates millwork-opening metadata while keeping all three keys consistent.
 
-    Parte do que já está gravado e reescreve tudo por ``set_esquadria_data``:
-    um campo alterado num só espelho nunca fica divergente dos outros.
+    Starts from what is already stored and rewrites everything via
+    ``set_esquadria_data``: a field modified in one mirror never diverges from
+    the others.
     """
     dados = esquadria_params(group)
     dados.update(dict(data or {}))
@@ -313,18 +314,18 @@ def update_esquadria_data(group: Any,
 
 
 def ambiente_params(group: Any) -> dict[str, Any]:
-    """Parâmetros de um ambiente (cópia)."""
+    """Room (``ambiente``) parameters (copy)."""
     return dict(get_trazomob(group))
 
 
 def pavimento_params(group: Any) -> dict[str, Any]:
-    """Dados de um pavimento (cópia)."""
+    """Floor-level (``pavimento``) data (copy)."""
     return dict(get_trazomob(group))
 
 
 def set_ambiente_data(group: Any, data: dict[str, Any] | None = None,
                       **kwargs: Any) -> dict[str, Any]:
-    """Grava metadados de ambiente na chave oficial."""
+    """Writes room (``ambiente``) metadata to the official key."""
     ext = _ensure_ext(group)
     payload = dict(data or {})
     payload.update(kwargs)
@@ -337,7 +338,7 @@ def set_ambiente_data(group: Any, data: dict[str, Any] | None = None,
 
 def update_ambiente_data(group: Any,
                          data: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Atualiza metadados de ambiente no lugar."""
+    """Updates room (``ambiente``) metadata in place."""
     ext = _ensure_ext(group)
     if ext is None:
         return {}
@@ -351,7 +352,7 @@ def update_ambiente_data(group: Any,
 
 def set_pavimento_data(group: Any, data: dict[str, Any] | None = None,
                        **kwargs: Any) -> dict[str, Any]:
-    """Grava metadados de pavimento na chave oficial."""
+    """Writes floor-level (``pavimento``) metadata to the official key."""
     ext = _ensure_ext(group)
     payload = dict(data or {})
     payload.update(kwargs)
@@ -364,7 +365,7 @@ def set_pavimento_data(group: Any, data: dict[str, Any] | None = None,
 
 def update_pavimento_data(group: Any,
                           data: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Atualiza metadados de pavimento no lugar."""
+    """Updates floor-level (``pavimento``) metadata in place."""
     ext = _ensure_ext(group)
     if ext is None:
         return {}
@@ -378,7 +379,7 @@ def update_pavimento_data(group: Any,
 
 def set_floor_data(group: Any, data: dict[str, Any] | None = None,
                    **kwargs: Any) -> dict[str, Any]:
-    """Grava metadados de piso/laje na chave oficial."""
+    """Writes floor/slab metadata to the official key."""
     ext = _ensure_ext(group)
     payload = dict(data or {})
     payload.update(kwargs)
@@ -391,7 +392,7 @@ def set_floor_data(group: Any, data: dict[str, Any] | None = None,
 
 def set_ceiling_data(group: Any, data: dict[str, Any] | None = None,
                      **kwargs: Any) -> dict[str, Any]:
-    """Grava metadados de teto/forro na chave oficial."""
+    """Writes ceiling metadata to the official key."""
     ext = _ensure_ext(group)
     payload = dict(data or {})
     payload.update(kwargs)
@@ -404,7 +405,7 @@ def set_ceiling_data(group: Any, data: dict[str, Any] | None = None,
 
 def set_wall_data(group: Any, data: dict[str, Any] | None = None,
                   **kwargs: Any) -> dict[str, Any]:
-    """Grava metadados de parede na chave oficial."""
+    """Writes wall metadata to the official key."""
     ext = _ensure_ext(group)
     payload = dict(data or {})
     payload.update(kwargs)
@@ -415,10 +416,10 @@ def set_wall_data(group: Any, data: dict[str, Any] | None = None,
     return payload
 
 
-# --- Reexportações e helpers de tipagem moveleira canônica ---
+# --- Re-exports and canonical cabinetry typing helpers ---
 
 def is_module(group: Any) -> bool:
-    """Diz se o grupo é um módulo paramétrico (inclusive os legados)."""
+    """Returns whether the group is a parametric module (including legacy ones)."""
     if kind_of(group) == KIND_MODULE:
         return True
     ext = getattr(group, "ext", None)
@@ -428,12 +429,12 @@ def is_module(group: Any) -> bool:
 
 
 def is_assembly(group: Any) -> bool:
-    """Diz se o grupo é um contêiner de módulos criado por este plugin."""
+    """Returns whether the group is a module container created by this plugin."""
     return kind_of(group) == KIND_ASSEMBLY
 
 
 def iter_module_groups(roots: Any) -> Any:
-    """Varre a árvore e devolve os módulos paramétricos em qualquer nível."""
+    """Walks the tree and yields parametric modules at any depth."""
     from ..domain.assembly import iter_module_groups as _iter_mg
     return _iter_mg(roots)
 

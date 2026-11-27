@@ -1,29 +1,28 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""Espelhamento paramétrico de módulos do TrazoMob.
+"""Parametric mirroring for TrazoMob modules.
 
-O espelho nativo do IngeTrazo reflete a MALHA: portas, puxadores, dobradiças e
-furações ficam com a geometria invertida e o módulo deixa de poder ser
-reconstruído a partir dos parâmetros (a próxima edição de largura desfaz o
-espelho ou deixa as ferragens do lado errado).
+IngeTrazo's native mirror reflects the MESH: doors, handles, hinges, and
+drilling holes end up with inverted geometry and the module can no longer be
+rebuilt from its parameters (the next width edit undoes the mirror or leaves
+the hardware on the wrong side).
 
-Aqui o espelho é um PARÂMETRO (``mirror_x``). A geometria é refletida no eixo
-local X logo depois de construída e antes de aplicar a rotação, e tudo o que
-descreve a peça é refletido junto:
+Here, mirroring is a PARAMETER (``mirror_x``). The geometry is reflected across
+the local X axis right after construction and before rotation is applied, and
+everything describing the part is reflected along with it:
 
-* as faces têm o sentido do loop invertido (senão as normais apontam para
-  dentro e o sólido some no render);
-* os furos de usinagem (caneco Ø35, minifix, cavilha) acompanham o espelho —
-  para peças frontais o eixo X das operações é invertido;
-* a fita de borda troca de lado (L1 ↔ L2) nas peças em que essas faces são as
-  laterais;
-* ``door_side`` (esquerda/direita) é trocado e os nomes "Esquerda"/"Direita"
-  acompanham, para o cutlist e a animação de abertura continuarem coerentes;
-* o estado de animação em cache é descartado, para ser recalculado a partir da
-  geometria já espelhada.
+* faces have their loop winding reversed (otherwise normals point inward and
+  the solid disappears in rendering);
+* machining holes (Ø35 hinge cup, cam lock, dowel) follow the mirror — for
+  front parts, the X axis of operations is inverted;
+* edge banding swaps sides (L1 ↔ L2) on parts where those faces are the sides;
+* ``door_side`` (left/right) is swapped and "Esquerda"/"Direita" names follow,
+  so the cutlist and opening animation remain consistent;
+* cached animation state is discarded, to be recomputed from the already
+  mirrored geometry.
 
-Como o parâmetro fica gravado no ``ext`` do módulo, toda reconstrução
-(alterar medida, trocar tipo, undo/redo) volta espelhada.
+Because the parameter is stored in the module's ``ext``, every rebuild
+(dimension change, type change, undo/redo) returns mirrored.
 """
 from __future__ import annotations
 
@@ -32,10 +31,10 @@ from typing import Any
 
 from PySide6.QtGui import QVector3D
 
-#: Chave do parâmetro que liga o espelho no eixo local X.
+#: Parameter key that enables mirroring on the local X axis.
 MIRROR_PARAM = "mirror_x"
 
-#: Estado de animação derivado da geometria: não pode sobreviver ao espelho.
+#: Animation state derived from geometry: must not survive mirroring.
 _ANIMATION_KEYS = (
     "orig_vertices",
     "orig_uvws",
@@ -47,7 +46,7 @@ _ANIMATION_KEYS = (
     "is_open",
 )
 
-#: Trocas de lado aplicadas a nomes de peça.
+#: Side swaps applied to part names.
 _SIDE_MAP = {
     "Esquerda": "Direita",
     "Direita": "Esquerda",
@@ -77,9 +76,9 @@ _SIDE_MAP = {
     "RIGHT": "LEFT",
 }
 
-#: Um único passe com as formas mais longas primeiro: "Esquerda" é trocada
-#: antes de "Esq", e o texto já substituído não é reprocessado. As abreviações
-#: exigem fim de palavra, para "Esq" não casar dentro de "Esquadria".
+#: Single pass with longest forms first: "Esquerda" is replaced before
+#: "Esq", and already-substituted text is not reprocessed. Abbreviations
+#: require a word boundary so "Esq" does not match inside "Esquadria".
 _SIDE_PATTERNS = [
     re.escape(chave) + ("" if chave.endswith(".") else r"(?!\w)")
     for chave in sorted(_SIDE_MAP, key=len, reverse=True)
@@ -88,7 +87,7 @@ _SIDE_RE = re.compile("|".join(_SIDE_PATTERNS))
 
 
 def is_mirrored(group: Any) -> bool:
-    """Diz se o módulo está espelhado, lendo o parâmetro gravado no ``ext``."""
+    """Returns whether the module is mirrored, reading the parameter stored in ``ext``."""
     ext = getattr(group, "ext", None)
     if not isinstance(ext, dict):
         return False
@@ -102,7 +101,7 @@ def is_mirrored(group: Any) -> bool:
 
 
 def _mesh_bounds_mm(mesh: Any) -> tuple[float, float, float] | None:
-    """Dimensões (x, y, z) da malha de uma peça, em milímetros."""
+    """Dimensions (x, y, z) of a part's mesh, in millimeters."""
     vertices = getattr(mesh, "vertices", None)
     if not vertices:
         return None
@@ -117,14 +116,14 @@ def _mesh_bounds_mm(mesh: Any) -> tuple[float, float, float] | None:
 
 
 def _swap_side_words(text: Any) -> Any:
-    """Troca "Esquerda"↔"Direita" (e equivalentes) num nome de peça."""
+    """Swaps "Esquerda"↔"Direita" (and equivalents) in a part name."""
     if not isinstance(text, str) or not text:
         return text
     return _SIDE_RE.sub(lambda m: _SIDE_MAP[m.group(0)], text)
 
 
 def _flip_operations(meta: dict[str, Any], length_mm: float) -> None:
-    """Inverte o eixo X das usinagens de uma peça frontal."""
+    """Inverts the X axis of machining operations on a front part."""
     operacoes = meta.get("operacoes")
     if not isinstance(operacoes, list):
         return
@@ -144,7 +143,7 @@ def _flip_operations(meta: dict[str, Any], length_mm: float) -> None:
 
 
 def _mirror_piece_metadata(piece: Any, dims_mm: tuple[float, float, float] | None) -> None:
-    """Reflete os metadados de uma peça: fita, usinagens, lado e nome."""
+    """Reflects a part's metadata: edge banding, machining, side, and name."""
     ext = getattr(piece, "ext", None)
     if not isinstance(ext, dict):
         ext = {}
@@ -157,14 +156,14 @@ def _mirror_piece_metadata(piece: Any, dims_mm: tuple[float, float, float] | Non
     if dims_mm is not None:
         sx, sy, sz = dims_mm
         min_dim = min(sx, sy, sz)
-        # Peça frontal (espessura em Y) ou horizontal (espessura em Z): as
-        # faces L1/L2 são as laterais em X, então trocam de lado no espelho.
+        # Front part (thickness along Y) or horizontal part (thickness along Z):
+        # L1/L2 faces are the X sides, so they swap sides when mirrored.
         if abs(sy - min_dim) < 1e-5 or abs(sz - min_dim) < 1e-5:
             meta["fita_l1"], meta["fita_l2"] = (
                 bool(meta.get("fita_l2", False)),
                 bool(meta.get("fita_l1", False)),
             )
-        # Só a peça frontal tem as usinagens medidas ao longo de X.
+        # Only the front part has machining operations measured along X.
         if abs(sy - min_dim) < 1e-5 and meta.get("comprimento"):
             _flip_operations(meta, float(meta["comprimento"]))
 
@@ -184,10 +183,10 @@ def _mirror_piece_metadata(piece: Any, dims_mm: tuple[float, float, float] | Non
 
 
 def mirror_module_geometry(master: Any, plane_x: float) -> None:
-    """Reflete no plano ``x = plane_x`` toda a geometria e os metadados do módulo.
+    """Reflects all module geometry and metadata across the ``x = plane_x`` plane.
 
-    Deve ser chamada ANTES da rotação final: o plano é o eixo local X do módulo
-    recém-construído, não o eixo do mundo.
+    Must be called BEFORE final rotation: the plane is the local X axis of the
+    newly built module, not the world axis.
     """
     targets = list(getattr(master, "children", None) or [])
     if not targets:
@@ -205,8 +204,8 @@ def mirror_module_geometry(master: Any, plane_x: float) -> None:
             p = vertex.position
             vertex.position = QVector3D(2.0 * plane_x - p.x(), p.y(), p.z())
 
-        # A reflexão inverte a orientação de todos os loops: reverter o sentido
-        # mantém as normais apontando para fora (e os furos, para dentro).
+        # Reflection flips the orientation of all loops: reversing the winding
+        # keeps normals pointing outward (and holes pointing inward).
         for face in getattr(mesh, "faces", None) or []:
             loop = getattr(face, "loop", None)
             if loop:

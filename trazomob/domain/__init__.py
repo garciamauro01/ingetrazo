@@ -1,3 +1,3 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""Dominio e dados do plugin: catalogo, esquema, geometria e preferencias."""
+"""Plugin domain and data: catalog, schema, geometry, and preferences."""

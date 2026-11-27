@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""Diálogo e fluxo reutilizável de exportação de proposta comercial (HTML/PDF).
+"""Reusable commercial proposal export dialog and flow (HTML/PDF).
 
-Antes deste módulo, o fluxo de proposta estava duplicado e inconsistente: a aba
-de plano de corte definia um diálogo de cliente aninhado no método e o painel de
-orçamento exportava sem coletar nenhum dado (usava ``client_name="Cliente"``).
-Centralizar aqui garante que os dois caminhos coletem os mesmos dados e gerem a
-proposta do mesmo jeito.
+Before this module, the proposal flow was duplicated and inconsistent: the cut
+plan tab defined a nested client dialog inside the method and the budget panel
+exported without collecting any data (using ``client_name="Cliente"``).
+Centralizing it here ensures both paths collect the same data and generate the
+proposal the same way.
 """
 
 from __future__ import annotations
@@ -25,40 +25,41 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from ..domain.i18n import tr
 from ..production.report import generate_proposal_html, generate_proposal_pdf
 
 DEFAULT_PROJECT_NAME = "Projeto de Interiores TrazoMob"
 
 
 class ProposalExportDialog(QDialog):
-    """Coleta os dados do cliente usados na proposta comercial."""
+    """Collects client details used in the commercial proposal."""
 
     def __init__(self, parent=None, client_name: str = ""):
         super().__init__(parent)
-        self.setWindowTitle("Dados do Cliente para Proposta")
+        self.setWindowTitle(tr("Dados do Cliente para Proposta"))
         self.setMinimumWidth(400)
 
         layout = QVBoxLayout(self)
 
         form = QFormLayout()
-        self.ed_nome = QLineEdit(client_name or "Cliente")
+        self.ed_nome = QLineEdit(client_name or tr("Cliente"))
         self.ed_cpf = QLineEdit()
         self.ed_end = QLineEdit()
         self.ed_cid = QLineEdit()
         self.ed_tel = QLineEdit()
         self.ed_email = QLineEdit()
-        form.addRow("Nome *:", self.ed_nome)
-        form.addRow("CPF/CNPJ:", self.ed_cpf)
-        form.addRow("Endereço:", self.ed_end)
-        form.addRow("Cidade/UF:", self.ed_cid)
-        form.addRow("Telefone:", self.ed_tel)
-        form.addRow("Email:", self.ed_email)
+        form.addRow(tr("Nome *:"), self.ed_nome)
+        form.addRow(tr("CPF/CNPJ:"), self.ed_cpf)
+        form.addRow(tr("Endereço:"), self.ed_end)
+        form.addRow(tr("Cidade/UF:"), self.ed_cid)
+        form.addRow(tr("Telefone:"), self.ed_tel)
+        form.addRow(tr("Email:"), self.ed_email)
         layout.addLayout(form)
 
-        layout.addWidget(QLabel("<b>Observações / Condições Especiais:</b>"))
+        layout.addWidget(QLabel(f"<b>{tr('Observações / Condições Especiais:')}</b>"))
         self.ed_obs = QTextEdit()
         self.ed_obs.setPlaceholderText(
-            "Ex: Prazo de entrega, condições de pagamento, itens incluídos/excluídos..."
+            tr("Ex: Prazo de entrega, condições de pagamento, itens incluídos/excluídos...")
         )
         self.ed_obs.setMaximumHeight(100)
         layout.addWidget(self.ed_obs)
@@ -94,7 +95,7 @@ def export_proposal(
     """
     if not parts:
         QMessageBox.information(
-            parent, "Proposta", "Nenhuma peça disponível para gerar a proposta."
+            parent, tr("Proposta"), tr("Nenhuma peça disponível para gerar a proposta.")
         )
         return None
 
@@ -104,13 +105,13 @@ def export_proposal(
 
     client_data = dlg.get_data()
     if not client_data["nome"]:
-        QMessageBox.warning(parent, "Atenção", "Nome do cliente é obrigatório.")
+        QMessageBox.warning(parent, tr("Atenção"), tr("Nome do cliente é obrigatório."))
         return None
 
     nome_arquivo = client_data["nome"].replace(" ", "_") or "Cliente"
     filepath, _ = QFileDialog.getSaveFileName(
         parent,
-        "Salvar Proposta Comercial",
+        tr("Salvar Proposta Comercial"),
         f"Proposta_{nome_arquivo}_TrazoMob.html",
         "HTML (*.html);;PDF (*.pdf)",
     )
@@ -131,7 +132,7 @@ def export_proposal(
             QMessageBox.warning(
                 parent,
                 "PDF",
-                "Não foi possível gerar PDF (weasyprint não instalado).\nSalvando como HTML...",
+                tr("Não foi possível gerar PDF (weasyprint não instalado).\nSalvando como HTML..."),
             )
             filepath = filepath[:-4] + ".html"
             generate_proposal_html(
@@ -153,6 +154,6 @@ def export_proposal(
         )
 
     QMessageBox.information(
-        parent, "Proposta Gerada", f"✅ Proposta comercial salva com sucesso em:\n{filepath}"
+        parent, tr("Proposta Gerada"), tr("✅ Proposta comercial salva com sucesso em:\n{filepath}").format(filepath=filepath)
     )
     return filepath

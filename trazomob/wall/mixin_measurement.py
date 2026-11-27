@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""Diálogo 2D de Planta Baixa para desenho de paredes e geração 3D automática."""
+"""2D Floor Plan dialog for wall drawing and automatic 3D generation."""
 from __future__ import annotations
 
 import math
@@ -22,11 +22,12 @@ from PySide6.QtWidgets import (
 
 from core.units import bare_number_scale, model_precision, model_unit
 
+from ..domain.i18n import tr
 from ..wall.plan_2d import dist_2d
 
 
 class MeasurementMixin:
-    """Logica de medicao e aplicacao de cotas/dimensoes do canvas."""
+    """Canvas measurement and dimension/length application logic."""
 
     def _find_segment_for_dimension(self, p1: tuple[float, float], p2: tuple[float, float]) -> int | None:
         """Localiza qual parede é representada ou corre paralela a esses dois pontos cotados.
@@ -110,12 +111,12 @@ class MeasurementMixin:
             desc_end_to_start = describe_push_dir(-dx, -dy)
 
             dlg = QDialog(self)
-            dlg.setWindowTitle("Definir Medida da Cota")
+            dlg.setWindowTitle(tr("Definir Medida da Cota"))
             dlg.setMinimumWidth(380)
             dlg_layout = QVBoxLayout(dlg)
             dlg_layout.setSpacing(12)
 
-            lbl_header = QLabel(f"<b>Novo comprimento da cota ({u_name}):</b>", dlg)
+            lbl_header = QLabel(f"<b>{tr('Novo comprimento da cota ({u_name}):').format(u_name=u_name)}</b>", dlg)
             dlg_layout.addWidget(lbl_header)
 
             sp = QDoubleSpinBox(dlg)
@@ -126,11 +127,11 @@ class MeasurementMixin:
             dlg_layout.addWidget(sp)
 
             is_partial = self.graph.dimension_has_partial_anchor(dim) and not chain.is_constructive
-            chk_drive = QCheckBox("Ajustar geometria (cota construtiva)", dlg)
-            chk_drive.setToolTip(
+            chk_drive = QCheckBox(tr("Ajustar geometria (cota construtiva)"), dlg)
+            chk_drive.setToolTip(tr(
                 "Marcado: altera as paredes para atingir a medida.\n"
                 "Desmarcado: mantém a cota apenas como referência (anotação)."
-            )
+            ))
             chk_drive.setChecked(bool(dim.driving) and not is_partial)
             if is_partial:
                 chk_drive.setEnabled(False)
@@ -139,26 +140,32 @@ class MeasurementMixin:
 
             if is_partial:
                 lbl_note = QLabel(
-                    "Esta cota mede um trecho interno da parede. Por segurança ela fica "
-                    "como <b>referência</b> e não altera a geometria.",
+                    tr(
+                        "Esta cota mede um trecho interno da parede. Por segurança ela fica "
+                        "como <b>referência</b> e não altera a geometria."
+                    ),
                     dlg,
                 )
                 lbl_note.setWordWrap(True)
                 dlg_layout.addWidget(lbl_note)
 
-            grp_dir = QGroupBox("Sentido da Alteração (Qual ponta fica fixa?)", dlg)
+            grp_dir = QGroupBox(tr("Sentido da Alteração (Qual ponta fica fixa?)"), dlg)
             vbox_dir = QVBoxLayout(grp_dir)
             vbox_dir.setSpacing(8)
 
             rb_fix_start = QRadioButton(
-                f"Fixar Início ({na.x:.2f}, {na.y:.2f})\n➜ Estender/Empurrar para {desc_start_to_end}",
+                tr("Fixar Início ({x:.2f}, {y:.2f})\n➜ Estender/Empurrar para {desc}").format(
+                    x=na.x, y=na.y, desc=desc_start_to_end
+                ),
                 grp_dir
             )
             rb_fix_end = QRadioButton(
-                f"Fixar Fim ({nb.x:.2f}, {nb.y:.2f})\n➜ Estender/Empurrar para {desc_end_to_start}",
+                tr("Fixar Fim ({x:.2f}, {y:.2f})\n➜ Estender/Empurrar para {desc}").format(
+                    x=nb.x, y=nb.y, desc=desc_end_to_start
+                ),
                 grp_dir
             )
-            rb_auto = QRadioButton("Automático (Preservar paredes já cotadas)", grp_dir)
+            rb_auto = QRadioButton(tr("Automático (Preservar paredes já cotadas)"), grp_dir)
 
             rb_fix_start.setChecked(True)
             vbox_dir.addWidget(rb_fix_start)
@@ -174,8 +181,8 @@ class MeasurementMixin:
             _sync_drive_widgets(chk_drive.isChecked())
 
             btn_box = QHBoxLayout()
-            btn_cancel = QPushButton("Cancelar", dlg)
-            btn_ok = QPushButton("Aplicar", dlg)
+            btn_cancel = QPushButton(tr("Cancelar"), dlg)
+            btn_ok = QPushButton(tr("Aplicar"), dlg)
             btn_ok.setDefault(True)
             btn_ok.setStyleSheet("background-color: #00E676; color: black; font-weight: bold; padding: 6px 14px;")
             btn_cancel.clicked.connect(dlg.reject)
@@ -235,7 +242,7 @@ class MeasurementMixin:
                 target_sid, target_new_len, anchor_node_id=anchor_nid, ignore_dim_id=dim_id
             )
             if conflict:
-                QMessageBox.warning(self, "Cota não aplicada", conflict)
+                QMessageBox.warning(self, tr("Cota não aplicada"), conflict)
                 # Mantém a cota existente como referência, sem distorcer o modelo.
                 if dim.driving:
                     self._save_history()
@@ -259,8 +266,8 @@ class MeasurementMixin:
             )
             if not ok:
                 QMessageBox.warning(
-                    self, "Cota não aplicada",
-                    "Não foi possível aplicar essa medida sem distorcer o modelo.",
+                    self, tr("Cota não aplicada"),
+                    tr("Não foi possível aplicar essa medida sem distorcer o modelo."),
                 )
                 self.update()
                 return True
@@ -284,9 +291,11 @@ class MeasurementMixin:
                 self.update()
             QMessageBox.information(
                 self,
-                "Cota de referência",
-                "Esta cota está vinculada à geometria e não pode ser alterada "
-                "diretamente sem deformar as paredes. Ela permanece como referência.",
+                tr("Cota de referência"),
+                tr(
+                    "Esta cota está vinculada à geometria e não pode ser alterada "
+                    "diretamente sem deformar as paredes. Ela permanece como referência."
+                ),
             )
             return True
 
@@ -362,12 +371,12 @@ class MeasurementMixin:
 
         # Diálogo completo com escolha do sentido de alteração
         dlg = QDialog(self)
-        dlg.setWindowTitle("Definir Medida da Parede")
+        dlg.setWindowTitle(tr("Definir Medida da Parede"))
         dlg.setMinimumWidth(380)
         dlg_layout = QVBoxLayout(dlg)
         dlg_layout.setSpacing(12)
 
-        lbl_header = QLabel(f"<b>Novo comprimento da parede ({u_name}):</b>", dlg)
+        lbl_header = QLabel(f"<b>{tr('Novo comprimento da parede ({u_name}):').format(u_name=u_name)}</b>", dlg)
         dlg_layout.addWidget(lbl_header)
 
         sp = QDoubleSpinBox(dlg)
@@ -376,15 +385,15 @@ class MeasurementMixin:
         sp.setSingleStep(100.0 if u_name == "mm" else (10.0 if u_name == "cm" else 0.10))
 
         ref_box = QHBoxLayout()
-        ref_box.addWidget(QLabel("Medida de referência:", dlg))
+        ref_box.addWidget(QLabel(tr("Medida de referência:"), dlg))
         cb_ref = QComboBox(dlg)
-        cb_ref.addItem("Eixo central", "centro")
-        cb_ref.addItem("Face esquerda (A ➜ B)", "left")
-        cb_ref.addItem("Face direita (A ➜ B)", "right")
-        cb_ref.setToolTip(
+        cb_ref.addItem(tr("Eixo central"), "centro")
+        cb_ref.addItem(tr("Face esquerda (A ➜ B)"), "left")
+        cb_ref.addItem(tr("Face direita (A ➜ B)"), "right")
+        cb_ref.setToolTip(tr(
             "No eixo central, a medida é a linha entre os nós.\n"
             "Nas faces, a medida considera o corte em 45° dos cantos."
-        )
+        ))
         ref_box.addWidget(cb_ref, 1)
         dlg_layout.addLayout(ref_box)
         dlg_layout.addWidget(sp)
@@ -406,19 +415,23 @@ class MeasurementMixin:
         cb_ref.currentIndexChanged.connect(_sync_spin_to_reference)
 
         # Grupo de escolha da direção / âncora fixa
-        grp_dir = QGroupBox("Sentido da Alteração (Qual ponta fica fixa?)", dlg)
+        grp_dir = QGroupBox(tr("Sentido da Alteração (Qual ponta fica fixa?)"), dlg)
         vbox_dir = QVBoxLayout(grp_dir)
         vbox_dir.setSpacing(8)
 
         rb_fix_a = QRadioButton(
-            f"Fixar Início ({na.x:.2f}, {na.y:.2f})\n➜ Estender/Empurrar para {desc_a_to_b}",
+            tr("Fixar Início ({x:.2f}, {y:.2f})\n➜ Estender/Empurrar para {desc}").format(
+                x=na.x, y=na.y, desc=desc_a_to_b
+            ),
             grp_dir
         )
         rb_fix_b = QRadioButton(
-            f"Fixar Fim ({nb.x:.2f}, {nb.y:.2f})\n➜ Estender/Empurrar para {desc_b_to_a}",
+            tr("Fixar Fim ({x:.2f}, {y:.2f})\n➜ Estender/Empurrar para {desc}").format(
+                x=nb.x, y=nb.y, desc=desc_b_to_a
+            ),
             grp_dir
         )
-        rb_auto = QRadioButton("Automático (Preservar paredes já cotadas)", grp_dir)
+        rb_auto = QRadioButton(tr("Automático (Preservar paredes já cotadas)"), grp_dir)
 
         # Define opção padrão inteligente
         # Se um nó tem cota conectada e o outro não, seleciona a âncora correspondente por padrão
@@ -457,8 +470,8 @@ class MeasurementMixin:
 
         # Botões de Ação
         btn_box = QHBoxLayout()
-        btn_cancel = QPushButton("Cancelar", dlg)
-        btn_ok = QPushButton("Aplicar", dlg)
+        btn_cancel = QPushButton(tr("Cancelar"), dlg)
+        btn_ok = QPushButton(tr("Aplicar"), dlg)
         btn_ok.setDefault(True)
         btn_ok.setStyleSheet("background-color: #00E676; color: black; font-weight: bold; padding: 6px 14px;")
         btn_cancel.clicked.connect(dlg.reject)
@@ -489,7 +502,7 @@ class MeasurementMixin:
 
             conflict = self.graph.check_length_edit(seg_id, target_center, anchor_node_id=anchor_nid)
             if conflict:
-                QMessageBox.warning(self, "Medida não aplicada", conflict)
+                QMessageBox.warning(self, tr("Medida não aplicada"), conflict)
                 return False
 
             self._save_history()
@@ -498,8 +511,8 @@ class MeasurementMixin:
             )
             if not ok:
                 QMessageBox.warning(
-                    self, "Medida não aplicada",
-                    "Não foi possível aplicar essa medida sem distorcer o modelo.",
+                    self, tr("Medida não aplicada"),
+                    tr("Não foi possível aplicar essa medida sem distorcer o modelo."),
                 )
                 return False
             self.wall_selected.emit(seg_id, self.graph.segments[seg_id].length(self.graph))
@@ -507,7 +520,7 @@ class MeasurementMixin:
         return True
 
     def _apply_typed_length(self, length_m: float) -> None:
-        """Aplica o comprimento digitado diretamente pelo teclado e confirma a parede."""
+        """Applies the keyboard-entered length and confirms the wall."""
         if length_m <= 0.001:
             return
 
@@ -515,7 +528,7 @@ class MeasurementMixin:
         if self._selected_seg_id is not None:
             conflict = self.graph.check_length_edit(self._selected_seg_id, length_m)
             if conflict:
-                QMessageBox.warning(self, "Medida não aplicada", conflict)
+                QMessageBox.warning(self, tr("Medida não aplicada"), conflict)
                 return
             self._save_history()
             ok = self.graph.set_segment_length(
@@ -523,7 +536,7 @@ class MeasurementMixin:
             )
             if not ok:
                 QMessageBox.warning(
-                    self, "Medida não aplicada",
+                    self, tr("Medida não aplicada"),
                     "Não foi possível aplicar essa medida sem distorcer o modelo.",
                 )
                 return

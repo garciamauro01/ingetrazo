@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Marco Sumari Tellez, IngeTrazo contributors and Pair Programmer.
-"""Utilitários de geração de malhas 3D para chapas de MDF, puxadores e usinagens."""
+"""3D mesh generation utilities for MDF boards, handles, and machining operations."""
 from __future__ import annotations
 
 import math
@@ -18,25 +18,25 @@ def _render_machining_holes_in_mesh(
     operacoes: list[dict[str, Any]],
     piece_name: str = "",
 ) -> None:
-    """Renderiza furações técnicas diretamente no sólido 3D (canecos 35mm, minifix e cavilhas).
+    """Render technical drill holes directly onto the 3D solid (35mm hinge cups, cam locks, and dowels).
 
-    Perfura a face correspondente da chapa usando ``mesh.add_hole`` e cria as paredes
-    cilíndricas internas e o fundo do furo com normais voltadas para fora do volume,
-    preservando 100% a topologia estanque (manifold / watertight) da peça.
+    Drills through the corresponding board face using ``mesh.add_hole`` and builds the
+    inner cylindrical walls and hole bottom with normals facing outward from the volume,
+    preserving 100% watertight (manifold) topology on the part.
     """
     if not operacoes:
         return
 
     ox, oy, oz = origin
     sx, sy, sz = size
-    cor_furo = (0.20, 0.20, 0.22)       # Fundo da cavidade de usinagem
-    cor_borda = (0.45, 0.45, 0.48)      # Parede cilíndrica interna de usinagem
+    cor_furo = (0.20, 0.20, 0.22)       # Bottom of the machining cavity
+    cor_borda = (0.45, 0.45, 0.48)      # Inner cylindrical machining wall
 
-    # Identifica orientação da chapa para projetar os furos na face correspondente
+    # Identify board orientation to project holes onto the corresponding face
     dims = [abs(sx), abs(sy), abs(sz)]
     min_dim = min(dims)
 
-    # Segmentação circular leve (8 lados) para performance máxima em tempo real
+    # Lightweight circular segmentation (8 sides) for maximum real-time performance
     n_seg = 8
     seen_centers: list[tuple[float, float, float, float]] = []
 
@@ -62,7 +62,7 @@ def _render_machining_holes_in_mesh(
 
         diam_m = float(op.get("diametro", 35.0)) / 1000.0
         raio_m = diam_m / 2.0
-        # Desenha no 3D furos de usinagem funcional e marcações (caneco 35mm, tambor 15mm, cavilha 8mm, pino minifix 5mm e marcação parafuso 2.5mm)
+        # Draw functional machining holes and pilot marks in 3D (35mm hinge cup, 15mm cam housing, 8mm dowel, 5mm cam pin, and 2.5mm screw pilot mark)
         if raio_m < 0.0010:
             continue
 
@@ -71,11 +71,11 @@ def _render_machining_holes_in_mesh(
         prof_m = min(float(op.get("profundidade", 12.0)) / 1000.0, 0.050)
 
         if abs(sy - min_dim) < 1e-5:
-            # Chapa vertical frontal (Porta / Frente de gaveta / Travessa em pé - espessura em Y)
+            # Front vertical board (Door / Drawer front / Upright stretcher - thickness along Y)
             op_face = str(op.get("face", "")).lower()
 
             if op_face in ("esquerda", "left"):
-                # Furo no topo esquerdo da travessa em pé: face com normal -X (ox)
+                # Hole on left end edge of upright stretcher: face with -X normal (ox)
                 cy = oy + y_op_m if sy >= 0 else oy + sy + y_op_m
                 cz = oz + x_op_m if sz >= 0 else oz + sz + x_op_m
                 cx_face = ox
@@ -115,7 +115,7 @@ def _render_machining_holes_in_mesh(
                     w_face.attrs["color"] = cor_borda
 
             elif op_face in ("direita", "right"):
-                # Furo no topo direito da travessa em pé: face com normal +X (ox + sx)
+                # Hole on right end edge of upright stretcher: face with +X normal (ox + sx)
                 cy = oy + y_op_m if sy >= 0 else oy + sy + y_op_m
                 cz = oz + x_op_m if sz >= 0 else oz + sz + x_op_m
                 cx_face = ox + sx
@@ -155,7 +155,7 @@ def _render_machining_holes_in_mesh(
                     w_face.attrs["color"] = cor_borda
 
             elif op_face in ("frontal", "front"):
-                # Furos na face frontal (-Y da chapa): face com normal -Y em oy
+                # Holes on the front face (-Y of the board): face with -Y normal at oy
                 cx = ox + x_op_m if sx >= 0 else ox + sx + x_op_m
                 cz = oz + y_op_m if sz >= 0 else oz + sz + y_op_m
                 cy_face = oy
@@ -183,7 +183,7 @@ def _render_machining_holes_in_mesh(
                     pts_face.append(QVector3D(cx + dx, cy_face, cz + dz))
                     pts_fundo.append(QVector3D(cx + dx, cy_fundo, cz + dz))
 
-                # Face normal -Y. add_hole requer loop com normal contrária (+Y): list(reversed(pts_face))
+                # Face normal -Y. add_hole requires a loop with opposite normal (+Y): list(reversed(pts_face))
                 mesh.add_hole(target_face, list(reversed(pts_face)))
                 f_bot = mesh.add_face(pts_fundo)
                 f_bot.attrs["color"] = cor_furo
@@ -196,7 +196,7 @@ def _render_machining_holes_in_mesh(
                     w_face.attrs["color"] = cor_borda
 
             else:
-                # Furos na face larga traseira (+Y da chapa): canecos de dobradiça ou tambores de minifix em pé
+                # Holes on the wide rear face (+Y of the board): hinge cups or upright cam housings
                 cx = ox + x_op_m if sx >= 0 else ox + sx + x_op_m
                 cz = oz + y_op_m if sz >= 0 else oz + sz + y_op_m
                 cy_face = oy + sy
@@ -224,14 +224,14 @@ def _render_machining_holes_in_mesh(
                     pts_face.append(QVector3D(cx + dx, cy_face, cz + dz))
                     pts_fundo.append(QVector3D(cx + dx, cy_fundo, cz + dz))
 
-                # Perfura a face traseira (+Y) com loop horário visto de +Y (pts_face já tem normal -Y)
+                # Drill rear face (+Y) with clockwise loop viewed from +Y (pts_face already has -Y normal)
                 mesh.add_hole(target_face, pts_face)
 
-                # Fundo do furo (normal apontando para fora do sólido: +Y)
+                # Hole bottom (normal pointing outward from the solid: +Y)
                 f_bot = mesh.add_face(list(reversed(pts_fundo)))
                 f_bot.attrs["color"] = cor_furo
 
-                # Paredes cilíndricas do furo (normal apontando para o centro da cavidade, fora do MDF)
+                # Cylindrical hole walls (normal pointing toward cavity center, outside the MDF)
                 for i in range(n_seg):
                     i_next = (i + 1) % n_seg
                     w_face = mesh.add_face([
@@ -241,11 +241,11 @@ def _render_machining_holes_in_mesh(
                     w_face.attrs["color"] = cor_borda
 
         elif abs(sx - min_dim) < 1e-5:
-            # Chapa vertical lateral (Laterais do armário / divisórias - espessura em X)
+            # Side vertical board (Cabinet side panels / dividers - thickness along X)
             op_face = str(op.get("face", "")).lower()
 
             if op_face in ("topo", "superior"):
-                # Topo superior da chapa vertical (face com normal +Z em oz + sz)
+                # Top edge of vertical board (face with +Z normal at oz + sz)
                 cx = ox + y_op_m if sx >= 0 else ox + sx + y_op_m
                 cy = oy + x_op_m if sy >= 0 else oy + sy + x_op_m
                 cz_face = oz + sz
@@ -273,9 +273,9 @@ def _render_machining_holes_in_mesh(
                     pts_face.append(QVector3D(cx + dx, cy + dy, cz_face))
                     pts_fundo.append(QVector3D(cx + dx, cy + dy, cz_fundo))
 
-                # Face normal +Z: add_hole requer loop com normal contrária (-Z): list(reversed(pts_face))
+                # Face normal +Z: add_hole requires a loop with opposite normal (-Z): list(reversed(pts_face))
                 mesh.add_hole(target_face, list(reversed(pts_face)))
-                # Fundo do furo aponta para fora do sólido (+Z)
+                # Hole bottom points outward from the solid (+Z)
                 f_bot = mesh.add_face(pts_fundo)
                 f_bot.attrs["color"] = cor_furo
                 for i in range(n_seg):
@@ -287,7 +287,7 @@ def _render_machining_holes_in_mesh(
                     w_face.attrs["color"] = cor_borda
 
             elif op_face in ("base", "inferior", "baixo"):
-                # Topo inferior (base) da chapa vertical (face com normal -Z em oz)
+                # Bottom edge (base) of vertical board (face with -Z normal at oz)
                 cx = ox + y_op_m if sx >= 0 else ox + sx + y_op_m
                 cy = oy + x_op_m if sy >= 0 else oy + sy + x_op_m
                 cz_face = oz
@@ -315,9 +315,9 @@ def _render_machining_holes_in_mesh(
                     pts_face.append(QVector3D(cx + dx, cy + dy, cz_face))
                     pts_fundo.append(QVector3D(cx + dx, cy + dy, cz_fundo))
 
-                # Face normal -Z: add_hole requer loop com normal contrária (+Z): pts_face
+                # Face normal -Z: add_hole requires a loop with opposite normal (+Z): pts_face
                 mesh.add_hole(target_face, pts_face)
-                # Fundo do furo aponta para fora do sólido (-Z)
+                # Hole bottom points outward from the solid (-Z)
                 f_bot = mesh.add_face(list(reversed(pts_fundo)))
                 f_bot.attrs["color"] = cor_furo
                 for i in range(n_seg):
@@ -329,7 +329,7 @@ def _render_machining_holes_in_mesh(
                     w_face.attrs["color"] = cor_borda
 
             elif op_face in ("topo_frontal", "borda_frontal"):
-                # Topo frontal da chapa vertical com espessura em X (face com normal -Y em oy)
+                # Front edge of vertical board with thickness along X (face with -Y normal at oy)
                 cx = ox + y_op_m if sx >= 0 else ox + sx + y_op_m
                 cz = oz + x_op_m if sz >= 0 else oz + sz + x_op_m
                 cy_face = oy
@@ -357,7 +357,7 @@ def _render_machining_holes_in_mesh(
                     pts_face.append(QVector3D(cx + dx, cy_face, cz + dz))
                     pts_fundo.append(QVector3D(cx + dx, cy_fundo, cz + dz))
 
-                # Face normal -Y: add_hole requer loop com normal contrária (+Y): list(reversed(pts_face))
+                # Face normal -Y: add_hole requires a loop with opposite normal (+Y): list(reversed(pts_face))
                 mesh.add_hole(target_face, list(reversed(pts_face)))
                 f_bot = mesh.add_face(pts_fundo)
                 f_bot.attrs["color"] = cor_furo
@@ -370,7 +370,7 @@ def _render_machining_holes_in_mesh(
                     w_face.attrs["color"] = cor_borda
 
             elif op_face in ("topo_traseiro", "borda_traseira"):
-                # Topo traseiro da chapa vertical com espessura em X (face com normal +Y em oy + sy)
+                # Rear edge of vertical board with thickness along X (face with +Y normal at oy + sy)
                 cx = ox + y_op_m if sx >= 0 else ox + sx + y_op_m
                 cz = oz + x_op_m if sz >= 0 else oz + sz + x_op_m
                 cy_face = oy + sy
@@ -398,7 +398,7 @@ def _render_machining_holes_in_mesh(
                     pts_face.append(QVector3D(cx + dx, cy_face, cz + dz))
                     pts_fundo.append(QVector3D(cx + dx, cy_fundo, cz + dz))
 
-                # Face normal +Y: add_hole requer loop com normal contrária (-Y): pts_face
+                # Face normal +Y: add_hole requires a loop with opposite normal (-Y): pts_face
                 mesh.add_hole(target_face, pts_face)
                 f_bot = mesh.add_face(list(reversed(pts_fundo)))
                 f_bot.attrs["color"] = cor_furo
@@ -411,16 +411,16 @@ def _render_machining_holes_in_mesh(
                     w_face.attrs["color"] = cor_borda
 
             else:
-                # Furos na face lateral ampla (+X ou -X) da lateral ou divisória.
-                # Faces explícitas ("esquerda"/"direita") permitem furar as duas
-                # faces de uma mesma divisória; sem elas, usa-se a face interna
-                # deduzida pelo nome da peça:
-                # - Para Lateral Direita: a face interna fica em ox (normal -X), furo avança em +X
-                # - Para Lateral Esquerda ou divisórias: a face interna fica em ox + sx (normal +X), furo avança em -X
+                # Holes on the wide lateral face (+X or -X) of the side panel or divider.
+                # Explicit faces ("esquerda"/"direita") allow drilling both
+                # faces of the same divider; otherwise, the inner face
+                # inferred from the part name is used:
+                # - For Right Side Panel: inner face is at ox (normal -X), hole advances along +X
+                # - For Left Side Panel or dividers: inner face is at ox + sx (normal +X), hole advances along -X
                 if op_face in ("esquerda", "left"):
-                    is_direita = True   # face -X, em ox
+                    is_direita = True   # -X face, at ox
                 elif op_face in ("direita", "right"):
-                    is_direita = False  # face +X, em ox + sx
+                    is_direita = False  # +X face, at ox + sx
                 else:
                     is_direita = "direit" in piece_name.lower() or "right" in piece_name.lower()
                 cy = oy + x_op_m if sy >= 0 else oy + sy + x_op_m
@@ -458,9 +458,9 @@ def _render_machining_holes_in_mesh(
                     pts_fundo.append(QVector3D(cx_fundo, cy + dy, cz + dz))
 
                 if is_direita:
-                    # Face tem normal -X. add_hole requer loop com normal contrária (+X): pts_face tem normal +X
+                    # Face has -X normal. add_hole requires a loop with opposite normal (+X): pts_face has +X normal
                     mesh.add_hole(target_face, pts_face)
-                    # Fundo do furo aponta para fora do sólido: -X
+                    # Hole bottom points outward from the solid: -X
                     f_bot = mesh.add_face(list(reversed(pts_fundo)))
                     f_bot.attrs["color"] = cor_furo
                     for i in range(n_seg):
@@ -471,9 +471,9 @@ def _render_machining_holes_in_mesh(
                         ])
                         w_face.attrs["color"] = cor_borda
                 else:
-                    # Face tem normal +X. add_hole requer loop com normal contrária (-X): reversed(pts_face)
+                    # Face has +X normal. add_hole requires a loop with opposite normal (-X): reversed(pts_face)
                     mesh.add_hole(target_face, list(reversed(pts_face)))
-                    # Fundo do furo aponta para fora do sólido: +X
+                    # Hole bottom points outward from the solid: +X
                     f_bot = mesh.add_face(pts_fundo)
                     f_bot.attrs["color"] = cor_furo
                     for i in range(n_seg):
@@ -485,23 +485,23 @@ def _render_machining_holes_in_mesh(
                         w_face.attrs["color"] = cor_borda
 
         elif abs(sz - min_dim) < 1e-5:
-            # Chapa horizontal (Base / Tampo / Prateleira - espessura em Z)
+            # Horizontal board (Base / Top / Shelf - thickness along Z)
             op_face = str(op.get("face", "")).lower()
 
-            # Caso A: Furo do tambor excêntrico Minifix na face horizontal (face inferior ou superior)
+            # Case A: Eccentric Minifix cam housing hole on horizontal face (bottom or top face)
             if op_face in ("base", "topo", "inferior", "superior", "fundo"):
                 cx = ox + x_op_m if sx >= 0 else ox + sx + x_op_m
                 cy = oy + y_op_m if sy >= 0 else oy + sy + y_op_m
                 x_lo, x_hi = min(ox, ox + sx), max(ox, ox + sx)
                 y_lo, y_hi = min(oy, oy + sy), max(oy, oy + sy)
                 is_vb = "vb" in str(op.get("descricao", "")).lower()
-                # Para conectores de embutir de borda tipo VB 35 / VB 36 (furo Ø20mm com centro a 9.5mm da borda),
-                # o centro fica ligeiramente alinhado à borda para engate do pino (tolerância de borda aberta)
+                # For edge-mounted connectors such as VB 35 / VB 36 (Ø20mm hole centered 9.5mm from edge),
+                # the center sits slightly aligned with the edge for pin engagement (open-edge tolerance)
                 min_margem_x = 0.0005 if is_vb else (raio_m + 1e-4)
                 if is_vb:
                     if not (x_lo <= cx <= x_hi and y_lo + raio_m + 1e-4 <= cy <= y_hi - raio_m - 1e-4):
                         continue
-                    # Ajusta centro visual ligeiramente para dentro se necessário para manter o contorno interno estanque
+                    # Slightly shift visual center inward if needed to keep inner contour watertight
                     cx = max(x_lo + raio_m + 0.0005, min(x_hi - raio_m - 0.0005, cx))
                 else:
                     if not (x_lo + min_margem_x <= cx <= x_hi - min_margem_x and y_lo + raio_m + 1e-4 <= cy <= y_hi - raio_m - 1e-4):
@@ -535,7 +535,7 @@ def _render_machining_holes_in_mesh(
                     pts_fundo.append(QVector3D(cx + dx, cy + dy, cz_fundo))
 
                 if is_face_topo:
-                    # Face normal +Z: add_hole requer loop com normal -Z: reversed(pts_face)
+                    # Face normal +Z: add_hole requires a loop with -Z normal: reversed(pts_face)
                     mesh.add_hole(target_face, list(reversed(pts_face)))
                     f_bot = mesh.add_face(pts_fundo)
                     f_bot.attrs["color"] = cor_furo
@@ -547,7 +547,7 @@ def _render_machining_holes_in_mesh(
                         ])
                         w_face.attrs["color"] = cor_borda
                 else:
-                    # Face normal -Z: add_hole requer loop com normal +Z: pts_face
+                    # Face normal -Z: add_hole requires a loop with +Z normal: pts_face
                     mesh.add_hole(target_face, pts_face)
                     f_bot = mesh.add_face(list(reversed(pts_fundo)))
                     f_bot.attrs["color"] = cor_furo
@@ -559,7 +559,7 @@ def _render_machining_holes_in_mesh(
                         ])
                         w_face.attrs["color"] = cor_borda
 
-            # Caso B: Furos nos topos (bordas laterais): face esquerda (-X, normal -1) ou direita (+X, normal +1)
+            # Case B: End-edge holes (side edges): left face (-X, normal -1) or right face (+X, normal +1)
             else:
                 cy = oy + x_op_m if sy >= 0 else oy + sy + x_op_m
                 cz = oz + y_op_m if sz >= 0 else oz + sz + y_op_m
@@ -600,7 +600,7 @@ def _render_machining_holes_in_mesh(
                     pts_fundo.append(QVector3D(cx_fundo, cy + dy, cz + dz))
 
                 if is_esq:
-                    # Face com normal -X: add_hole com pts_face (normal +X)
+                    # Face with -X normal: add_hole with pts_face (+X normal)
                     mesh.add_hole(target_face, pts_face)
                     f_bot = mesh.add_face(list(reversed(pts_fundo)))
                     f_bot.attrs["color"] = cor_furo
@@ -612,7 +612,7 @@ def _render_machining_holes_in_mesh(
                         ])
                         w_face.attrs["color"] = cor_borda
                 else:
-                    # Face com normal +X: add_hole com reversed(pts_face) (normal -X)
+                    # Face with +X normal: add_hole with reversed(pts_face) (-X normal)
                     mesh.add_hole(target_face, list(reversed(pts_face)))
                     f_bot = mesh.add_face(pts_fundo)
                     f_bot.attrs["color"] = cor_furo
