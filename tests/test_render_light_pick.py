@@ -35,6 +35,8 @@ def window(monkeypatch):
     win.resize(1200, 800)
     win.show()
     QApplication.processEvents()
+    from trazomob.render.lighting_visualizer import TrazoMobLightVisualizer
+    TrazoMobLightVisualizer.set_selected_index(None)
     yield win
     win._saved_version = win.viewport.scene.version
     win.close()
@@ -73,11 +75,20 @@ def _picked_index():
 
 
 def test_a_click_on_the_bulb_selects_that_light(window):
-    _panel, vp = _two_lights(window)
+    panel, vp = _two_lights(window)
     _click(window, V(4, 0, 3))
     assert vp.extension_pick is not None
     assert _picked_index() == 1
+    # The two panels share the document lights: the Render list follows too.
+    assert panel._view_pick == 1 and panel.selected_index() == 1
     assert not vp.scene.selection            # the model's selection: empty
+
+
+def test_selecting_a_render_row_highlights_the_same_bulb(window):
+    panel, vp = _two_lights(window)
+    panel._lights.setCurrentRow(1)
+    assert panel.selected_index() == 1
+    assert _picked_index() == 1              # TrazoMob rings that bulb
 
 
 def test_supr_deletes_it_in_one_undo_step(window, monkeypatch):
@@ -97,18 +108,21 @@ def test_supr_deletes_it_in_one_undo_step(window, monkeypatch):
     lights = panel.app.document_data({})["lights"]
     assert [lt["kind"] for lt in lights] == ["spot"]
     assert vp.extension_pick is None and _picked_index() is None
+    assert panel._view_pick is None
     assert vp.history.undo()
     assert len(panel.app.document_data({})["lights"]) == 2
 
 
 def test_a_click_elsewhere_or_esc_lets_it_go(window):
-    _panel, vp = _two_lights(window)
+    panel, vp = _two_lights(window)
     _click(window, V(4, 0, 3))
     _click(window, V(2, 0, 0))              # empty ground
     assert vp.extension_pick is None and _picked_index() is None
+    assert panel._view_pick is None
     _click(window, V(4, 0, 3))
     vp.escape()
     assert vp.extension_pick is None and _picked_index() is None
+    assert panel._view_pick is None
 
 
 def test_after_an_undo_supr_does_not_delete_by_a_stale_index(window):
@@ -120,4 +134,4 @@ def test_after_an_undo_supr_does_not_delete_by_a_stale_index(window):
     # pick: Supr lets it go and deletes nothing.
     delete_selection_or_hover(vp)
     assert len(panel.app.document_data({})["lights"]) == 1
-    assert vp.extension_pick is None
+    assert vp.extension_pick is None and panel._view_pick is None

@@ -902,6 +902,12 @@ class RenderPanel(QWidget):
     def _on_light_selected(self, row: int) -> None:
         lights = _state(self.app)["lights"]
         has = 0 <= row < len(lights)
+        # TrazoMob's visualizer owns the bulbs; keep its highlight on the same
+        # light the user just picked in this list (and do nothing when it is
+        # already there, so its own viewport pick cannot loop back here).
+        from trazomob.integrations import host_calls
+        host_calls.sync_trazomob_light_selection(
+            row if has else None, viewport=self.app.viewport)
         self._editor.setEnabled(has)
         self._del.setEnabled(has)
         if not has:

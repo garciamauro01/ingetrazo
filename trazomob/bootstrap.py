@@ -292,14 +292,21 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
             return res if res is not None else None
 
         def _on_trazomob_light_selected(hit):
+            from .integrations import host_calls
             vp = _vp()
             if hit is None:
                 TrazoMobLightVisualizer.set_selected_index(None, vp)
                 sidebar_panel.clear_light_selection()
+                index = None
             else:
                 action, idx = hit
                 TrazoMobLightVisualizer.set_selected_index(idx, vp)
                 sidebar_panel.load_light(idx)
+                index = idx
+            # The Render tab shares these lights: its list must show the same
+            # selection, or Supr would act on a different light.
+            host_calls.sync_render_light_selection(
+                index, window=host.window_of(viewport=vp))
 
         def _delete_trazomob_light(hit):
             if hit is not None:

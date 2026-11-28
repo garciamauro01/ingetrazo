@@ -541,6 +541,42 @@ def suppress_native_light_overlay() -> bool:
     return True
 
 
+def _native_render_panel(window: Any):
+    """The Render tab's panel in *window*, or None if it was not installed."""
+    for dock in getattr(window, "_extension_docks", ()) or ():
+        widget = dock.widget() if hasattr(dock, "widget") else None
+        if widget is not None and hasattr(widget, "on_light_picked") \
+                and hasattr(widget, "_lights"):
+            return widget
+    return None
+
+
+def sync_render_light_selection(index, window: Any = None) -> None:
+    """A bulb picked in TrazoMob also selects its row in the Render tab.
+
+    Both panels edit the same document lights; keeping the native panel's
+    ``_view_pick`` in step makes Supr delete the same light the user clicked.
+    """
+    panel = _native_render_panel(window)
+    if panel is None:
+        return
+    if index is None:
+        if panel._view_pick is not None:
+            panel.on_light_picked(None)
+        return
+    if panel._view_pick == index and panel.selected_index() == index:
+        return
+    panel.on_light_picked(index)
+
+
+def sync_trazomob_light_selection(index, viewport: Any = None) -> None:
+    """A row selected in the Render tab also rings the same bulb in the view."""
+    from ..render.lighting_visualizer import TrazoMobLightVisualizer
+    if TrazoMobLightVisualizer.get_selected_index() == index:
+        return
+    TrazoMobLightVisualizer.set_selected_index(index, viewport)
+
+
 __all__ = [
     "LED_EXTRA_FIELDS", "prepare_copied_group", "rotate_module_command",
     "scale_module_command", "translate_module_command", "resolve_move_groups",
@@ -548,4 +584,5 @@ __all__ = [
     "promote_selection_modules", "prateleiras_bounds",
     "capture_module_originals", "prateleiras_obb", "preserve_led_extra",
     "expand_led_strips", "suppress_native_light_overlay",
+    "sync_render_light_selection", "sync_trazomob_light_selection",
 ]
