@@ -367,7 +367,9 @@ class SidebarModuleLoaderMixin:
             # Travessas Superiores — visíveis só para módulos de cozinha inferiores
             _IDS_COZINHA_INFERIORES = {
                 "balcao", "balcao_duplo", "balcao_ilha", "gaveteiro", "balcao_misto", "balcao_pia",
-                "balcao_canto", "balcao_canto_l", "balcao_canto_chanfrado", "balcao_canto_gaveteiro_l", "porta_tempero", "balcao_forno"
+                "balcao_canto", "balcao_canto_l", "balcao_canto_chanfrado", "balcao_canto_gaveteiro_l",
+                "porta_tempero", "balcao_forno", "porta_panos", "adega_colmeia", "balcao_peninsula",
+                "balcao_dente_traseiro", "balcao_shaft",
             }
             has_travessa = tipo in _IDS_COZINHA_INFERIORES
             self._current_has_travessa = has_travessa
@@ -480,6 +482,42 @@ class SidebarModuleLoaderMixin:
                 if is_micro:
                     is_b_micro = (str(params.get("tipo_porta_superior", "basculante")).lower() in ("basculante", "1_porta") or int(params.get("num_portas", 1)) == 1)
                     self.cb_micro_tipo_porta.setCurrentIndex(0 if is_b_micro else 1)
+
+            # Balcão Península (balcao_peninsula)
+            is_peninsula = tipo in ("balcao_peninsula", "bancada_peninsula")
+            if hasattr(self, "_peninsula_sidebar_widgets"):
+                for w in self._peninsula_sidebar_widgets:
+                    w.setVisible(is_peninsula)
+                if is_peninsula:
+                    pos_pen = str(params.get("posicao_peninsula", "em_cima")).lower()
+                    is_reb = pos_pen.startswith(("frontal", "rebaixada", "referencia"))
+                    self.cb_posicao_peninsula.setCurrentIndex(1 if is_reb else 0)
+                    self.sp_rebaixo_peninsula.setValue(int(round(float(params.get("rebaixo_peninsula_mm", 150.0)))))
+                    self.lbl_rebaixo_peninsula.setVisible(is_reb)
+                    self.sp_rebaixo_peninsula.setVisible(is_reb)
+                    ap_pen = str(params.get("tipo_apoio_portas", "travessa")).lower()
+                    if hasattr(self, "cb_tipo_apoio_portas_peninsula"):
+                        self.cb_tipo_apoio_portas_peninsula.setCurrentIndex(1 if ap_pen.startswith(("divisoria", "completa")) else 0)
+                    self.sp_largura_mesa_peninsula.setValue(int(round(float(params.get("largura_mesa_mm", 800.0)))))
+                    self.sp_comprimento_mesa_peninsula.setValue(int(round(float(params.get("comprimento_mesa_mm", 1200.0)))))
+                    self.sp_esp_tampo_peninsula.setValue(int(round(float(params.get("esp_tampo_mm", 30.0)))))
+
+            # Balcão Dente Traseiro (balcao_dente_traseiro)
+            is_dente = tipo in ("balcao_dente_traseiro", "balcao_shaft", "balcao_coluna_traseira")
+            if hasattr(self, "_dente_traseiro_sidebar_widgets"):
+                for w in self._dente_traseiro_sidebar_widgets:
+                    w.setVisible(is_dente)
+                if is_dente:
+                    pos_d = str(params.get("posicao_dente", "canto_direito")).lower()
+                    if any(k in pos_d for k in ("central", "meio")):
+                        idx_d = 1
+                    elif any(k in pos_d for k in ("esq", "left")):
+                        idx_d = 2
+                    else:
+                        idx_d = 0
+                    self.cb_posicao_dente_traseiro.setCurrentIndex(idx_d)
+                    self.sp_largura_dente_traseiro.setValue(int(round(float(params.get("largura_dente_mm", 250.0)))))
+                    self.sp_profundidade_dente_traseiro.setValue(int(round(float(params.get("profundidade_dente_mm", 150.0)))))
 
             # Caixa de Gaveta — visíveis apenas para módulos com gavetas reais (nunca para camas ou peças sem gaveta)
             has_gav = not is_cama and (("num_gavetas" in params) or (tipo in ("gaveteiro", "balcao_misto", "torre_quente", "gabinete_banheiro", "peca_gaveta_avulsa", "gaveta_avulsa")) or (is_forno and bool(params.get("tem_gaveta", True))))

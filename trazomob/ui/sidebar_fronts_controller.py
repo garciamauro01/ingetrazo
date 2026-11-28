@@ -94,6 +94,113 @@ class SidebarFrentesMixin:
             self.cb_cor_aramado.setVisible(is_pt and is_aramado)
         self.cb_tipo_estrutura_tempero.currentIndexChanged.connect(_on_sb_tipo_estrutura_tempero_changed)
 
+        # --- Configurações de Balcão Península (balcao_peninsula) na Estrutura ---
+        self.lbl_peninsula_section = QLabel("<b>🍽️ Configuração da Mesa Península:</b>")
+        self.sec_frentes.form_layout.addRow(self.lbl_peninsula_section)
+
+        self.cb_posicao_peninsula = QComboBox()
+        self.cb_posicao_peninsula.addItems([
+            tr("⬆️ Em Cima do Balcão (Sobreposta)"),
+            tr("🔽 Frontal Rebaixada (Abaixo da Testeira)"),
+        ])
+        self.cb_posicao_peninsula.setToolTip(tr("Posição da bancada península: por cima do balcão ou engastada na frente abaixo da testeira"))
+        self.lbl_posicao_peninsula = QLabel(tr("Posição da Península:"))
+        self.sec_frentes.form_layout.addRow(self.lbl_posicao_peninsula, self.cb_posicao_peninsula)
+
+        self.sp_rebaixo_peninsula = QSpinBox()
+        self.sp_rebaixo_peninsula.setRange(60, 400)
+        self.sp_rebaixo_peninsula.setValue(150)
+        self.sp_rebaixo_peninsula.setSuffix(" mm")
+        self.sp_rebaixo_peninsula.setToolTip(tr("Altura da testeira/faixa frontal superior acima da mesa península"))
+        self.lbl_rebaixo_peninsula = QLabel(tr("Altura da Testeira:"))
+        self.sec_frentes.form_layout.addRow(self.lbl_rebaixo_peninsula, self.sp_rebaixo_peninsula)
+
+        self.cb_tipo_apoio_portas_peninsula = QComboBox()
+        self.cb_tipo_apoio_portas_peninsula.addItems([
+            tr("📏 Travessa de Apoio para as Portas"),
+            tr("🧱 Divisória Central Completa"),
+        ])
+        self.cb_tipo_apoio_portas_peninsula.setToolTip(tr("Escolha entre travessa frontal de apoio ou divisória central completa para as portas que abrem para o centro"))
+        self.lbl_tipo_apoio_portas_peninsula = QLabel(tr("Apoio Central Portas:"))
+        self.sec_frentes.form_layout.addRow(self.lbl_tipo_apoio_portas_peninsula, self.cb_tipo_apoio_portas_peninsula)
+
+        self.sp_largura_mesa_peninsula = QSpinBox()
+        self.sp_largura_mesa_peninsula.setRange(300, 2500)
+        self.sp_largura_mesa_peninsula.setValue(800)
+        self.sp_largura_mesa_peninsula.setSuffix(" mm")
+        self.lbl_largura_mesa_peninsula = QLabel(tr("Largura da Mesa:"))
+        self.sec_frentes.form_layout.addRow(self.lbl_largura_mesa_peninsula, self.sp_largura_mesa_peninsula)
+
+        self.sp_comprimento_mesa_peninsula = QSpinBox()
+        self.sp_comprimento_mesa_peninsula.setRange(400, 3000)
+        self.sp_comprimento_mesa_peninsula.setValue(1200)
+        self.sp_comprimento_mesa_peninsula.setSuffix(" mm")
+        self.lbl_comprimento_mesa_peninsula = QLabel(tr("Avanço da Mesa:"))
+        self.sec_frentes.form_layout.addRow(self.lbl_comprimento_mesa_peninsula, self.sp_comprimento_mesa_peninsula)
+
+        self.sp_esp_tampo_peninsula = QSpinBox()
+        self.sp_esp_tampo_peninsula.setRange(15, 80)
+        self.sp_esp_tampo_peninsula.setValue(30)
+        self.sp_esp_tampo_peninsula.setSuffix(" mm")
+        self.lbl_esp_tampo_peninsula = QLabel(tr("Espessura do Tampo:"))
+        self.sec_frentes.form_layout.addRow(self.lbl_esp_tampo_peninsula, self.sp_esp_tampo_peninsula)
+
+        self._peninsula_sidebar_widgets = [
+            self.lbl_peninsula_section,
+            self.lbl_posicao_peninsula, self.cb_posicao_peninsula,
+            self.lbl_rebaixo_peninsula, self.sp_rebaixo_peninsula,
+            self.lbl_tipo_apoio_portas_peninsula, self.cb_tipo_apoio_portas_peninsula,
+            self.lbl_largura_mesa_peninsula, self.sp_largura_mesa_peninsula,
+            self.lbl_comprimento_mesa_peninsula, self.sp_comprimento_mesa_peninsula,
+            self.lbl_esp_tampo_peninsula, self.sp_esp_tampo_peninsula,
+        ]
+        for w in self._peninsula_sidebar_widgets:
+            w.setVisible(False)
+
+        def _on_sb_posicao_peninsula_changed(idx):
+            is_reb = (idx == 1)
+            is_pen = getattr(self, "_current_selected_tipo", "") in ("balcao_peninsula", "bancada_peninsula")
+            self.lbl_rebaixo_peninsula.setVisible(is_pen and is_reb)
+            self.sp_rebaixo_peninsula.setVisible(is_pen and is_reb)
+        self.cb_posicao_peninsula.currentIndexChanged.connect(_on_sb_posicao_peninsula_changed)
+
+        # --- Configurações de Balcão Dente Traseiro (balcao_dente_traseiro) na Estrutura ---
+        self.lbl_dente_traseiro_section = QLabel("<b>🏛️ Configuração do Recuo Traseiro (Shaft/Pilar):</b>")
+        self.sec_frentes.form_layout.addRow(self.lbl_dente_traseiro_section)
+
+        self.cb_posicao_dente_traseiro = QComboBox()
+        self.cb_posicao_dente_traseiro.addItems([
+            tr("👉 Canto Direito (Visto de Frente)"),
+            tr("🎯 Central (Shaft no Meio)"),
+            tr("👈 Canto Esquerdo (Visto de Frente)"),
+        ])
+        self.cb_posicao_dente_traseiro.setToolTip(tr("Posição do recuo posterior para desvio de pilares, colunas ou shafts"))
+        self.lbl_posicao_dente_traseiro = QLabel(tr("Posição do Recuo:"))
+        self.sec_frentes.form_layout.addRow(self.lbl_posicao_dente_traseiro, self.cb_posicao_dente_traseiro)
+
+        self.sp_largura_dente_traseiro = QSpinBox()
+        self.sp_largura_dente_traseiro.setRange(50, 1500)
+        self.sp_largura_dente_traseiro.setValue(250)
+        self.sp_largura_dente_traseiro.setSuffix(" mm")
+        self.lbl_largura_dente_traseiro = QLabel(tr("Largura do Dente:"))
+        self.sec_frentes.form_layout.addRow(self.lbl_largura_dente_traseiro, self.sp_largura_dente_traseiro)
+
+        self.sp_profundidade_dente_traseiro = QSpinBox()
+        self.sp_profundidade_dente_traseiro.setRange(30, 800)
+        self.sp_profundidade_dente_traseiro.setValue(150)
+        self.sp_profundidade_dente_traseiro.setSuffix(" mm")
+        self.lbl_profundidade_dente_traseiro = QLabel(tr("Profundidade Dente:"))
+        self.sec_frentes.form_layout.addRow(self.lbl_profundidade_dente_traseiro, self.sp_profundidade_dente_traseiro)
+
+        self._dente_traseiro_sidebar_widgets = [
+            self.lbl_dente_traseiro_section,
+            self.lbl_posicao_dente_traseiro, self.cb_posicao_dente_traseiro,
+            self.lbl_largura_dente_traseiro, self.sp_largura_dente_traseiro,
+            self.lbl_profundidade_dente_traseiro, self.sp_profundidade_dente_traseiro,
+        ]
+        for w in self._dente_traseiro_sidebar_widgets:
+            w.setVisible(False)
+
         # --- Configurações Específicas de Cama com Rodapé / Travessas na Estrutura ---
         self.lbl_cama_colmeia_section = QLabel("<b>🛏️ Estrutura da Cama:</b>")
         self.sec_frentes.form_layout.addRow(self.lbl_cama_colmeia_section)

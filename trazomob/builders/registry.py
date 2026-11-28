@@ -241,6 +241,13 @@ def _build_canto_chanfrado(cls, params: dict[str, Any], ctx: dict[str, Any]) -> 
         esp_frentes_mm=ctx["esp_frentes_mm"],
         offset=ctx["offset"],
         lado_abertura_porta=params.get("lado_abertura_porta", "esquerda"),
+        larg_travessa_frontal_mm=params.get("larg_travessa_frontal_mm"),
+        larg_travessa_traseira_mm=params.get("larg_travessa_traseira_mm"),
+        travessa_frontal_em_pe=bool(params.get("travessa_frontal_em_pe", False)),
+        travessa_traseira_em_pe=bool(params.get("travessa_traseira_em_pe", False)),
+        recuo_porta_topo_mm=float(params.get("recuo_porta_topo_mm", params.get("recuo_porta_pia_mm", 50.0))),
+        esp_travessas_mm=params.get("esp_travessas_mm"),
+        material_travessas=params.get("material_travessas"),
         **ctx["fundo_kwargs"],
         **ctx["pux_kw"],
         mat_ctx=ctx.get("mat_ctx"),
@@ -1315,11 +1322,13 @@ def _build_terminal_chanfrado(cls, params: dict[str, Any], ctx: dict[str, Any]) 
     return pieces, name
 
 
-@register_module_builder("porta_panos", "toalheiro")
+@register_module_builder(("porta_panos", "toalheiro", "balcao_porta_panos", "balcao_toalheiro"))
 def _build_porta_panos(cls, params: dict[str, Any], ctx: dict[str, Any]) -> tuple[list[Group], str]:
     from ..builders.base_wall_cabinets import BalcaoAereoBuilder
     L, A, P = ctx["L_mm"], ctx["A_mm"], ctx["P_mm"]
-    name = f"Porta Panos / Toalheiro {int(L)}x{int(P)}x{int(A)}"
+    name = f"Balcao Porta Panos {int(L)}x{int(A)}x{int(P)}"
+    travessas_kw = ctx.get("travessas_kwargs", {})
+    fundo_kw = ctx.get("fundo_kwargs", {})
     pieces = BalcaoAereoBuilder.build_porta_panos(
         largura_mm=L,
         altura_mm=A,
@@ -1329,15 +1338,21 @@ def _build_porta_panos(cls, params: dict[str, Any], ctx: dict[str, Any]) -> tupl
         num_prateleiras=int(params.get("num_prateleiras", 4)),
         material=ctx["material"],
         origin=ctx["offset"],
+        has_fundo=(ctx.get("tipo_fundo") != "sem_fundo"),
+        mat_ctx=ctx.get("mat_ctx"),
+        **fundo_kw,
+        **travessas_kw,
     )
     return pieces, name
 
 
-@register_module_builder("adega_colmeia", "adega_losango")
+@register_module_builder(("adega_colmeia", "adega_losango", "balcao_adega_colmeia", "balcao_adega"))
 def _build_adega_colmeia(cls, params: dict[str, Any], ctx: dict[str, Any]) -> tuple[list[Group], str]:
     from ..builders.base_wall_cabinets import BalcaoAereoBuilder
     L, A, P = ctx["L_mm"], ctx["A_mm"], ctx["P_mm"]
-    name = f"Adega Colmeia Losango {int(L)}x{int(P)}x{int(A)}"
+    name = f"Balcao Adega Colmeia {int(L)}x{int(A)}x{int(P)}"
+    travessas_kw = ctx.get("travessas_kwargs", {})
+    fundo_kw = ctx.get("fundo_kwargs", {})
     pieces = BalcaoAereoBuilder.build_adega_colmeia(
         largura_mm=L,
         altura_mm=A,
@@ -1347,15 +1362,57 @@ def _build_adega_colmeia(cls, params: dict[str, Any], ctx: dict[str, Any]) -> tu
         num_garrafas=int(params.get("num_garrafas", 5)),
         material=ctx["material"],
         origin=ctx["offset"],
+        has_fundo=(ctx.get("tipo_fundo") != "sem_fundo"),
+        mat_ctx=ctx.get("mat_ctx"),
+        **fundo_kw,
+        **travessas_kw,
     )
     return pieces, name
+
+
+@register_module_builder(("balcao_dente_traseiro", "balcao_shaft", "balcao_coluna_traseira"))
+def _build_balcao_dente_traseiro(cls, params: dict[str, Any], ctx: dict[str, Any]) -> tuple[list[Group], str]:
+    from ..builders.base_wall_cabinets import BalcaoAereoBuilder
+    L, A, P = ctx["L_mm"], ctx["A_mm"], ctx["P_mm"]
+    pos_dente = str(params.get("posicao_dente", "canto_direito"))
+    name = f"Balcao Dente Traseiro ({pos_dente}) {int(L)}x{int(A)}x{int(P)}"
+    travessas_kw = ctx.get("travessas_kwargs", {})
+    fundo_kw = ctx.get("fundo_kwargs", {})
+    pieces = BalcaoAereoBuilder.build_balcao_dente_traseiro(
+        largura_mm=L,
+        altura_mm=A,
+        prof_mm=P,
+        esp_mm=ctx["esp_mm"],
+        rodape_mm=ctx["rodape_mm"],
+        posicao_dente=pos_dente,
+        largura_dente_mm=float(params.get("largura_dente_mm", 250.0)),
+        profundidade_dente_mm=float(params.get("profundidade_dente_mm", 150.0)),
+        posicao_dente_x_mm=(float(params["posicao_dente_x_mm"]) if params.get("posicao_dente_x_mm") is not None else None),
+        num_portas=int(params.get("num_portas", 2)),
+        num_prateleiras=int(params.get("num_prateleiras", 1)),
+        material=ctx["material"],
+        material_frentes=ctx["material_frentes"],
+        esp_frentes_mm=ctx["esp_frentes_mm"],
+        material_fundo=ctx.get("material_fundo"),
+        has_fundo=(ctx.get("tipo_fundo") != "sem_fundo"),
+        origin=ctx["offset"],
+        lado_abertura_porta=str(params.get("lado_abertura_porta", "esquerda")),
+        mat_ctx=ctx.get("mat_ctx"),
+        **fundo_kw,
+        **travessas_kw,
+        **ctx["pux_kw"],
+    )
+    return pieces, name
+
 
 
 @register_module_builder("balcao_peninsula", "bancada_peninsula")
 def _build_balcao_peninsula(cls, params: dict[str, Any], ctx: dict[str, Any]) -> tuple[list[Group], str]:
     from ..builders.base_wall_cabinets import BalcaoAereoBuilder
     L, A, P = ctx["L_mm"], ctx["A_mm"], ctx["P_mm"]
-    name = f"Balcão Península com Mesa {int(L)}x{int(P)}x{int(A)}"
+    name = f"Balcao Peninsula {int(L)}x{int(A)}x{int(P)}"
+    travessas_kw = ctx.get("travessas_kwargs", {})
+    fundo_kw = ctx.get("fundo_kwargs", {})
     pieces = BalcaoAereoBuilder.build_balcao_peninsula(
         largura_mm=L,
         altura_mm=A,
@@ -1365,11 +1422,21 @@ def _build_balcao_peninsula(cls, params: dict[str, Any], ctx: dict[str, Any]) ->
         esp_mm=ctx["esp_mm"],
         esp_tampo_mm=float(params.get("esp_tampo_mm", 30.0)),
         rodape_mm=ctx["rodape_mm"],
+        posicao_peninsula=str(params.get("posicao_peninsula", "em_cima")),
+        rebaixo_peninsula_mm=float(params.get("rebaixo_peninsula_mm", 150.0)),
+        tipo_apoio_portas=str(params.get("tipo_apoio_portas", "travessa")),
+        num_portas=int(params.get("num_portas", 2)),
+        num_prateleiras=int(params.get("num_prateleiras", 1)),
+        tem_fundo=(ctx.get("tipo_fundo") != "sem_fundo"),
         material=ctx["material"],
+        material_frentes=ctx["material_frentes"],
+        esp_frentes_mm=ctx["esp_frentes_mm"],
         origin=ctx["offset"],
-        puxador_tipo=ctx.get("puxador_tipo", "perfil"),
-        puxador_cor=ctx.get("puxador_cor", "anodizado"),
-        puxador_pos=ctx.get("puxador_pos", "superior"),
+        lado_abertura_porta=str(params.get("lado_abertura_porta", "esquerda")),
+        mat_ctx=ctx.get("mat_ctx"),
+        **fundo_kw,
+        **travessas_kw,
+        **ctx["pux_kw"],
     )
     return pieces, name
 

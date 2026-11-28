@@ -451,33 +451,39 @@ class TrazoMobRenderEngine(QObject):
                 elif "gpu_enabled" in parts:
                     self.progress_updated.emit(15, "🚀 Aceleração por Placa de Vídeo (GPU) ativada!")
                 elif "STATS" in parts:
-                    # Captura estatísticas reais do Blender Cycles (ex: Remaining: 00:15 | Sample 45/128)
+                    # Captura estatísticas reais do Blender (Cycles e EEVEE)
                     stats_text = parts.split("STATS", 1)[-1].strip()
                     import re
-                    match = re.search(r"Sample\s+(\d+)\s*/\s*(\d+)", stats_text)
+                    match = re.search(r"(?:Sample|Rendering)\s+(\d+)\s*/\s*(\d+)", stats_text, re.IGNORECASE)
                     time_match = re.search(r"Remaining:\s*([\d:\.]+)", stats_text)
                     rem_str = f" | Restante: {time_match.group(1)}" if time_match else ""
+                    engine_label = "EEVEE" if getattr(self, "engine", "cycles") == "eevee" else "Cycles"
                     if match:
                         cur = int(match.group(1))
                         tot = int(match.group(2))
                         pct = int(20 + (cur / max(1, tot)) * 75)
-                        self.progress_updated.emit(pct, f"Amostragem Cycles: {cur}/{tot} samples{rem_str}")
+                        self.progress_updated.emit(pct, f"Amostragem {engine_label}: {cur}/{tot} samples{rem_str}")
                     elif "Synchronizing" in stats_text or "Updating" in stats_text:
-                        self.progress_updated.emit(18, f"Preparando shaders: {stats_text.split('|')[-1].strip()}")
+                        self.progress_updated.emit(18, f"Preparando shaders ({engine_label}): {stats_text.split('|')[-1].strip()}")
+                    elif "Compositing" in stats_text:
+                        self.progress_updated.emit(93, f"Composição e pós-processamento ({engine_label})...")
                     elif "Finished" in stats_text:
                         self.progress_updated.emit(95, "Processando pós-produção e desfoque...")
-            elif "Sample " in line_str:
+            elif "Sample " in line_str or "Rendering " in line_str:
                 import re
-                match = re.search(r"Sample\s+(\d+)\s*/\s*(\d+)", line_str)
+                match = re.search(r"(?:Sample|Rendering)\s+(\d+)\s*/\s*(\d+)", line_str, re.IGNORECASE)
                 time_match = re.search(r"Remaining:\s*([\d:\.]+)", line_str)
                 rem_str = f" | Restante: {time_match.group(1)}" if time_match else ""
+                engine_label = "EEVEE" if getattr(self, "engine", "cycles") == "eevee" else "Cycles"
                 if match:
                     cur = int(match.group(1))
                     tot = int(match.group(2))
                     pct = int(20 + (cur / max(1, tot)) * 75)
-                    self.progress_updated.emit(pct, f"Amostragem Cycles: {cur}/{tot} samples{rem_str}")
+                    self.progress_updated.emit(pct, f"Amostragem {engine_label}: {cur}/{tot} samples{rem_str}")
                 else:
-                    self.progress_updated.emit(-1, f"Calculando iluminação: {line_str}")
+                    self.progress_updated.emit(-1, f"Calculando iluminação ({engine_label}): {line_str}")
+            elif "Compositing" in line_str:
+                self.progress_updated.emit(93, "✨ Aplicando composição e pós-processamento...")
             elif "Denoising" in line_str or "denoise" in line_str.lower():
                 self.progress_updated.emit(96, "✨ Aplicando Inteligência Artificial Denoiser (redução de ruído)...")
             elif "Writing: " in line_str or "Saved: " in line_str or "saved_blend" in line_str:

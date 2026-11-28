@@ -108,17 +108,20 @@ class JointResolver:
 
             if "fundo" in name:
                 continue
-            elif "porta" in name or "folha" in name or "frente" in name:
-                portas.append((p, p_min, p_max))
             elif "travessa" in name and "gaveta" not in name:
-                travessas.append((p, p_min, p_max))
-            elif "lateral" in name and "gaveta" not in name:
-                laterais.append((p, p_min, p_max))
+                if (p_max.x() - p_min.x()) < (p_max.z() - p_min.z()):
+                    divisorias.append((p, p_min, p_max))
+                else:
+                    travessas.append((p, p_min, p_max))
             elif "divisoria" in name or "divisória" in name:
                 if (p_max.x() - p_min.x()) < (p_max.z() - p_min.z()):
                     divisorias.append((p, p_min, p_max))
                 else:
                     horizontais_estruturais.append((p, p_min, p_max))
+            elif "porta" in name or "folha" in name or "frente" in name:
+                portas.append((p, p_min, p_max))
+            elif "lateral" in name and "gaveta" not in name:
+                laterais.append((p, p_min, p_max))
             elif "prateleira" in name or "sapateira" in name:
                 prateleiras.append((p, p_min, p_max))
             elif "ferragem" in name or "tamponamento" in name:
@@ -232,8 +235,8 @@ class JointResolver:
                 face_lat_furo = "traseira" if ("lateral" in sup_name and ("esq" in sup_name or "dir" in sup_name)) else face_sup
                 sup_ops = get_piece_operations(sup)
 
-                # Posição Y da travessa em relação à borda frontal do suporte (0.0 = frente do móvel)
-                pos_lat_y_mm = (t_min.y() - s_min.y()) * 1000.0
+                # Posição Y do início do contato da travessa na lateral (0.0 = borda frontal do suporte)
+                pos_lat_y_mm = max(0.0, (max(t_min.y(), s_min.y()) - s_min.y()) * 1000.0)
                 pos_lat_z_mm = (z_centro_trav - s_min.z()) * 1000.0
 
                 # 1. Checa se o suporte já tem furos para esta travessa
@@ -341,8 +344,9 @@ class JointResolver:
                 )
 
                 if not ja_tem_no_sup:
+                    comp_junta_mm = sobrepos_y * 1000.0
                     furos_sup = make_cabinet_joint_holes(
-                        comprimento_junta_mm=prof_horiz_mm,
+                        comprimento_junta_mm=comp_junta_mm,
                         posicao_borda_mm=z_rel_sup_mm,
                         face=face_lat_furo,
                         usar_minifix=usar_minifix,
@@ -366,8 +370,10 @@ class JointResolver:
 
                 if not ja_tem_no_horiz:
                     face_tambor = "base" if ("tampo" in h_name or "sup" in h_name) else "base"
+                    comp_junta_mm = sobrepos_y * 1000.0
+                    recuo_contato_y_mm = max(0.0, (s_min.y() - h_min.y()) * 1000.0)
                     ops_esq, ops_dir, ops_face = make_horizontal_board_edge_holes(
-                        prof_chapa_mm=prof_horiz_mm,
+                        prof_chapa_mm=comp_junta_mm,
                         largura_chapa_mm=larg_horiz_mm,
                         esp_chapa_mm=esp_horiz_mm,
                         afastamento_fixacao_frontal_mm=afastamento_fixacao_frontal_mm,
@@ -377,6 +383,7 @@ class JointResolver:
                         usar_minifix=usar_minifix,
                         dispositivo_fixacao=dispositivo_fixacao,
                         face_tambor=face_tambor,
+                        recuo_frontal_mm=recuo_contato_y_mm,
                     )
                     ops_topo = ops_esq if toca_esq else ops_dir
                     h_ops.extend([o.to_dict() for o in ops_topo])
@@ -429,7 +436,9 @@ class JointResolver:
                         else face_sup
                     )
                     z_rel_sup_mm = (z_centro_prat - s_min.z()) * 1000.0
-                    recuo_front_mm = max(0.0, (p_min.y() - s_min.y()) * 1000.0)
+                    comp_junta_prat_mm = sobrepos_y * 1000.0
+                    recuo_front_mm = max(0.0, (max(p_min.y(), s_min.y()) - s_min.y()) * 1000.0)
+                    recuo_prat_y_mm = max(0.0, (s_min.y() - p_min.y()) * 1000.0)
 
                     # 1. Furação na face interna do suporte vertical (lateral / divisória)
                     sup_ops = get_piece_operations(sup)
@@ -455,7 +464,7 @@ class JointResolver:
                     if not ja_existe_sup:
                         novos_furos = make_shelf_side_holes(
                             pos_z_na_lateral_mm=(p_min.z() - s_min.z()) * 1000.0,
-                            prof_prateleira_mm=prof_prat_mm,
+                            prof_prateleira_mm=comp_junta_prat_mm,
                             recuo_frontal_mm=recuo_front_mm,
                             afastamento_mm=afastamento_mm,
                             esp_prateleira_mm=esp_prat_mm,
@@ -487,11 +496,12 @@ class JointResolver:
                         )
                         if not ja_tem_vb:
                             ops_esq, ops_dir = make_shelf_joint_holes(
-                                prof_prateleira_mm=prof_prat_mm,
+                                prof_prateleira_mm=comp_junta_prat_mm,
                                 afastamento_mm=afastamento_mm,
                                 esp_prateleira_mm=esp_prat_mm,
                                 dispositivo_prateleira=dispositivo_prateleira,
                                 largura_prateleira_mm=larg_prat_mm,
+                                recuo_frontal_mm=recuo_prat_y_mm,
                             )
                             # Adiciona os tambores correspondentes ao lado de contato
                             ops_lado = ops_esq if toca_esq else ops_dir
@@ -506,10 +516,11 @@ class JointResolver:
                         )
                         if not ja_tem_topo:
                             ops_esq, ops_dir = make_shelf_joint_holes(
-                                prof_prateleira_mm=prof_prat_mm,
+                                prof_prateleira_mm=comp_junta_prat_mm,
                                 afastamento_mm=afastamento_mm,
                                 esp_prateleira_mm=esp_prat_mm,
                                 dispositivo_prateleira=dispositivo_prateleira,
+                                recuo_frontal_mm=recuo_prat_y_mm,
                             )
                             ops_topo = ops_esq if toca_esq else ops_dir
                             prat_ops.extend([o.to_dict() for o in ops_topo])
@@ -530,8 +541,13 @@ class JointResolver:
             if not canecos:
                 continue
 
-            door_side = getattr(porta, "ext", {}).get("trazomob", {}).get("door_side")
             p_name = (getattr(porta, "name", "") or "").lower()
+            # Módulos de canto chanfrado / oblíquo possuem batentes frontais próprios em ângulo onde
+            # as dobradiças articulam; as portas não articulam nas laterais externas da caixaria.
+            if "chanfrado" in p_name:
+                continue
+
+            door_side = getattr(porta, "ext", {}).get("trazomob", {}).get("door_side")
             e_direita = (door_side == "right") or ("dir" in p_name and "esq" not in p_name)
 
             # Canto da dobradiça na porta (em X)

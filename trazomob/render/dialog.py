@@ -109,7 +109,14 @@ class TrazoMobRenderDialog(QDialog):
         self.viewport = viewport
         self.setWindowTitle("📸 TrazoMob — Render Foto-Realista de Interiores")
         self.setMinimumSize(920, 640)
-        self.setWindowFlags(self.windowFlags() | Qt.WindowMaximizeButtonHint)
+        self.setWindowFlags(
+            Qt.Window
+            | Qt.WindowTitleHint
+            | Qt.WindowSystemMenuHint
+            | Qt.WindowMinimizeButtonHint
+            | Qt.WindowMaximizeButtonHint
+            | Qt.WindowCloseButtonHint
+        )
 
         self._engine = TrazoMobRenderEngine(self)
         self._engine.progress_updated.connect(self._on_progress)
@@ -308,8 +315,8 @@ class TrazoMobRenderDialog(QDialog):
         self.btn_save.clicked.connect(self._save_image)
         h_status.addWidget(self.btn_save)
 
-        self.btn_open_blender = QPushButton(tr("🟠 Abrir no Blender..."))
-        self.btn_open_blender.setToolTip(tr("Abre a cena completa com shaders PBR e luzes configuradas diretamente no Blender."))
+        self.btn_open_blender = QPushButton("🟠 Abrir no Blender...")
+        self.btn_open_blender.setToolTip("Abre a cena completa com shaders PBR e luzes configuradas diretamente no Blender.")
         self.btn_open_blender.clicked.connect(self._open_in_blender)
         h_status.addWidget(self.btn_open_blender)
 
@@ -646,13 +653,13 @@ class TrazoMobRenderDialog(QDialog):
 
     def _on_prepare_finished(self, blend_path: str):
         self._reset_buttons()
-        self.lbl_status.setText(tr("✅ Cena preparada! Abrindo no Blender..."))
+        self.lbl_status.setText("✅ Cena preparada! Abrindo no Blender...")
         blender_exe = self._engine.get_blender_executable()
         if not blender_exe:
-            QMessageBox.warning(self, tr("Abrir no Blender"), tr("Executável do Blender não encontrado."))
+            QMessageBox.warning(self, "Abrir no Blender", "Executável do Blender não encontrado.")
             return
         if not os.path.isfile(blend_path):
-            QMessageBox.warning(self, tr("Abrir no Blender"), tr("O arquivo .blend da cena não foi encontrado."))
+            QMessageBox.warning(self, "Abrir no Blender", "O arquivo .blend da cena não foi encontrado.")
             return
         import subprocess
         subprocess.Popen([blender_exe, blend_path])
@@ -660,7 +667,7 @@ class TrazoMobRenderDialog(QDialog):
     def _open_in_blender(self):
         blender_exe = self._engine.get_blender_executable()
         if not blender_exe:
-            QMessageBox.warning(self, tr("Abrir no Blender"), tr("Executável do Blender não encontrado."))
+            QMessageBox.warning(self, "Abrir no Blender", "Executável do Blender não encontrado.")
             return
         if self._current_image_path:
             blend_file = Path(self._current_image_path).parent / "cena_marcenaria_trazomob.blend"

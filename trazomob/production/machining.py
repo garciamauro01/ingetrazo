@@ -238,6 +238,7 @@ def make_cabinet_joint_holes(
     afastamento_cavilha_traseiro_mm: float = 100.0,
     dispositivo_fixacao: str = "minifix_cavilha",
     espessura_chapa_mm: float = 15.0,
+    recuo_frontal_mm: float = 0.0,
 ) -> list[MachiningOp]:
     """Gera furações de junção topo-borda na LATERAL da caixa.
 
@@ -266,7 +267,8 @@ def make_cabinet_joint_holes(
     if comprimento_junta_mm > 650:
         pontos_fixacao.insert(1, (af_f + (comprimento_junta_mm - af_t)) / 2.0)
 
-    for idx, px in enumerate(pontos_fixacao, 1):
+    for idx, px_rel in enumerate(pontos_fixacao, 1):
+        px = px_rel + float(recuo_frontal_mm)
         if eh_minifix and usar_minifix:
             # Furo cego na face interna para rosca da haste do Minifix
             ops.append(MachiningOp(
@@ -298,7 +300,8 @@ def make_cabinet_joint_holes(
         if comprimento_junta_mm > 650:
             pontos_cavilhas.insert(1, (pos_cav_f + pos_cav_t) / 2.0)
 
-        for idx, px in enumerate(pontos_cavilhas, 1):
+        for idx, px_rel in enumerate(pontos_cavilhas, 1):
+            px = px_rel + float(recuo_frontal_mm)
             ops.append(MachiningOp(
                 tipo="furo",
                 face=face,
@@ -588,6 +591,7 @@ def make_shelf_joint_holes(
     esp_prateleira_mm: float = 15.0,
     dispositivo_prateleira: str = "cavilha",
     largura_prateleira_mm: float = 0.0,
+    recuo_frontal_mm: float = 0.0,
 ) -> tuple[list[MachiningOp], list[MachiningOp]]:
     """Gera furações nos topos e/ou face da prateleira interna (retorna ops_esq, ops_dir).
 
@@ -596,7 +600,8 @@ def make_shelf_joint_holes(
     - Adiciona os furos de alojamento de tambor Ø20mm x 12.5mm na face 'base' da prateleira.
     """
     disp = str(dispositivo_prateleira or "cavilha").strip().lower()
-    pontos_y = [afastamento_mm, max(afastamento_mm + 32.0, prof_prateleira_mm - afastamento_mm)]
+    rf = max(0.0, float(recuo_frontal_mm or 0.0))
+    pontos_y = [rf + afastamento_mm, max(rf + afastamento_mm + 32.0, rf + prof_prateleira_mm - afastamento_mm)]
 
     ops_esq: list[MachiningOp] = []
     ops_dir: list[MachiningOp] = []
@@ -722,6 +727,7 @@ def make_horizontal_board_edge_holes(
     usar_minifix: bool = True,
     dispositivo_fixacao: str = "minifix_cavilha",
     face_tambor: FaceType = "base",
+    recuo_frontal_mm: float = 0.0,
 ) -> tuple[list[MachiningOp], list[MachiningOp], list[MachiningOp]]:
     """Gera furações da chapa horizontal (Base / Tampo Fechado):
 
@@ -752,15 +758,16 @@ def make_horizontal_board_edge_holes(
     eh_minifix = "minifix" in disp and not eh_somente_cavilha and not eh_somente_parafuso
     eh_parafuso = ("parafuso" in disp or "confirmat" in disp or "soberba" in disp) and not eh_somente_cavilha
 
-    pos_cav_f = min(af_cav_f, prof_chapa_mm / 2.0 - 15.0)
-    pos_cav_t = max(pos_cav_f + 32.0, prof_chapa_mm - af_cav_t)
+    rf = max(0.0, float(recuo_frontal_mm or 0.0))
+    pos_cav_f = rf + min(af_cav_f, prof_chapa_mm / 2.0 - 15.0)
+    pos_cav_t = max(pos_cav_f + 32.0, rf + prof_chapa_mm - af_cav_t)
     pontos_cav = [pos_cav_f, pos_cav_t]
     if prof_chapa_mm > 650:
         pontos_cav.insert(1, (pos_cav_f + pos_cav_t) / 2.0)
 
-    pontos_fix = [af_f, max(af_f + 32.0, prof_chapa_mm - af_t)]
+    pontos_fix = [rf + af_f, max(rf + af_f + 32.0, rf + prof_chapa_mm - af_t)]
     if prof_chapa_mm > 650:
-        pontos_fix.insert(1, (af_f + (prof_chapa_mm - af_t)) / 2.0)
+        pontos_fix.insert(1, (rf + af_f + (rf + prof_chapa_mm - af_t)) / 2.0)
 
     ops_esq: list[MachiningOp] = []
     ops_dir: list[MachiningOp] = []

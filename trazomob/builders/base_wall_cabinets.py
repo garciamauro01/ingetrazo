@@ -59,6 +59,11 @@ class BalcaoAereoBuilder(AereosNichosMixin, BalcoesEspeciaisMixin):
         return CabinetBuilder.build_divisoria(*args, **kwargs)
 
     @staticmethod
+    def build_divisoria_horizontal(*args, **kwargs):
+        from ..builders.cabinet import CabinetBuilder
+        return CabinetBuilder.build_divisoria_horizontal(*args, **kwargs)
+
+    @staticmethod
     def build_fundo(*args, **kwargs):
         from ..builders.cabinet import CabinetBuilder
         return CabinetBuilder.build_fundo(*args, **kwargs)
@@ -1450,7 +1455,6 @@ class BalcaoAereoBuilder(AereosNichosMixin, BalcoesEspeciaisMixin):
 
 
     @classmethod
-    @classmethod
     def build_balcao_peninsula(
         cls,
         largura_mm: float = 1200.0,
@@ -1461,124 +1465,568 @@ class BalcaoAereoBuilder(AereosNichosMixin, BalcoesEspeciaisMixin):
         esp_mm: float = 15.0,
         esp_tampo_mm: float = 30.0,
         rodape_mm: float = 100.0,
+        posicao_peninsula: str = "em_cima",
+        rebaixo_peninsula_mm: float = 150.0,
+        tipo_apoio_portas: str = "travessa",
+        num_portas: int = 2,
+        num_prateleiras: int = 1,
+        tem_fundo: bool = True,
+        tipo_fundo: str = "rasgo",
+        esp_fundo_mm: float = 6.0,
+        recuo_fundo_mm: float = 10.0,
+        prof_rasgo_mm: float = 5.0,
+        folga_fundo_mm: float = 2.0,
         material: str = "MDF Branco 15mm",
-        material_tampo: str = "MDF Louro Freijo 30mm",
+        material_frentes: str | None = None,
+        esp_frentes_mm: float | None = None,
+        material_tampo: str | None = None,
         cor: tuple[float, float, float] | None = None,
         cor_tampo: tuple[float, float, float] | None = None,
         origin: tuple[float, float, float] = (0.0, 0.0, 0.0),
         puxador_tipo: str = "perfil",
         puxador_cor: str = "anodizado",
         puxador_pos: str = "superior",
+        desconto_perfil_mm: float = 35.0,
+        perfil_modelo: str = "gola",
+        larg_travessa_frontal_mm: float = 70.0,
+        larg_travessa_traseira_mm: float = 70.0,
+        travessa_frontal_em_pe: bool = False,
+        travessa_traseira_em_pe: bool = False,
+        recuo_porta_topo_mm: float = 50.0,
+        material_travessas: str | None = None,
+        esp_travessas_mm: float | None = None,
+        fita_travessas_modo: str = "frontal_1L",
+        fita_travessas_faces: dict[str, bool] | None = None,
+        fita_caixa_modo: str = "frontal_1L",
+        material_fita_caixa: str | None = None,
+        material_fita_travessas: str | None = None,
+        gerar_furacao: bool = True,
+        dispositivo_fixacao: str = "minifix_cavilha",
+        lado_abertura_porta: str = "esquerda",
+        mat_ctx: ModuloMaterialContext | None = None,
         **kwargs: Any,
     ) -> list[Group]:
-        """Constrói balcão ilha/península com portas inferiores e mesa projetada com pé tubular."""
+        """Constrói balcão península com duas opções de montagem da mesa:
+        - 'em_cima': tampo da península apoiado por cima do balcão (cobre o topo e projeta à frente).
+        - 'frontal_rebaixada': mesa engastada na face frontal do balcão abaixo de uma testeira/painel frontal
+          superior, com as portas posicionadas logo abaixo da mesa (conforme referência).
+        """
+        from ..builders.chapa_spec import ChapaSpec, PapelChapa
+        from ..builders.mesh_utils import create_polygon_board_group
+
         ox, oy, oz = origin
         L = largura_mm / 1000.0
-        H = (altura_mm - esp_tampo_mm) / 1000.0  # Altura da caixaria até a base do tampo
         P = prof_mm / 1000.0
         E = esp_mm / 1000.0
         R = rodape_mm / 1000.0
         Et = esp_tampo_mm / 1000.0
-
-        # 1. Base, laterais e caixaria padrão de 2 portas
-        groups: list[Group] = []
-
-        # Caixaria
-        caixaria = cls.build_balcao(
-            largura_mm=largura_mm,
-            altura_mm=H * 1000.0,
-            prof_mm=prof_mm,
-            esp_mm=esp_mm,
-            rodape_mm=rodape_mm,
-            num_portas=2,
-            num_prateleiras=1,
-            tem_fundo=True,
-            material=material,
-            offset=origin,
-            puxador_tipo=puxador_tipo,
-            puxador_cor=puxador_cor,
-            puxador_pos=puxador_pos,
-        )
-        groups.extend(caixaria)
-
-        # 2. Tampo da Mesa Península com pontas frontais arredondadas
-        Lm = largura_mesa_mm / 1000.0
+        Lm = min(L, largura_mesa_mm / 1000.0) if str(posicao_peninsula).lower().startswith("frontal") else (largura_mesa_mm / 1000.0)
         Cm = comprimento_mesa_mm / 1000.0
-        # O tampo apoia sobre o balcão (da esquerda ou centro) e projeta para fora (ex: ao longo de X ou Y)
-        # Projetando perpendicularmente para a frente (em -Y) ou extensão lateral (em +X):
-        # Península típica: projeta para a frente de quem olha o balcão (em -Y), saindo de oy até oy - Cm
-        raio = min(0.15, Lm / 3.0)
 
-        # Polígono do tampo no plano XY:
-        # Cobre toda a largura L do balcão na área traseira/sobre o móvel
-        # e projeta a bancada de refeições (península):
-        # Para ser uma bancada de ilha/península completa e realista:
-        # Cobrimos o topo do balcão inteiro (0 a L em X, 0 a P em Y)
-        # e a mesa projeta para a frente (em -Y, de 0 até -Cm) com largura Lm (centralizada ou alinhada).
-        # Vamos fazer o tampo cobrir todo o balcão (0 a L) e estender a mesa para frente:
-        # Ou um tampo contínuo que cobre o balcão (0 a L, 0 a P) + balanço/mesa.
-        # Mais ergonômico e limpo para península: tampo inteiro cobre o balcão e estende para frente:
-        x_mesa_esq = ox + max(0.0, (L - Lm) / 2.0)
-        x_mesa_dir = x_mesa_esq + Lm
-        y_frente = oy - Cm
-        y_tras = oy + P
+        modo_pos = str(posicao_peninsula or "em_cima").strip().lower()
+        is_frontal = modo_pos in ("frontal_rebaixada", "frontal", "rebaixada", "referencia", "embutida")
 
-        # Vamos traçar o polígono no sentido horário:
-        # 1. Traseira: (ox, y_tras) até (ox + L, y_tras)
-        # 2. Lateral direita traseira: (ox + L, y_tras) até (ox + L, oy)
-        # 3. Transição ou mesa:
-        # Se o tampo cobre todo o balcão (L x P):
-        poly_tampo: list[tuple[float, float]] = []
-        poly_tampo.append((ox, y_tras))
-        poly_tampo.append((ox + L, y_tras))
-        poly_tampo.append((ox + L, oy))
-        if x_mesa_dir < ox + L:
-            poly_tampo.append((x_mesa_dir, oy))
+        if mat_ctx is None:
+            mat_ctx = ModuloMaterialContext(
+                material_caixa=material,
+                material_fita_caixa=material_fita_caixa,
+                fita_caixa_modo=fita_caixa_modo,
+                material_frentes=material_frentes or material,
+            )
 
-        # Canto frontal direito arredondado da mesa (em y_frente)
-        # De (x_mesa_dir, y_frente + raio) até (x_mesa_dir - raio, y_frente)
-        steps = 8
-        cx_dir = x_mesa_dir - raio
-        cy_frente = y_frente + raio
-        poly_tampo.append((x_mesa_dir, cy_frente))
-        for s in range(1, steps + 1):
-            ang = (s / steps) * (math.pi / 2.0)
-            poly_tampo.append((cx_dir + raio * math.cos(ang), cy_frente - raio * math.sin(ang)))
-
-        # Canto frontal esquerdo arredondado da mesa (em y_frente)
-        # De (x_mesa_esq + raio, y_frente) até (x_mesa_esq, y_frente + raio)
-        cx_esq = x_mesa_esq + raio
-        for s in range(1, steps + 1):
-            ang = (math.pi / 2.0) + (s / steps) * (math.pi / 2.0)
-            poly_tampo.append((cx_esq + raio * math.cos(ang), cy_frente - raio * math.sin(ang)))
-
-        poly_tampo.append((x_mesa_esq, cy_frente))
-        if x_mesa_esq > ox:
-            poly_tampo.append((x_mesa_esq, oy))
-            poly_tampo.append((ox, oy))
-
-        from ..builders.mesh_utils import create_polygon_board_group
-        g_tampo = create_polygon_board_group(
-            name="Bancada Peninsula - Tampo Mesa",
-            polygon_xy=poly_tampo,
-            z0=oz + H,
-            espessura=Et,
-            material=material_tampo,
-            color=cor_tampo,
+        mat_tampo_eff = material_tampo or material
+        cor_tampo_eff = cor_tampo if cor_tampo is not None else cls.get_material_color(mat_tampo_eff)
+        spec_tampo = ChapaSpec.resolve(
+            nome="Balcao Peninsula - Tampo Mesa",
+            papel=PapelChapa.TAMPO_SUPERIOR,
+            ctx=mat_ctx,
+            material_override=mat_tampo_eff,
+            fita_override=(True, True, True, True),
         )
-        groups.append(g_tampo)
+
+        groups: list[Group] = []
+        steps = 8
+
+        if not is_frontal:
+            # ── MODO 1: PENÍNSULA EM CIMA (PADRÃO ATUAL) ─────────────────────────
+            H = max(0.20, (altura_mm - esp_tampo_mm) / 1000.0)
+            n_portas = max(0, min(4, int(num_portas)))
+            # Portas abrem para o centro (dobradiças no centro / puxadores nas bordas externas)
+            if n_portas == 2:
+                door_sides = ["right", "left"]
+            elif n_portas == 1:
+                lado = str(lado_abertura_porta or "esquerda").strip().lower()
+                door_sides = ["right" if lado.startswith(("dir", "right")) else "left"]
+            else:
+                door_sides = ["right" if i % 2 == 0 else "left" for i in range(n_portas)]
+
+            modo_apoio = str(tipo_apoio_portas or "travessa").strip().lower()
+            is_div_completa = modo_apoio in ("divisoria", "divisoria_completa", "completa")
+
+            eff_esp_trav_mm = float(esp_travessas_mm) if (esp_travessas_mm is not None and float(esp_travessas_mm) > 0) else esp_mm
+            eff_tipo_fundo = "sem_fundo" if not tem_fundo else tipo_fundo
+            desc_fundo = cls._calc_desconto_traseiro_fundo(
+                eff_tipo_fundo, esp_fundo_mm, recuo_fundo_mm,
+                esp_travessa_traseira_mm=(eff_esp_trav_mm if travessa_traseira_em_pe else 0.0)
+            )
+            altura_cx_val = H - R
+            recuo_frontal_prat = 0.025
+            prof_prat = max(0.10, P - desc_fundo - recuo_frontal_prat)
+            alturas_prat_mm = []
+            if num_prateleiras > 0:
+                espaco_util = altura_cx_val - 2 * E
+                passo = espaco_util / (num_prateleiras + 1)
+                for i in range(1, num_prateleiras + 1):
+                    alturas_prat_mm.append((E + (i * passo)) * 1000.0)
+
+            larg_int_pre = (largura_mm / 1000.0) - (2.0 * E)
+            div_x_mm = [(larg_int_pre / 2.0) * 1000.0] if n_portas >= 2 else None
+
+            cx_groups, info = cls.build_caixa_inferior(
+                prefixo="Balcao Peninsula",
+                largura_mm=largura_mm,
+                altura_mm=H * 1000.0,
+                prof_mm=prof_mm,
+                esp_mm=esp_mm,
+                rodape_mm=rodape_mm,
+                material=material,
+                offset=origin,
+                larg_travessa_frontal_mm=larg_travessa_frontal_mm,
+                larg_travessa_traseira_mm=larg_travessa_traseira_mm,
+                travessa_frontal_em_pe=travessa_frontal_em_pe,
+                travessa_traseira_em_pe=travessa_traseira_em_pe,
+                material_travessas=material_travessas,
+                esp_travessas_mm=esp_travessas_mm,
+                fita_travessas_modo=fita_travessas_modo,
+                fita_travessas_faces=fita_travessas_faces,
+                fita_caixa_modo=fita_caixa_modo,
+                material_fita_caixa=material_fita_caixa,
+                material_fita_travessas=material_fita_travessas,
+                gerar_furacao=gerar_furacao,
+                dispositivo_fixacao=dispositivo_fixacao,
+                alturas_prateleiras_mm=alturas_prat_mm if num_prateleiras > 0 else None,
+                prof_prateleira_mm=prof_prat * 1000.0,
+                recuo_prateleira_frontal_mm=recuo_frontal_prat * 1000.0,
+                divisorias_x_mm=div_x_mm,
+                divisorias_prof_mm=round(((P - desc_fundo) if is_div_completa else max(0.06, (larg_travessa_frontal_mm or 70.0) / 1000.0)) * 1000.0, 2),
+                divisorias_esp_mm=round(E * 1000.0, 2),
+                tem_fundo=tem_fundo,
+                tipo_fundo=eff_tipo_fundo,
+                esp_fundo_mm=esp_fundo_mm,
+                recuo_fundo_mm=recuo_fundo_mm,
+                prof_rasgo_mm=prof_rasgo_mm,
+                folga_fundo_mm=folga_fundo_mm,
+                ctx=mat_ctx,
+            )
+            groups.extend(cx_groups)
+
+            ox, oy, oz = info["ox"], info["oy"], info["oz"]
+            L, A, P, E, R = info["L"], info["A"], info["P"], info["E"], info["R"]
+            altura_caixa = info["altura_caixa"]
+            largura_interna = info["largura_interna"]
+            cor_cx = info["cor"]
+            mat_frente = material_frentes or material
+            E_frente = (esp_frentes_mm or esp_mm) / 1000.0
+            cor_frente = cls.get_material_color(mat_frente)
+
+            recuo_topo = (recuo_porta_topo_mm / 1000.0) if travessa_frontal_em_pe else 0.0
+            alt_div_v = (altura_caixa - E) if (travessa_frontal_em_pe and travessa_traseira_em_pe) else (altura_caixa - 2 * E)
+
+            if n_portas >= 2:
+                x_div_c = ox + E + (largura_interna - E) / 2.0
+                prof_apoio_v = max(0.15, P - desc_fundo) if is_div_completa else max(0.06, min(0.12, (larg_travessa_frontal_mm or 70.0) / 1000.0))
+                nome_apoio_v = (
+                    "Balcao Peninsula - Divisoria Central Completa"
+                    if is_div_completa else "Balcao Peninsula - Travessa Vertical Apoio Portas"
+                )
+                groups.append(cls.build_divisoria(
+                    name=nome_apoio_v,
+                    origin=(x_div_c, oy, oz + R + E),
+                    size=(E, prof_apoio_v, alt_div_v),
+                    material=material,
+                    fita_c1=True,
+                    color=cor_cx,
+                    cavilha_topo_inferior=gerar_furacao,
+                    cavilha_topo_superior=(gerar_furacao and not travessa_frontal_em_pe),
+                    ctx=mat_ctx,
+                ))
+
+            if num_prateleiras > 0:
+                if is_div_completa and n_portas >= 2:
+                    larg_vao_p = (largura_interna - E) / 2.0
+                    vaos_x = [(ox + E, larg_vao_p), (ox + E + larg_vao_p + E, larg_vao_p)]
+                else:
+                    rec_prat_f = max(recuo_frontal_prat, (max(0.06, (larg_travessa_frontal_mm or 70.0) / 1000.0) + 0.005) if n_portas >= 2 else recuo_frontal_prat)
+                    prof_prat = max(0.10, P - desc_fundo - rec_prat_f)
+                    recuo_frontal_prat = rec_prat_f
+                    vaos_x = [(ox + E, largura_interna)]
+
+                for v_i, (xv, lv) in enumerate(vaos_x, 1):
+                    suf = f" Vao {v_i}" if len(vaos_x) > 1 else ""
+                    for i, z_p_mm in enumerate(alturas_prat_mm, 1):
+                        groups.append(cls.build_prateleira(
+                            name=f"Balcao Peninsula - Prateleira{suf} {i}",
+                            origin=(xv, oy + recuo_frontal_prat, oz + R + (z_p_mm / 1000.0)),
+                            size=(max(0.05, lv - 0.002), prof_prat, E),
+                            material=material,
+                            fita_c1=True,
+                            color=cor_cx,
+                            gerar_furacao=gerar_furacao,
+                            ctx=mat_ctx,
+                        ))
+
+            if n_portas > 0:
+                recuo_topo = (recuo_porta_topo_mm / 1000.0) if travessa_frontal_em_pe else 0.0
+                groups.extend(FrentesKitBuilder.build_kit_portas_giro(
+                    largura_mm=L * 1000.0,
+                    altura_mm=altura_caixa * 1000.0,
+                    num_portas=n_portas,
+                    offset=(ox, oy, oz + R),
+                    esp_frente_mm=E_frente * 1000.0,
+                    material=mat_frente,
+                    color=cor_frente,
+                    door_sides=door_sides,
+                    prefixo="Balcao Peninsula",
+                    puxador_tipo=puxador_tipo,
+                    puxador_cor=puxador_cor,
+                    puxador_pos=puxador_pos,
+                    desconto_perfil_mm=desconto_perfil_mm,
+                    perfil_modelo=perfil_modelo,
+                    is_upper=False,
+                    gerar_furacao=gerar_furacao,
+                    recuo_topo_mm=recuo_topo * 1000.0,
+                    mat_ctx=mat_ctx,
+                ))
+
+            raio = min(0.15, Lm / 3.0)
+            x_mesa_esq = ox + max(0.0, (L - Lm) / 2.0)
+            x_mesa_dir = x_mesa_esq + Lm
+            y_frente = oy - Cm
+            y_tras = oy + P
+
+            poly_tampo: list[tuple[float, float]] = [
+                (ox, y_tras),
+                (ox + L, y_tras),
+                (ox + L, oy),
+            ]
+            if x_mesa_dir < ox + L:
+                poly_tampo.append((x_mesa_dir, oy))
+
+            cx_dir = x_mesa_dir - raio
+            cy_frente = y_frente + raio
+            poly_tampo.append((x_mesa_dir, cy_frente))
+            for s in range(1, steps + 1):
+                ang = (s / steps) * (math.pi / 2.0)
+                poly_tampo.append((cx_dir + raio * math.cos(ang), cy_frente - raio * math.sin(ang)))
+
+            cx_esq = x_mesa_esq + raio
+            for s in range(1, steps + 1):
+                ang = (math.pi / 2.0) + (s / steps) * (math.pi / 2.0)
+                poly_tampo.append((cx_esq + raio * math.cos(ang), cy_frente - raio * math.sin(ang)))
+
+            poly_tampo.append((x_mesa_esq, cy_frente))
+            if x_mesa_esq > ox:
+                poly_tampo.append((x_mesa_esq, oy))
+                poly_tampo.append((ox, oy))
+
+            g_tampo = create_polygon_board_group(
+                name="Balcao Peninsula - Tampo Mesa",
+                polygon_xy=poly_tampo,
+                z0=oz + H,
+                espessura=Et,
+                material=mat_tampo_eff,
+                color=cor_tampo_eff,
+                spec=spec_tampo,
+            )
+            groups.append(g_tampo)
+
+            x_pe = (x_mesa_esq + x_mesa_dir) / 2.0
+            y_pe = y_frente + raio + 0.08
+            alt_pe = oz + H
+        else:
+            # ── MODO 2: PENÍNSULA FRONTAL REBAIXADA (COMO NA REFERÊNCIA) ─────────
+            # O balcão tem altura total A (com travessas superiores aparentes para receber pedra/pia).
+            # Na frente do balcão:
+            # - Faixa superior: Testeira / Frente Falsa (altura = rebaixo_peninsula_mm).
+            # - Abaixo da testeira: Tampo da Mesa Península encostando na frente da caixa e projetando Cm para -Y.
+            # - Abaixo do tampo da mesa: Portas inferiores cobrindo da base até a face inferior da mesa.
+            if mat_ctx is None:
+                mat_ctx = ModuloMaterialContext(
+                    material_caixa=material,
+                    material_fita_caixa=material_fita_caixa,
+                    fita_caixa_modo=fita_caixa_modo,
+                    material_frentes=material_frentes or material,
+                )
+
+            rebaixo_m = max(0.06, min((altura_mm - rodape_mm - esp_tampo_mm - 200.0) / 1000.0, float(rebaixo_peninsula_mm) / 1000.0))
+            eff_esp_trav_mm = float(esp_travessas_mm) if (esp_travessas_mm is not None and float(esp_travessas_mm) > 0) else esp_mm
+            eff_tipo_fundo = "sem_fundo" if not tem_fundo else tipo_fundo
+            desc_fundo = cls._calc_desconto_traseiro_fundo(
+                eff_tipo_fundo, esp_fundo_mm, recuo_fundo_mm,
+                esp_travessa_traseira_mm=(eff_esp_trav_mm if travessa_traseira_em_pe else 0.0)
+            )
+
+            altura_cx_val = (altura_mm / 1000.0) - R
+            # Altura útil para as portas (abaixo do tampo da mesa)
+            alt_vao_portas = max(0.15, altura_cx_val - rebaixo_m - Et)
+
+            recuo_frontal_prat = 0.025
+            prof_prat = max(0.10, P - desc_fundo - recuo_frontal_prat)
+            alturas_prat_mm: list[float] = []
+            if num_prateleiras > 0:
+                espaco_util = alt_vao_portas - E
+                passo = espaco_util / (num_prateleiras + 1)
+                for i in range(1, num_prateleiras + 1):
+                    alturas_prat_mm.append((E + (i * passo)) * 1000.0)
+
+            n_portas = max(0, min(4, int(num_portas)))
+            alturas_calcos_esq_mm: list[float] = []
+            alturas_calcos_dir_mm: list[float] = []
+            lado = str(lado_abertura_porta or "esquerda").strip().lower()
+            default_side = "right" if lado.startswith(("dir", "right")) else "left"
+            # Portas da península abrem para o centro (porta esquerda tem puxador no centro -> dobradiça à esquerda = "left",
+            # mas como a mesa península fica no centro da frente do balcão, as portas abrem do centro para as laterais ou
+            # com dobradiças nas laterais e abertura pelo centro / inversão central conforme solicitado):
+            # Na marcenaria de balcão península (onde a perna da mesa desce no centro), as portas abrem para o centro
+            # (dobradiças no centro / puxadores nas bordas externas, ou seja: porta 1 = "right", porta 2 = "left")
+            if n_portas == 2:
+                door_sides = ["right", "left"]
+            elif n_portas == 1:
+                door_sides = [default_side]
+            else:
+                door_sides = ["right" if i % 2 == 0 else "left" for i in range(n_portas)]
+
+            if n_portas > 0:
+                from ..production.machining import make_hinge_cup_holes
+                alt_porta_mm = max(50.0, (alt_vao_portas - 0.006) * 1000.0)
+                ops_cup = make_hinge_cup_holes(alt_porta_mm)
+                calcos_z = [3.0 + o.y for o in ops_cup if "caneco" in o.descricao.lower()]
+                if door_sides and door_sides[0] == "left":
+                    alturas_calcos_esq_mm = list(calcos_z)
+                if door_sides and door_sides[-1] == "right":
+                    alturas_calcos_dir_mm = list(calcos_z)
+
+            modo_apoio = str(tipo_apoio_portas or "travessa").strip().lower()
+            is_div_completa = modo_apoio in ("divisoria", "divisoria_completa", "completa")
+
+            larg_int_pre = (largura_mm / 1000.0) - (2.0 * E)
+            div_x_mm = [(larg_int_pre / 2.0) * 1000.0] if n_portas >= 2 else None
+
+            cx_groups, info = cls.build_caixa_inferior(
+                prefixo="Balcao Peninsula",
+                largura_mm=largura_mm,
+                altura_mm=altura_mm,
+                prof_mm=prof_mm,
+                esp_mm=esp_mm,
+                rodape_mm=rodape_mm,
+                material=material,
+                offset=origin,
+                larg_travessa_frontal_mm=larg_travessa_frontal_mm,
+                larg_travessa_traseira_mm=larg_travessa_traseira_mm,
+                travessa_frontal_em_pe=travessa_frontal_em_pe,
+                travessa_traseira_em_pe=travessa_traseira_em_pe,
+                material_travessas=material_travessas,
+                esp_travessas_mm=esp_travessas_mm,
+                fita_travessas_modo=fita_travessas_modo,
+                fita_travessas_faces=fita_travessas_faces,
+                fita_caixa_modo=fita_caixa_modo,
+                material_fita_caixa=material_fita_caixa,
+                material_fita_travessas=material_fita_travessas,
+                gerar_furacao=gerar_furacao,
+                dispositivo_fixacao=dispositivo_fixacao,
+                alturas_prateleiras_mm=alturas_prat_mm if num_prateleiras > 0 else None,
+                prof_prateleira_mm=prof_prat * 1000.0,
+                recuo_prateleira_frontal_mm=recuo_frontal_prat * 1000.0,
+                alturas_calcos_esq_mm=alturas_calcos_esq_mm if alturas_calcos_esq_mm else None,
+                alturas_calcos_dir_mm=alturas_calcos_dir_mm if alturas_calcos_dir_mm else None,
+                divisorias_x_mm=div_x_mm,
+                divisorias_prof_mm=round(((P - desc_fundo) if is_div_completa else max(0.06, (larg_travessa_frontal_mm or 70.0) / 1000.0)) * 1000.0, 2),
+                divisorias_esp_mm=round(E * 1000.0, 2),
+                tem_fundo=tem_fundo,
+                tipo_fundo=eff_tipo_fundo,
+                esp_fundo_mm=esp_fundo_mm,
+                recuo_fundo_mm=recuo_fundo_mm,
+                prof_rasgo_mm=prof_rasgo_mm,
+                folga_fundo_mm=folga_fundo_mm,
+                ctx=mat_ctx,
+            )
+            groups.extend(cx_groups)
+
+            ox, oy, oz = info["ox"], info["oy"], info["oz"]
+            L, A, P, E, R = info["L"], info["A"], info["P"], info["E"], info["R"]
+            altura_caixa = info["altura_caixa"]
+            largura_interna = info["largura_interna"]
+            cor_cx = info["cor"]
+            mat_frente = material_frentes or material
+            E_frente = (esp_frentes_mm or esp_mm) / 1000.0
+            cor_frente = cls.get_material_color(mat_frente)
+            folga_f = FrentesKitBuilder.resolve_folga_mm(mat_ctx=mat_ctx) / 1000.0
+
+            z_topo_caixa = oz + R + altura_caixa
+            z_tampo_mesa = z_topo_caixa - rebaixo_m - Et
+
+            # Apoio central e horizontal das portas:
+            # 1) Travessa Horizontal / Divisória Horizontal no topo do vão das portas (em z_tampo_mesa)
+            if is_div_completa:
+                prof_div_h = max(0.15, P - desc_fundo)
+                z_div_h = max(oz + R + E, z_tampo_mesa)
+                groups.append(cls.build_divisoria_horizontal(
+                    name="Balcao Peninsula - Divisoria Horizontal Apoio Portas",
+                    origin=(ox + E, oy, z_div_h),
+                    size=(largura_interna, prof_div_h, E),
+                    material=material,
+                    color=cor_cx,
+                    fita_c1=True,
+                    material_fita=material_fita_caixa,
+                    ctx=mat_ctx,
+                ))
+            else:
+                larg_trav_apoio = max(0.06, min(0.12, (larg_travessa_frontal_mm or 70.0) / 1000.0))
+                z_trav_apoio = max(oz + R + E, z_tampo_mesa)
+                groups.append(cls.build_travessa_peca(
+                    name="Balcao Peninsula - Travessa Apoio Portas",
+                    origin=(ox + E, oy, z_trav_apoio),
+                    size=(largura_interna, larg_trav_apoio, E),
+                    material=material_travessas or material,
+                    color=cor_cx,
+                    fita_c1=True,
+                    material_fita=material_fita_travessas or material_fita_caixa,
+                    ctx=mat_ctx,
+                ))
+
+            # 2) Suporte Vertical Central onde as dobradiças das portas (que abrem para o centro) são fixadas:
+            # - Modo 'travessa': Travessa/Montante Vertical Frontal de apoio das portas.
+            # - Modo 'divisoria_completa': Divisória Vertical Central Completa (frente ao fundo).
+            if n_portas >= 2:
+                x_div_c = ox + E + (largura_interna - E) / 2.0
+                alt_div_v = max(0.10, z_tampo_mesa - (oz + R + E))
+                prof_apoio_v = max(0.15, P - desc_fundo) if is_div_completa else max(0.06, min(0.12, (larg_travessa_frontal_mm or 70.0) / 1000.0))
+                nome_apoio_v = (
+                    "Balcao Peninsula - Divisoria Central Completa"
+                    if is_div_completa else "Balcao Peninsula - Travessa Vertical Apoio Portas"
+                )
+                groups.append(cls.build_divisoria(
+                    name=nome_apoio_v,
+                    origin=(x_div_c, oy, oz + R + E),
+                    size=(E, prof_apoio_v, alt_div_v),
+                    material=material,
+                    fita_c1=True,
+                    color=cor_cx,
+                    cavilha_topo_inferior=gerar_furacao,
+                    cavilha_topo_superior=gerar_furacao,
+                    ctx=mat_ctx,
+                ))
+
+            # Prateleiras internas no vão das portas
+            if num_prateleiras > 0:
+                if is_div_completa and n_portas >= 2:
+                    larg_vao_p = (largura_interna - E) / 2.0
+                    vaos_x = [(ox + E, larg_vao_p), (ox + E + larg_vao_p + E, larg_vao_p)]
+                else:
+                    rec_prat_f = max(recuo_frontal_prat, (max(0.06, (larg_travessa_frontal_mm or 70.0) / 1000.0) + 0.005) if n_portas >= 2 else recuo_frontal_prat)
+                    prof_prat = max(0.10, P - desc_fundo - rec_prat_f)
+                    recuo_frontal_prat = rec_prat_f
+                    vaos_x = [(ox + E, largura_interna)]
+
+                for v_i, (xv, lv) in enumerate(vaos_x, 1):
+                    suf = f" Vao {v_i}" if len(vaos_x) > 1 else ""
+                    for i, z_p_mm in enumerate(alturas_prat_mm, 1):
+                        groups.append(cls.build_prateleira(
+                            name=f"Balcao Peninsula - Prateleira{suf} {i}",
+                            origin=(xv, oy + recuo_frontal_prat, oz + R + (z_p_mm / 1000.0)),
+                            size=(max(0.05, lv - 0.002), prof_prat, E),
+                            material=material,
+                            fita_c1=True,
+                            color=cor_cx,
+                            gerar_furacao=gerar_furacao,
+                            ctx=mat_ctx,
+                        ))
+
+            # Testeira / Painel Frontal Superior acima da mesa península
+            alt_testeira = max(0.04, rebaixo_m - (2.0 * folga_f))
+            larg_testeira = max(0.10, L - (2.0 * folga_f))
+            z_testeira = z_topo_caixa - rebaixo_m + folga_f
+
+            groups.append(cls.build_frente_gaveta(
+                name="Balcao Peninsula - Testeira Frontal Superior",
+                origin=(ox + folga_f, oy - E_frente, z_testeira),
+                size=(larg_testeira, E_frente, alt_testeira),
+                material=mat_frente,
+                color=cor_frente,
+                puxador_tipo="sem_puxador",
+                ctx=mat_ctx,
+            ))
+
+            # Portas inferiores abaixo da mesa península
+            if n_portas > 0:
+                groups.extend(FrentesKitBuilder.build_kit_portas_giro(
+                    largura_mm=L * 1000.0,
+                    altura_mm=alt_vao_portas * 1000.0,
+                    num_portas=n_portas,
+                    offset=(ox, oy, oz + R),
+                    esp_frente_mm=E_frente * 1000.0,
+                    material=mat_frente,
+                    color=cor_frente,
+                    door_sides=door_sides,
+                    prefixo="Balcao Peninsula",
+                    puxador_tipo=puxador_tipo,
+                    puxador_cor=puxador_cor,
+                    puxador_pos=puxador_pos,
+                    desconto_perfil_mm=desconto_perfil_mm,
+                    perfil_modelo=perfil_modelo,
+                    is_upper=False,
+                    gerar_furacao=gerar_furacao,
+                    recuo_topo_mm=0.0,
+                    mat_ctx=mat_ctx,
+                ))
+
+            # Tampo da Mesa Península saindo da face frontal (oy) até oy - Cm, abaixo da testeira
+            Lm_eff = min(L, max(0.30, largura_mesa_mm / 1000.0))
+            raio = min(0.15, Lm_eff / 3.0)
+            x_mesa_esq = ox + (L - Lm_eff) / 2.0
+            x_mesa_dir = x_mesa_esq + Lm_eff
+            y_frente = oy - Cm
+            y_encosto = oy
+
+            cx_dir = x_mesa_dir - raio
+            cy_frente = y_frente + raio
+            cx_esq = x_mesa_esq + raio
+
+            poly_tampo = [
+                (x_mesa_esq, y_encosto),
+                (x_mesa_dir, y_encosto),
+                (x_mesa_dir, cy_frente),
+            ]
+            for s in range(1, steps + 1):
+                ang = (s / steps) * (math.pi / 2.0)
+                poly_tampo.append((cx_dir + raio * math.cos(ang), cy_frente - raio * math.sin(ang)))
+            for s in range(1, steps + 1):
+                ang = (math.pi / 2.0) + (s / steps) * (math.pi / 2.0)
+                poly_tampo.append((cx_esq + raio * math.cos(ang), cy_frente - raio * math.sin(ang)))
+            poly_tampo.append((x_mesa_esq, cy_frente))
+
+            g_tampo = create_polygon_board_group(
+                name="Balcao Peninsula - Tampo Mesa",
+                polygon_xy=poly_tampo,
+                z0=z_tampo_mesa,
+                espessura=Et,
+                material=mat_tampo_eff,
+                color=cor_tampo_eff,
+                spec=spec_tampo,
+            )
+            groups.append(g_tampo)
+
+            x_pe = (x_mesa_esq + x_mesa_dir) / 2.0
+            y_pe = y_frente + raio + 0.08
+            alt_pe = z_tampo_mesa - oz
 
         # 3. Pé Tubular de Apoio Metálico
-        x_pe = (x_mesa_esq + x_mesa_dir) / 2.0
-        y_pe = y_frente + raio + 0.08
-        alt_pe = oz + H
-
         g_pe = create_cylinder_group(
-            name="Bancada Peninsula - Pé Tubular Metálico",
+            name="Balcao Peninsula - Pé Tubular Metálico",
             center_xy=(x_pe, y_pe),
             radius=0.025,
             z0=oz,
-            height=alt_pe,
+            height=max(0.10, alt_pe),
             material="Metal Cromado",
             color=(0.85, 0.85, 0.88),
         )

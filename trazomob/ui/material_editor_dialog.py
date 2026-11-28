@@ -825,7 +825,7 @@ class MaterialEditorDialog(QDialog):
         self.emission_widget = QWidget()
         h_emit = QHBoxLayout(self.emission_widget)
         h_emit.setContentsMargins(0, 0, 0, 0)
-        h_emit.addWidget(QLabel(tr("Potência da Luz:")))
+        h_emit.addWidget(QLabel("Potência da Luz:"))
         self.sl_emission = QSlider(Qt.Horizontal)
         self.sl_emission.setRange(1, 300)
         self.sl_emission.setValue(80)

@@ -399,6 +399,259 @@ def get_module_thumbnail(module_id: str) -> QIcon:
         p.setPen(QColor("#FFFFFF"))
         p.drawText(24, 101, 82, 11, Qt.AlignCenter, "FORNO EMBUT.")
 
+    elif module_id in ("balcao_peninsula", "bancada_peninsula"):
+        # ── Balcão Península com Mesa e Pé Tubular ── Destaque: ÍNDIGO + MADEIRA / Perspectiva 3D com mesa projetada à frente e pé tubular ──
+        accent = QColor("#4F46E5")          # Indigo 600
+        accent_light = QColor("#EEF2FF")    # Indigo 50
+        wood_top = QColor("#F59E0B")        # Amber 500 (Tampo amadeirado)
+        wood_light = QColor("#FEF3C7")      # Amber 100
+        metal_leg = QColor("#94A3B8")       # Slate 400 (Pé tubular cromado)
+
+        # 1. Balcão traseiro em perspectiva (rodapé + carcaça + testeira superior + 2 portas abrindo para o centro)
+        p.setPen(pen_dark)
+        p.setBrush(brush_plinth)
+        p.drawRect(16, 78, 66, 7)           # rodapé do balcão
+        p.setBrush(QBrush(accent_light))
+        p.drawRect(14, 16, 70, 62)          # corpo do balcão
+        # Topo em perspectiva do balcão (travessas aparentes)
+        p.setBrush(QBrush(QColor("#E0E7FF")))
+        p.drawPolygon([QPoint(14, 16), QPoint(24, 10), QPoint(94, 10), QPoint(84, 16)])
+        # Lateral direita em perspectiva do balcão
+        p.setBrush(QBrush(QColor("#C7D2FE")))
+        p.drawPolygon([QPoint(84, 16), QPoint(94, 10), QPoint(94, 72), QPoint(84, 78)])
+
+        # Testeira frontal superior acima da mesa península
+        p.setBrush(brush_white)
+        p.drawRect(16, 18, 66, 13)
+        # Duas portas inferiores (abaixo da mesa, com puxadores nas extremidades externas — abertura para o centro)
+        p.drawRect(16, 36, 32, 40)
+        p.drawRect(50, 36, 32, 40)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QBrush(accent))
+        p.drawRoundedRect(19, 50, 3, 12, 1, 1)  # puxador extremidade esquerda
+        p.drawRoundedRect(76, 50, 3, 12, 1, 1)  # puxador extremidade direita
+
+        # 2. Pé Tubular Metálico Cromado sob a ponta frontal da mesa península
+        p.setPen(QPen(QColor("#475569"), 1.3))
+        p.setBrush(QBrush(metal_leg))
+        p.drawRoundedRect(88, 64, 9, 34, 3, 3)
+        # Brilho especular vertical do tubo cromado
+        p.setPen(QPen(QColor("#F8FAFC"), 1.2))
+        p.drawLine(91, 66, 91, 95)
+        # Sapata niveladora do pé tubular
+        p.setPen(QPen(QColor("#334155"), 1.2))
+        p.setBrush(QBrush(QColor("#334155")))
+        p.drawEllipse(86, 95, 13, 4)
+
+        # 3. Tampo da Mesa Península projetando-se em diagonal para a frente/direita com ponta arredondada
+        from PySide6.QtGui import QPainterPath
+        # Espessura 3D (borda inferior do tampo)
+        path_edge = QPainterPath()
+        path_edge.moveTo(28, 35)
+        path_edge.lineTo(74, 35)
+        path_edge.lineTo(116, 57)
+        path_edge.quadTo(120, 65, 106, 71)
+        path_edge.lineTo(76, 71)
+        path_edge.quadTo(64, 71, 56, 63)
+        path_edge.lineTo(28, 35)
+        p.setPen(pen_dark)
+        p.setBrush(QBrush(wood_top))
+        p.drawPath(path_edge)
+
+        # Face superior do tampo da península
+        path_top = QPainterPath()
+        path_top.moveTo(28, 31)
+        path_top.lineTo(74, 31)
+        path_top.lineTo(116, 53)
+        path_top.quadTo(120, 61, 106, 67)
+        path_top.lineTo(76, 67)
+        path_top.quadTo(64, 67, 56, 59)
+        path_top.lineTo(28, 31)
+        p.setBrush(QBrush(wood_light))
+        p.drawPath(path_top)
+
+        # Badge "PENÍNSULA"
+        p.setPen(Qt.NoPen)
+        p.setBrush(QBrush(accent))
+        p.drawRoundedRect(22, 101, 86, 11, 3, 3)
+        font = p.font()
+        font.setPointSize(6)
+        font.setBold(True)
+        p.setFont(font)
+        p.setPen(QColor("#FFFFFF"))
+        p.drawText(22, 101, 86, 11, Qt.AlignCenter, "PENÍNSULA")
+
+    elif module_id in ("porta_panos", "toalheiro", "balcao_porta_panos", "balcao_toalheiro"):
+        # ── Balcão Porta-Panos / Toalheiro ── Destaque: TEAL / Módulo estreito aberto com 4 prateleiras ──
+        accent = QColor("#0D9488")          # Teal 600
+        accent_light = QColor("#F0FDFA")    # Teal 50
+        p.setBrush(brush_plinth)
+        p.drawRect(44, 100, 42, 10)
+        p.setBrush(QBrush(accent_light))
+        p.drawRect(38, 22, 54, 78)
+        # 4 prateleiras horizontais internas
+        p.setPen(QPen(accent, 2.0))
+        for py in [37, 52, 67, 82]:
+            p.drawLine(40, py, 90, py)
+        # Panos/toalhas dobrados sobre as prateleiras
+        p.setPen(Qt.NoPen)
+        p.fillRect(46, 31, 38, 5, QColor("#5EEAD4"))
+        p.fillRect(46, 46, 38, 5, QColor("#2DD4BF"))
+        p.fillRect(46, 61, 38, 5, QColor("#14B8A6"))
+        p.fillRect(46, 76, 38, 5, QColor("#5EEAD4"))
+        # Badge "PORTA-PANOS"
+        p.setBrush(QBrush(accent))
+        p.drawRoundedRect(24, 101, 82, 11, 3, 3)
+        font = p.font()
+        font.setPointSize(6)
+        font.setBold(True)
+        p.setFont(font)
+        p.setPen(QColor("#FFFFFF"))
+        p.drawText(24, 101, 82, 11, Qt.AlignCenter, "PORTA-PANOS")
+
+    elif module_id in ("adega_colmeia", "adega_losango", "balcao_adega_colmeia", "balcao_adega"):
+        # ── Balcão Adega Colmeia em X ── Destaque: VINHO / Divisórias cruzadas a 45° + garrafas ──
+        accent = QColor("#9F1239")          # Rose 800 (Vinho)
+        accent_light = QColor("#FFF1F2")    # Rose 50
+        p.setBrush(brush_plinth)
+        p.drawRect(44, 100, 42, 10)
+        p.setBrush(QBrush(accent_light))
+        p.drawRect(38, 22, 54, 78)
+        # Divisórias em X (colmeia losango)
+        p.setPen(QPen(accent, 1.8))
+        for cy in [24, 48, 72]:
+            p.drawLine(40, cy, 90, cy + 24)
+            p.drawLine(40, cy + 24, 90, cy)
+        # Garrafas de vinho (círculos escuros nos nichos losangulares)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QBrush(QColor("#881337")))
+        for gx, gy in [(61, 27), (46, 35), (76, 35), (61, 51), (46, 59), (76, 59), (61, 75)]:
+            p.drawEllipse(gx, gy, 8, 8)
+        # Badge "ADEGA COLMEIA"
+        p.setBrush(QBrush(accent))
+        p.drawRoundedRect(20, 101, 90, 11, 3, 3)
+        font = p.font()
+        font.setPointSize(6)
+        font.setBold(True)
+        p.setFont(font)
+        p.setPen(QColor("#FFFFFF"))
+        p.drawText(20, 101, 90, 11, Qt.AlignCenter, "ADEGA COLMEIA")
+
+    elif module_id in ("terminal_chanfrado", "balcao_terminal_chanfrado"):
+        # ── Terminal Chanfrado Aberto 45° ── Destaque: TEAL ESCURO / Base e prateleiras chanfradas a 45° ──
+        accent = QColor("#0F766E")          # Teal 700
+        accent_light = QColor("#F0FDFA")    # Teal 50
+        p.setBrush(brush_plinth)
+        p.drawPolygon([QPoint(28, 100), QPoint(78, 100), QPoint(98, 88), QPoint(28, 88)])
+        # Corpo chanfrado em perspectiva
+        p.setPen(pen_dark)
+        p.setBrush(QBrush(accent_light))
+        p.drawPolygon([QPoint(26, 24), QPoint(76, 24), QPoint(104, 48), QPoint(104, 88), QPoint(76, 98), QPoint(26, 98)])
+        # Prateleiras chanfradas expostas
+        p.setPen(QPen(accent, 1.8))
+        for py in [48, 72]:
+            p.drawLine(28, py, 76, py)
+            p.drawLine(76, py, 102, py + 12)
+        # Badge "TERM. CHANFRADO"
+        p.setPen(Qt.NoPen)
+        p.setBrush(QBrush(accent))
+        p.drawRoundedRect(18, 101, 94, 11, 3, 3)
+        font = p.font()
+        font.setPointSize(6)
+        font.setBold(True)
+        p.setFont(font)
+        p.setPen(QColor("#FFFFFF"))
+        p.drawText(18, 101, 94, 11, Qt.AlignCenter, "TERM. CHANFRADO")
+
+    elif module_id == "balcao_canto_chanfrado":
+        # ── Balcão Canto Chanfrado (Oblíquo 45°) ── Destaque: AZUL ROYAL / Pentagonal com porta a 45° ──
+        accent = QColor("#1D4ED8")          # Blue 700
+        accent_light = QColor("#EFF6FF")    # Blue 50
+        p.setBrush(brush_plinth)
+        p.drawRect(24, 100, 82, 10)
+        p.setBrush(QBrush(accent_light))
+        p.drawPolygon([QPoint(18, 28), QPoint(65, 20), QPoint(112, 28), QPoint(112, 96), QPoint(18, 96)])
+        # Porta central chanfrada a 45° em destaque
+        p.setBrush(brush_white)
+        p.drawPolygon([QPoint(38, 30), QPoint(92, 30), QPoint(92, 98), QPoint(38, 98)])
+        p.setPen(Qt.NoPen)
+        p.setBrush(QBrush(accent))
+        p.drawRoundedRect(44, 54, 4, 18, 1, 1)
+        # Badge "CANTO CHANFR."
+        p.drawRoundedRect(20, 101, 90, 11, 3, 3)
+        font = p.font()
+        font.setPointSize(6)
+        font.setBold(True)
+        p.setFont(font)
+        p.setPen(QColor("#FFFFFF"))
+        p.drawText(20, 101, 90, 11, Qt.AlignCenter, "CANTO CHANFR.")
+
+    elif module_id in ("balcao_dente_traseiro", "balcao_shaft", "balcao_coluna_traseira"):
+        # ── Balcão com Dente Traseiro (Shaft/Pilar) ── Destaque: AZUL AÇO + PAREDE / Perspectiva traseira com recuo para pilar ──
+        accent = QColor("#2563EB")          # Blue 600
+        accent_light = QColor("#EFF6FF")    # Blue 50
+        pillar_color = QColor("#CBD5E1")    # Slate 300 (Simulação do pilar/coluna da parede)
+        pillar_border = QColor("#64748B")   # Slate 500
+
+        # Rodapé
+        p.setPen(pen_dark)
+        p.setBrush(brush_plinth)
+        p.drawRect(24, 98, 82, 10)
+
+        # Carcaça vista em perspectiva isométrica (mostrando topo e o dente traseiro)
+        # Frente (portas brancas com puxadores)
+        p.setBrush(brush_white)
+        p.drawRect(24, 38, 40, 60)
+        p.drawRect(66, 38, 40, 60)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QBrush(accent))
+        p.drawRoundedRect(60, 58, 3, 14, 1, 1)
+        p.drawRoundedRect(69, 58, 3, 14, 1, 1)
+
+        # Topo com recorte do dente posterior (vista isométrica de cima)
+        p.setPen(pen_dark)
+        p.setBrush(QBrush(accent_light))
+        # Polígono do topo em perspectiva mostrando o shaft/dente no canto traseiro
+        poly_top = [
+            QPoint(24, 38),   # Frente Esq
+            QPoint(106, 38),  # Frente Dir
+            QPoint(118, 22),  # Lateral Dir Trás (recuada pelo dente)
+            QPoint(88, 22),   # Quina interna do dente
+            QPoint(84, 14),   # Parede de fundo da parte funda
+            QPoint(36, 14),   # Canto Traseiro Esq (profundidade total)
+            QPoint(24, 38),
+        ]
+        p.drawPolygon(poly_top)
+
+        # Coluna / Pilar da parede simulado preenchendo o dente (hachurado técnico)
+        p.setPen(QPen(pillar_border, 1.2, Qt.DashLine))
+        p.setBrush(QBrush(pillar_color))
+        poly_shaft = [
+            QPoint(88, 22),
+            QPoint(118, 22),
+            QPoint(114, 14),
+            QPoint(84, 14),
+        ]
+        p.drawPolygon(poly_shaft)
+
+        # Seta indicadora vermelha dimensional (como na imagem de referência)
+        p.setPen(QPen(QColor("#DC2626"), 1.8))
+        p.drawLine(100, 22, 100, 14)
+        p.drawLine(98, 16, 100, 14)
+        p.drawLine(102, 16, 100, 14)
+
+        # Badge "DENTE SHAFT"
+        p.setPen(Qt.NoPen)
+        p.setBrush(QBrush(accent))
+        p.drawRoundedRect(22, 101, 86, 11, 3, 3)
+        font = p.font()
+        font.setPointSize(6)
+        font.setBold(True)
+        p.setFont(font)
+        p.setPen(QColor("#FFFFFF"))
+        p.drawText(22, 101, 86, 11, Qt.AlignCenter, "DENTE SHAFT")
+
+
     elif module_id == "aereo":
         p.setBrush(brush_inner)
         p.drawRect(26, 28, 78, 68)

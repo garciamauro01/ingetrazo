@@ -1114,30 +1114,59 @@ def create_polygon_board_group(
     """Create a polygonal board (Z-extruded prism, e.g., pentagonal base for chamfered corner)."""
     from ..domain.materials_catalog import get_material_color
 
+    fita_c1, fita_c2, fita_l1, fita_l2 = True, False, False, False
+    ignorar_veio = True
+    operacoes: list[dict[str, Any]] = []
+    if spec is not None:
+        name = getattr(spec, "nome", name)
+        material = getattr(spec, "material", material)
+        fita_c1 = getattr(spec, "fita_c1", fita_c1)
+        fita_c2 = getattr(spec, "fita_c2", fita_c2)
+        fita_l1 = getattr(spec, "fita_l1", fita_l1)
+        fita_l2 = getattr(spec, "fita_l2", fita_l2)
+        if getattr(spec, "material_fita", None):
+            material_fita = spec.material_fita
+        if getattr(spec, "espessura_fita", None) is not None:
+            espessura_fita = spec.espessura_fita
+        if getattr(spec, "ignorar_veio", False):
+            ignorar_veio = True
+        if getattr(spec, "operacoes", None):
+            operacoes = [dict(o) if isinstance(o, dict) else o.to_dict() for o in spec.operacoes]
+
     mesh = Mesh()
     z1 = z0 + espessura
     eff_color = color if color is not None else get_material_color(material)
     cor_borda = cor_fita or (get_material_color(material_fita) if material_fita else tuple(max(0.0, c * 0.94) for c in eff_color))
     tex_mat = _get_material_texture(material)
 
+    # Garante orientação anti-horária (CCW) no plano XY para que todas as normais apontem para fora (+Z no topo, -Z na base e para fora nas bordas)
+    poly_ccw = list(polygon_xy)
+    if len(poly_ccw) >= 3:
+        signed_area2 = sum(
+            poly_ccw[i][0] * poly_ccw[(i + 1) % len(poly_ccw)][1]
+            - poly_ccw[(i + 1) % len(poly_ccw)][0] * poly_ccw[i][1]
+            for i in range(len(poly_ccw))
+        )
+        if signed_area2 < 0.0:
+            poly_ccw.reverse()
 
     # Top face (+Z): counter-clockwise direction
-    f_top = mesh.add_face([QVector3D(x, y, z1) for x, y in polygon_xy])
+    f_top = mesh.add_face([QVector3D(x, y, z1) for x, y in poly_ccw])
     f_top.attrs["color"] = eff_color
     if tex_mat:
         f_top.attrs["texture"] = dict(tex_mat)
 
     # Bottom face (-Z): clockwise direction (normal pointing downward)
-    f_bot = mesh.add_face([QVector3D(x, y, z0) for x, y in reversed(polygon_xy)])
+    f_bot = mesh.add_face([QVector3D(x, y, z0) for x, y in reversed(poly_ccw)])
     f_bot.attrs["color"] = eff_color
     if tex_mat:
         f_bot.attrs["texture"] = dict(tex_mat)
 
     # Side walls (each edge of the polygon)
-    n = len(polygon_xy)
+    n = len(poly_ccw)
     for i in range(n):
-        ax, ay = polygon_xy[i]
-        bx, by = polygon_xy[(i + 1) % n]
+        ax, ay = poly_ccw[i]
+        bx, by = poly_ccw[(i + 1) % n]
         f_side = mesh.add_face([
             QVector3D(ax, ay, z0),
             QVector3D(bx, by, z0),
@@ -1162,15 +1191,17 @@ def create_polygon_board_group(
         "comprimento": round(max(bb_w, bb_d), 1),
         "largura": round(min(bb_w, bb_d), 1),
         "espessura": esp_mm,
-        "fita_c1": True,
-        "fita_c2": False,
-        "fita_l1": False,
-        "fita_l2": False,
+        "fita_c1": fita_c1,
+        "fita_c2": fita_c2,
+        "fita_l1": fita_l1,
+        "fita_l2": fita_l2,
         "espessura_fita": float(espessura_fita or 0.45),
-        "ignorar_veio": True,
-        "operacoes": [],
+        "ignorar_veio": ignorar_veio,
+        "operacoes": operacoes,
         "_rendered_ops_count": 0,
     }
+    if spec is not None and getattr(spec, "papel", None) is not None:
+        meta["papel"] = str(getattr(spec.papel, "value", spec.papel))
     if material_fita:
         meta["material_fita"] = material_fita
 
@@ -1205,28 +1236,40 @@ def create_prism_board_group(
     eff_color = color if color is not None else get_material_color(material)
     tex_mat = _get_material_texture(material)
 
+    # Garante orientação no plano XZ para que a face frontal (y0) tenha normal -Y e as laterais apontem para fora
+    poly_oriented = list(poly_xz)
+    if len(poly_oriented) >= 3:
+        signed_area2_xz = sum(
+            poly_oriented[i][0] * poly_oriented[(i + 1) % len(poly_oriented)][1]
+            - poly_oriented[(i + 1) % len(poly_oriented)][0] * poly_oriented[i][1]
+            for i in range(len(poly_oriented))
+        )
+        # No espaço 3D (X direita, Y fundo, Z cima), normal apontando para -Y exige signed_area2_xz > 0 (se y1 > y0)
+        if (y1 >= y0 and signed_area2_xz < 0.0) or (y1 < y0 and signed_area2_xz > 0.0):
+            poly_oriented.reverse()
+
     # Front face (y0)
-    f_front = mesh.add_face([QVector3D(x, y0, z) for x, z in poly_xz])
+    f_front = mesh.add_face([QVector3D(x, y0, z) for x, z in poly_oriented])
     f_front.attrs["color"] = eff_color
     if tex_mat:
         f_front.attrs["texture"] = dict(tex_mat)
 
     # Rear face (y1)
-    f_back = mesh.add_face([QVector3D(x, y1, z) for x, z in reversed(poly_xz)])
+    f_back = mesh.add_face([QVector3D(x, y1, z) for x, z in reversed(poly_oriented)])
     f_back.attrs["color"] = eff_color
     if tex_mat:
         f_back.attrs["texture"] = dict(tex_mat)
 
     # Side edges
-    n = len(poly_xz)
+    n = len(poly_oriented)
     for i in range(n):
-        ax, az = poly_xz[i]
-        bx, bz = poly_xz[(i + 1) % n]
+        ax, az = poly_oriented[i]
+        bx, bz = poly_oriented[(i + 1) % n]
         f_side = mesh.add_face([
             QVector3D(ax, y0, az),
-            QVector3D(bx, y0, bz),
-            QVector3D(bx, y1, bz),
             QVector3D(ax, y1, az),
+            QVector3D(bx, y1, bz),
+            QVector3D(bx, y0, bz),
         ])
         f_side.attrs["color"] = eff_color
         if tex_mat:

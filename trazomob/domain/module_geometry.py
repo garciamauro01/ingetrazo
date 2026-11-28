@@ -407,6 +407,7 @@ def build_default_module_params(mod_data: dict[str, Any]) -> dict[str, Any]:
     ids_coz_inf = {
         "balcao", "balcao_duplo", "balcao_ilha", "gaveteiro", "balcao_misto", "balcao_pia",
         "balcao_canto", "balcao_canto_l", "balcao_canto_chanfrado", "porta_tempero", "balcao_forno",
+        "porta_panos", "adega_colmeia", "balcao_peninsula", "balcao_dente_traseiro",
     }
     if tipo in ids_coz_inf:
         params["travessa_frontal_em_pe"] = bool(prefs.get_global(

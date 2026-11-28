@@ -166,7 +166,9 @@ class SidebarApplyMixin:
         # Parâmetros de travessas (apenas para módulos de cozinha inferiores)
         _IDS_COZINHA_INFERIORES = {
             "balcao", "balcao_duplo", "balcao_ilha", "gaveteiro", "balcao_misto", "balcao_pia",
-            "balcao_canto", "balcao_canto_l", "balcao_canto_chanfrado", "balcao_canto_gaveteiro_l", "porta_tempero", "balcao_forno"
+            "balcao_canto", "balcao_canto_l", "balcao_canto_chanfrado", "balcao_canto_gaveteiro_l",
+            "porta_tempero", "balcao_forno", "porta_panos", "adega_colmeia", "balcao_peninsula",
+            "balcao_dente_traseiro", "balcao_shaft",
         }
         if tipo in _IDS_COZINHA_INFERIORES and hasattr(self, "chk_travessa_frontal_em_pe"):
             tf_em_pe = self.chk_travessa_frontal_em_pe.isChecked()
@@ -225,6 +227,24 @@ class SidebarApplyMixin:
             is_basc_m = (self.cb_micro_tipo_porta.currentIndex() == 0)
             new_params["tipo_porta_superior"] = "basculante" if is_basc_m else "duas_portas"
             new_params["num_portas"] = 1 if is_basc_m else 2
+
+        # Parâmetros de Balcão Península (balcao_peninsula)
+        if tipo in ("balcao_peninsula", "bancada_peninsula") and hasattr(self, "cb_posicao_peninsula"):
+            new_params["posicao_peninsula"] = "frontal_rebaixada" if self.cb_posicao_peninsula.currentIndex() == 1 else "em_cima"
+            new_params["rebaixo_peninsula_mm"] = float(self.sp_rebaixo_peninsula.value())
+            if hasattr(self, "cb_tipo_apoio_portas_peninsula"):
+                new_params["tipo_apoio_portas"] = "divisoria_completa" if self.cb_tipo_apoio_portas_peninsula.currentIndex() == 1 else "travessa"
+            new_params["largura_mesa_mm"] = float(self.sp_largura_mesa_peninsula.value())
+            new_params["comprimento_mesa_mm"] = float(self.sp_comprimento_mesa_peninsula.value())
+            new_params["esp_tampo_mm"] = float(self.sp_esp_tampo_peninsula.value())
+
+        # Parâmetros de Balcão Dente Traseiro (balcao_dente_traseiro)
+        if tipo in ("balcao_dente_traseiro", "balcao_shaft", "balcao_coluna_traseira") and hasattr(self, "cb_posicao_dente_traseiro"):
+            idx_dente = self.cb_posicao_dente_traseiro.currentIndex()
+            map_dente = {0: "canto_direito", 1: "central", 2: "canto_esquerdo"}
+            new_params["posicao_dente"] = map_dente.get(idx_dente, "canto_direito")
+            new_params["largura_dente_mm"] = float(self.sp_largura_dente_traseiro.value())
+            new_params["profundidade_dente_mm"] = float(self.sp_profundidade_dente_traseiro.value())
 
         # Parâmetros de Caixa de Gaveta
         has_gav = ("num_gavetas" in new_params) or (tipo in ("gaveteiro", "balcao_misto", "torre_quente", "gabinete_banheiro", "peca_gaveta_avulsa", "gaveta_avulsa")) or (tipo == "balcao_forno" and new_params.get("tem_gaveta", True))

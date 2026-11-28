@@ -261,7 +261,9 @@ class DialogGalleryMixin:
 
         _IDS_COZINHA_INFERIORES = {
             "balcao", "gaveteiro", "balcao_misto", "balcao_pia",
-            "balcao_canto", "balcao_canto_l", "balcao_canto_chanfrado", "balcao_canto_gaveteiro_l", "porta_tempero", "balcao_forno"
+            "balcao_canto", "balcao_canto_l", "balcao_canto_chanfrado", "balcao_canto_gaveteiro_l",
+            "porta_tempero", "balcao_forno", "porta_panos", "adega_colmeia", "balcao_peninsula",
+            "balcao_dente_traseiro", "balcao_shaft",
         }
         has_travessa = mod_id in _IDS_COZINHA_INFERIORES
 
@@ -328,6 +330,42 @@ class DialogGalleryMixin:
                 w.setVisible(is_micro)
             if is_micro:
                 self.cb_micro_tipo_porta.setCurrentIndex(0 if mod_data.get("tipo_porta_superior") == "basculante" else 1)
+
+        # ── Visibilidade dos controles de Balcão Península (balcao_peninsula) ──
+        is_peninsula = mod_id in ("balcao_peninsula", "bancada_peninsula")
+        if hasattr(self, "_peninsula_widgets"):
+            for w in self._peninsula_widgets:
+                w.setVisible(is_peninsula)
+            if is_peninsula:
+                pos_pen = str(mod_data.get("posicao_peninsula", "em_cima")).lower()
+                is_reb = pos_pen.startswith(("frontal", "rebaixada", "referencia"))
+                self.cb_posicao_peninsula.setCurrentIndex(1 if is_reb else 0)
+                self.sp_rebaixo_peninsula.setValue(int(mod_data.get("rebaixo_peninsula_mm", 150)))
+                self.lbl_rebaixo_peninsula.setVisible(is_reb)
+                self.sp_rebaixo_peninsula.setVisible(is_reb)
+                ap_pen = str(mod_data.get("tipo_apoio_portas", "travessa")).lower()
+                if hasattr(self, "cb_tipo_apoio_portas_peninsula"):
+                    self.cb_tipo_apoio_portas_peninsula.setCurrentIndex(1 if ap_pen.startswith(("divisoria", "completa")) else 0)
+                self.sp_largura_mesa_peninsula.setValue(int(mod_data.get("largura_mesa_mm", 800)))
+                self.sp_comprimento_mesa_peninsula.setValue(int(mod_data.get("comprimento_mesa_mm", 1200)))
+                self.sp_esp_tampo_peninsula.setValue(int(mod_data.get("esp_tampo_mm", 30)))
+
+        # ── Visibilidade dos controles de Balcão Dente Traseiro ──────────────
+        is_dente = mod_id in ("balcao_dente_traseiro", "balcao_shaft", "balcao_coluna_traseira")
+        if hasattr(self, "_dente_traseiro_widgets"):
+            for w in self._dente_traseiro_widgets:
+                w.setVisible(is_dente)
+            if is_dente:
+                pos_d = str(mod_data.get("posicao_dente", "canto_direito")).lower()
+                if any(k in pos_d for k in ("central", "meio")):
+                    idx_d = 1
+                elif any(k in pos_d for k in ("esq", "left")):
+                    idx_d = 2
+                else:
+                    idx_d = 0
+                self.cb_posicao_dente_traseiro.setCurrentIndex(idx_d)
+                self.sp_largura_dente_traseiro.setValue(int(mod_data.get("largura_dente_mm", 250)))
+                self.sp_profundidade_dente_traseiro.setValue(int(mod_data.get("profundidade_dente_mm", 150)))
 
         # ── Visibilidade dos controles de Caixa de Gaveta ──────────────────────
         has_gav = bool(mod_data.get("has_gavetas", False)) or (mod_id in ("gaveteiro", "balcao_misto", "torre_quente", "gabinete_banheiro")) or (is_forno and self.chk_forno_tem_gaveta.isChecked())
