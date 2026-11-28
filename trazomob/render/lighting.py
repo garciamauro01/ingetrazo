@@ -100,6 +100,7 @@ def _clean_trazomob_lights(raw) -> list[dict]:
             "power": max(0.0, min(power, 1e6)),
             "angle": max(1.0, min(angle, 179.0 if kind != "led_strip" else 180.0)),
             "on": bool(lt.get("on", True)),
+            "cast_shadow": bool(lt.get("cast_shadow", kind != "led_strip")),
             "name": str(lt.get("name", "")),
         }
         for key in _TRAZOMOB_EXTRA_KEYS:

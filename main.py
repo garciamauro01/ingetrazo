@@ -670,7 +670,51 @@ def main() -> int:
 
     QTimer.singleShot(0, _after_first_frame)
     _offer_appimage_integration(window)
+    _install_freeze_watchdog(app)
     return app.exec()
+
+
+def _install_freeze_watchdog(app) -> None:
+    """Log the main thread stack trace if the Qt event loop stalls > 5s."""
+    import sys
+    import threading
+    import time
+    import traceback
+    from PySide6.QtCore import QTimer
+
+    main_tid = threading.get_ident()
+    state = {"beat": time.monotonic(), "dumped": False}
+
+    hb = QTimer(app)
+    hb.setInterval(1000)
+
+    def _on_beat():
+        state["beat"] = time.monotonic()
+        state["dumped"] = False
+
+    hb.timeout.connect(_on_beat)
+    hb.start()
+
+    def _watch():
+        log_path = Path.home() / "AppData" / "Local" / "IngeTrazo" / "ingetrazo-freeze.log"
+        while True:
+            time.sleep(2.0)
+            stalled = time.monotonic() - state["beat"]
+            if stalled > 5.0 and not state["dumped"]:
+                state["dumped"] = True
+                frame = sys._current_frames().get(main_tid)
+                if frame is None:
+                    continue
+                try:
+                    log_path.parent.mkdir(parents=True, exist_ok=True)
+                    with open(log_path, "a", encoding="utf-8") as f:
+                        f.write(f"\n[{time.strftime('%Y-%m-%dT%H:%M:%S')}] UI stalled {stalled:.1f}s:\n")
+                        traceback.print_stack(frame, file=f)
+                except Exception:
+                    pass
+
+    t = threading.Thread(target=_watch, name="IngeTrazoFreezeWatchdog", daemon=True)
+    t.start()
 
 
 def _offer_appimage_integration(window) -> None:

@@ -1300,27 +1300,6 @@ def setup_render_engine(scene, engine="cycles", samples=128):
                     setattr(scene.eevee, flag, enabled)
                 except Exception:
                     pass
-
-        # Simula o rebote difuso (multi-bounce GI) das luzes internas no EEVEE headless
-        interior_lights = [o for o in scene.objects if o.type == "LIGHT" and o.data.type in ("AREA", "POINT", "SPOT")]
-        if interior_lights and "TrazoMob_EEVEE_BounceFill" not in bpy.data.objects:
-            total_energy = sum(max(0.0, float(o.data.energy)) for o in interior_lights)
-            fill_energy = max(80.0, min(180.0, total_energy * 1.25))
-            avg_pos = sum((o.location for o in interior_lights), Vector((0.0, 0.0, 0.0))) / len(interior_lights)
-            if scene.camera is not None:
-                fill_pos = avg_pos.lerp(scene.camera.location, 0.45)
-            else:
-                fill_pos = avg_pos
-            fill_pos.z = max(fill_pos.z, 2.0)
-            fill_data = bpy.data.lights.new("TrazoMob_EEVEE_BounceFill", type="POINT")
-            fill_data.energy = fill_energy
-            fill_data.color = (1.0, 0.98, 0.95)
-            fill_data.use_shadow = False
-            if hasattr(fill_data, "shadow_soft_size"):
-                fill_data.shadow_soft_size = 1.5
-            fill_obj = bpy.data.objects.new("TrazoMob_EEVEE_BounceFill", fill_data)
-            fill_obj.location = fill_pos
-            scene.collection.objects.link(fill_obj)
         if hasattr(scene.eevee, "ray_tracing_options"):
             rto = scene.eevee.ray_tracing_options
             for opt, val in {
@@ -1446,7 +1425,7 @@ def _create_led_strip_light(scene, depsgraph, index, lt, color, power):
     if hasattr(ldata, "spread"):
         ldata.spread = math.radians(150.0)
     if hasattr(ldata, "use_shadow"):
-        ldata.use_shadow = True
+        ldata.use_shadow = bool(lt.get("cast_shadow", True))
     if hasattr(ldata, "shadow_buffer_clip_start"):
         ldata.shadow_buffer_clip_start = 0.005
     if hasattr(ldata, "use_contact_shadows"):

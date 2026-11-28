@@ -348,7 +348,7 @@ def test_fast_90deg_rotation_preserves_other_caches_and_uses_xform():
 
 
 def test_photoreal_render_has_top_level_bmesh_and_eevee_diffuse_safe_flags():
-    """Script headless do Blender deve importar bmesh no topo e desativar raytracing/fast_gi no EEVEE."""
+    """Script headless do Blender deve importar bmesh no topo, desativar raytracing e manter fast_gi no EEVEE."""
     import ast
 
     script_path = ROOT / "blender_scripts" / "photoreal_render.py"
@@ -362,7 +362,7 @@ def test_photoreal_render_has_top_level_bmesh_and_eevee_diffuse_safe_flags():
     }
     assert "bmesh" in top_imports
     assert '"use_raytracing": False' in source
-    assert '"use_fast_gi": False' in source
+    assert '"use_fast_gi": True' in source
 
 
 def test_led_strip_resizes_when_physical_mesh_group_is_scaled_or_stretched():
@@ -689,18 +689,18 @@ def test_eevee_room_confinement_blocks_sky_and_sun_unless_opening_or_glass(monke
     assert conf_closed["sky_exposure"] == pytest.approx(0.0)
     assert conf_closed["sun_visibility"] == pytest.approx(0.0)
 
-    # Sem luzes internas -> escuro total (World = 0.0) e Sol bloqueado (energy = 0.0) no EEVEE
+    # Sem luzes internas -> piso minimo de 0.25 de ceu/sol no EEVEE (evita preto total no Blender 5 headless)
     created_lights.clear()
     mod.apply_lighting_preset(
         scene_closed, preset_name="dia", sun_dir=sun_dir, engine="eevee", confinement=conf_closed, interior_lights=[]
     )
     bg_closed = next(n for n in scene_closed.world.node_tree.nodes if n.bl_idname == "ShaderNodeBackground")
-    assert bg_closed.inputs["Strength"].default_value == pytest.approx(0.0)
+    assert bg_closed.inputs["Strength"].default_value == pytest.approx(0.25)
     sun_closed = next(lt for lt in created_lights if lt.type == "SUN")
-    assert sun_closed.energy == pytest.approx(0.0)
+    assert sun_closed.energy == pytest.approx(0.875)  # 3.5 * 0.25
     assert sun_closed.use_shadow is True
 
-    # Com luz interna ativa -> preenchimento sutil de rebote interno (<= 0.04), sem vazamento do ceu
+    # Com luz interna ativa -> o World EEVEE mantem o piso de 0.25; o rebote vem das luzes reais/fast_gi
     mod.apply_lighting_preset(
         scene_closed,
         preset_name="dia",
@@ -710,8 +710,8 @@ def test_eevee_room_confinement_blocks_sky_and_sun_unless_opening_or_glass(monke
         interior_lights=[{"on": True, "power": 600.0, "color": (1.0, 0.85, 0.7)}],
     )
     bg_lit = next(n for n in scene_closed.world.node_tree.nodes if n.bl_idname == "ShaderNodeBackground")
-    assert 0.0 < bg_lit.inputs["Strength"].default_value <= 0.04
-    assert bg_lit.inputs["Color"].default_value[:3] == pytest.approx((1.0, 0.85, 0.7))
+    assert bg_lit.inputs["Strength"].default_value == pytest.approx(0.25)
+    assert bg_lit.inputs["Color"].default_value[:3] == pytest.approx((0.92, 0.94, 0.96))
 
     # No modo Cycles, o World/Sol permanecem inalterados pois o próprio Cycles traça as paredes/teto
     created_lights.clear()
@@ -721,11 +721,11 @@ def test_eevee_room_confinement_blocks_sky_and_sun_unless_opening_or_glass(monke
     sun_cycles = next(lt for lt in created_lights if lt.type == "SUN")
     assert sun_cycles.energy == pytest.approx(3.5)
 
-    # EEVEE engine flags de sombra e protecao contra bug difuso
+    # EEVEE engine flags de sombra/EEVEE Next (raytracing off preserva as luzes internas; fast_gi on da profundidade)
     mod.setup_render_engine(scene_closed, engine="eevee", samples=32)
     assert scene_closed.eevee.use_shadows is True
     assert scene_closed.eevee.use_raytracing is False
-    assert scene_closed.eevee.use_fast_gi is False
+    assert scene_closed.eevee.use_fast_gi is True
     assert scene_closed.eevee.shadow_ray_count == 4
     assert scene_closed.eevee.shadow_step_count == 12
     assert scene_closed.eevee.gtao_distance == pytest.approx(0.5)

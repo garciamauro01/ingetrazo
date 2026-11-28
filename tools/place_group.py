@@ -225,7 +225,20 @@ class PlaceGroupTool(Tool):
             carry_axes(self._group, self._pose_matrix(shift))   # #44
         group = self._group
         self._group = None
+        scene = getattr(viewport, "scene", None)
+        was_empty = (
+            scene is not None
+            and len(getattr(scene, "groups", ())) == 0
+            and len(getattr(getattr(scene, "mesh", None), "faces", ())) == 0
+        )
         viewport.history.execute(InsertGroupCommand(group))
+        if was_empty and hasattr(viewport, "camera"):
+            try:
+                lo, hi = scene.bounds()
+                if lo is not None and hi is not None:
+                    viewport.camera.fit_box(lo, hi)
+            except Exception:
+                pass
         viewport.flash_status(self._placed_message())
         window = viewport.window()
         if hasattr(window, "_activate_tool"):

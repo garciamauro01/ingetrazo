@@ -19,6 +19,7 @@ from PySide6.QtGui import (
     QVector3D,
 )
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QDialog,
     QDoubleSpinBox,
@@ -227,6 +228,12 @@ class LightManagerDialog(QDialog):
         self.lbl_kelvin_desc.setStyleSheet("color: palette(mid); font-style: italic;")
         l_right.addWidget(self.lbl_kelvin_desc)
 
+        self.chk_cast_shadow = QCheckBox("Projetar Sombras")
+        self.chk_cast_shadow.setToolTip("Desative em fitas LED embutidas no EEVEE se o armário bloquear a luz.")
+        self.chk_cast_shadow.setChecked(True)
+        self.chk_cast_shadow.toggled.connect(self._on_prop_changed)
+        l_right.addWidget(self.chk_cast_shadow)
+
         # Ângulo de Abertura (para Spots)
         self.w_spot_group = QWidget()
         l_spot = QVBoxLayout(self.w_spot_group)
@@ -383,6 +390,10 @@ class LightManagerDialog(QDialog):
         self.spin_blend.setValue(float(lt.get("blend", 0.35)))
         self.spin_blend.blockSignals(False)
 
+        self.chk_cast_shadow.blockSignals(True)
+        self.chk_cast_shadow.setChecked(bool(lt.get("cast_shadow", lt.get("kind") != "led_strip")))
+        self.chk_cast_shadow.blockSignals(False)
+
         ies_cur = lt.get("ies_path")
         if ies_cur:
             from pathlib import Path
@@ -461,6 +472,7 @@ class LightManagerDialog(QDialog):
         lt["color"] = list(kelvin_to_rgb(k))
         lt["angle"] = float(self.spin_angle.value())
         lt["blend"] = float(self.spin_blend.value())
+        lt["cast_shadow"] = bool(self.chk_cast_shadow.isChecked())
 
         # Atualiza Z e desloca target/fitas de acordo
         new_z = round(float(self.spin_z.value()), 4)

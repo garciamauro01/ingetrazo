@@ -693,7 +693,7 @@ def install(app, TrazoMobTool, CabinetInteractTool) -> None:
             if dlg is None or not dlg.isVisible() or getattr(dlg, "viewport", None) is not cur_vp:
                 if dlg is not None and dlg.isVisible():
                     dlg.close()
-                dlg = TrazoMobRenderDialog(cur_vp, parent=main_window)
+                dlg = TrazoMobRenderDialog(cur_vp, parent=None)
                 dlg.setModal(False)
                 if main_window is not None:
                     _RENDER_DLGS[main_window] = dlg
