@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import pytest
-from PySide6.QtGui import QVector3D
+from PySide6.QtGui import QFontMetrics, QVector3D
 from PySide6.QtWidgets import QApplication
 
 from core.history import History
@@ -90,7 +90,10 @@ def test_walls_sidebar_preserves_all_controls_and_compact_dimensions(qapp):
 
     # Verifica compacidade real do card para não gerar painel gigante nem estouro horizontal
     card = panel.card_paredes
-    assert card.sizeHint().height() <= 440
+    # The reference height was measured with one platform font; allow up to
+    # two extra text lines for fonts with taller metrics before calling the
+    # card "giant".
+    assert card.sizeHint().height() <= 440 + 2 * QFontMetrics(card.font()).height()
     assert card.minimumSizeHint().width() <= 360
 
     # Verifica alternância da trava de posição

@@ -60,6 +60,8 @@
   "Iluminação e Spots Físicos (TrazoMob)": "Iluminación y Focos Físicos (TrazoMob)",
   "Gerenciador de Iluminação e Spots Físicos Profissionais": "Gestor de Iluminación y Focos Físicos Profesionales",
   "Inserir e controlar spots, fitas LED, potência e cor da luz para o render": "Insertar y controlar focos, tiras LED, potencia y color de luz para el render",
+  "Projetar Sombras": "Proyectar Sombras",
+  "Desative em fitas LED embutidas no EEVEE se o armário bloquear a luz.": "Desactive esta opción en tiras LED empotradas en EEVEE si el mueble bloquea la luz.",
   "Render Foto-Realista (TrazoMob)": "Render Fotorrealista (TrazoMob)",
   "Render Foto-Realista de Interiores (Blender Cycles / EEVEE)": "Render Fotorrealista de Interiores (Blender Cycles / EEVEE)",
   "Gera imagem foto-realista com iluminação de estúdio e materiais PBR": "Genera imagen fotorrealista con iluminación de estudio y materiales PBR",

@@ -340,8 +340,11 @@ class DwgConverter(QObject):
             return
         self._settle(error)
         if self._proc.state() != QProcess.ProcessState.NotRunning:
+            # kill() is asynchronous; waitForFinished() here would block the
+            # GUI thread inside the nested loop until the child is reaped.
+            # The converter is a child QObject and convert() removes the temp
+            # directory itself, so nothing needs the synchronous wait.
             self._proc.kill()
-            self._proc.waitForFinished(5000)
 
     def _settle(self, error: Optional[DwgBridgeError]) -> None:
         self._done = True

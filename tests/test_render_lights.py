@@ -192,10 +192,13 @@ def test_a_night_render_with_lights(tmp_path):
 
 
 def test_the_lights_are_drawn_over_the_viewport(window):
-    """The overlay paints a bulb at each light (an overlay that raised would
-    only be logged and skipped, so draw it here and look at the pixels)."""
+    """A bulb is painted at each light by the viewport's registered overlays.
+
+    TrazoMob's visualizer owns the bulbs when it is active (it draws them with
+    occlusion) and the native Render overlay steps aside. Draw the same overlays
+    the viewport paints, so the test follows whichever owner is installed.
+    """
     from PySide6.QtGui import QImage, QPainter
-    import importlib
     panel = _panel(window)
     vp = window.viewport
     vp.resize(400, 300)
@@ -204,11 +207,11 @@ def test_the_lights_are_drawn_over_the_viewport(window):
     vp.camera.distance = 10
     panel.add_light("spot", V(0, 0, 1))
     panel._lights.setCurrentRow(0)
-    mod = importlib.import_module(type(panel).__module__)
     img = QImage(400, 300, QImage.Format_ARGB32)
     img.fill(0)
     painter = QPainter(img)
-    mod.draw_lights(panel.app, panel, vp, painter)
+    for overlay in list(getattr(vp, "_ext_overlays", ())):
+        overlay(vp, painter)
     painter.end()
     px = vp._world_to_pixel(V(0, 0, 1))
     assert px is not None

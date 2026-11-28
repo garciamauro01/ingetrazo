@@ -46,6 +46,24 @@ _TRAZOMOB_LIGHT_KINDS = ("point", "spot", "led_strip")
 _TRAZOMOB_EXTRA_KEYS = ("p1", "p2", "length", "profile_w", "target", "ies_path", "blend", "double_sided")
 
 
+def default_cast_shadow(kind) -> bool:
+    """Shadow default for a light kind.
+
+    LED strips sit inside cabinet profiles: their own shadow blocks their
+    indirect light in headless EEVEE, so they start with shadows off. Spots
+    and diffuse points keep physical shadows. The Blender script mirrors this
+    rule for jobs that bypass the app's normalization.
+    """
+    return str(kind) != "led_strip"
+
+
+def wants_shadow(light) -> bool:
+    """Resolve ``cast_shadow``, falling back to the rule for the light kind."""
+    if not isinstance(light, dict):
+        return True
+    return bool(light.get("cast_shadow", default_cast_shadow(light.get("kind", "point"))))
+
+
 def _clean_trazomob_lights(raw) -> list[dict]:
     """Valida luzes do TrazoMob preservando tipos e campos específicos (ex.: Fita LED)."""
     out: list[dict] = []
@@ -100,7 +118,7 @@ def _clean_trazomob_lights(raw) -> list[dict]:
             "power": max(0.0, min(power, 1e6)),
             "angle": max(1.0, min(angle, 179.0 if kind != "led_strip" else 180.0)),
             "on": bool(lt.get("on", True)),
-            "cast_shadow": bool(lt.get("cast_shadow", kind != "led_strip")),
+            "cast_shadow": wants_shadow(lt),
             "name": str(lt.get("name", "")),
         }
         for key in _TRAZOMOB_EXTRA_KEYS:
@@ -534,6 +552,10 @@ def _build_document_payload(viewport, lights: list[dict]):
     raw = data.get("render_blender", {}) or {}
     if not isinstance(raw, dict):
         raw = {}
+    # Never edit the document's own dict: set_document_data() captures the
+    # previous value for Undo, and an in-place change here would make Undo
+    # restore the already-edited lights.
+    raw = dict(raw)
     cleaned = _clean_trazomob_lights(lights)
     if raw.get("lights") == cleaned:
         return None

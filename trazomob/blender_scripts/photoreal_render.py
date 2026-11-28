@@ -25,6 +25,16 @@ def say(*parts):
     print("TRAZOMOB_RENDER", *parts, flush=True)
 
 
+def _light_wants_shadow(lt):
+    """Mirror trazomob.render.lighting.wants_shadow for headless jobs.
+
+    The app normalizes every light before writing job.json; this fallback
+    keeps older jobs and generic lights consistent with the UI toggle.
+    LED strips start with shadows off, spots and points with shadows on.
+    """
+    return bool(lt.get("cast_shadow", str(lt.get("kind", "point")) != "led_strip"))
+
+
 def load_job():
     argv = sys.argv
     if "--" not in argv:
@@ -1425,7 +1435,7 @@ def _create_led_strip_light(scene, depsgraph, index, lt, color, power):
     if hasattr(ldata, "spread"):
         ldata.spread = math.radians(150.0)
     if hasattr(ldata, "use_shadow"):
-        ldata.use_shadow = bool(lt.get("cast_shadow", True))
+        ldata.use_shadow = _light_wants_shadow(lt)
     if hasattr(ldata, "shadow_buffer_clip_start"):
         ldata.shadow_buffer_clip_start = 0.005
     if hasattr(ldata, "use_contact_shadows"):
@@ -1762,7 +1772,7 @@ def main():
         ldata.energy = power
         ldata.color = color
         if hasattr(ldata, "use_shadow"):
-            ldata.use_shadow = True
+            ldata.use_shadow = _light_wants_shadow(lt)
         if hasattr(ldata, "shadow_buffer_clip_start"):
             ldata.shadow_buffer_clip_start = 0.005
         if hasattr(ldata, "use_contact_shadows"):

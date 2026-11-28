@@ -2,7 +2,11 @@
 # Copyright (C) 2026 Marco Sumari Tellez and IngeTrazo contributors.
 """Issue #205: a render light is selected by clicking its bulb with the
 Select tool and deleted with Supr, one undo step — through the extension
-API's ``add_pickable``, without the model's selection ever holding it."""
+API's ``add_pickable``, without the model's selection ever holding it.
+
+TrazoMob's visualizer owns the bulb pick in the integrated app (the native
+Render overlay steps aside), so these tests follow that pickable while still
+checking the shared document lights the Render tab edits."""
 from __future__ import annotations
 
 import pytest
@@ -63,34 +67,48 @@ def _two_lights(win):
     return panel, vp
 
 
+def _picked_index():
+    from trazomob.render.lighting_visualizer import TrazoMobLightVisualizer
+    return TrazoMobLightVisualizer.get_selected_index()
+
+
 def test_a_click_on_the_bulb_selects_that_light(window):
-    panel, vp = _two_lights(window)
+    _panel, vp = _two_lights(window)
     _click(window, V(4, 0, 3))
     assert vp.extension_pick is not None
-    assert panel._view_pick == 1 and panel.selected_index() == 1
+    assert _picked_index() == 1
     assert not vp.scene.selection            # the model's selection: empty
 
 
-def test_supr_deletes_it_in_one_undo_step(window):
+def test_supr_deletes_it_in_one_undo_step(window, monkeypatch):
     from tools.select import delete_selection_or_hover
+    from PySide6.QtWidgets import QMessageBox
+    import trazomob.ui.sidebar_light_controller as sidebar_light_controller
+
+    # TrazoMob asks for confirmation before removing a luminaire; Supr in a
+    # headless test must answer it instead of opening a modal dialog.
+    monkeypatch.setattr(
+        sidebar_light_controller.QMessageBox, "question",
+        lambda *args, **kwargs: QMessageBox.Yes,
+    )
     panel, vp = _two_lights(window)
     _click(window, V(0, 0, 3))
     assert delete_selection_or_hover(vp) is True
     lights = panel.app.document_data({})["lights"]
     assert [lt["kind"] for lt in lights] == ["spot"]
-    assert vp.extension_pick is None and panel._view_pick is None
+    assert vp.extension_pick is None and _picked_index() is None
     assert vp.history.undo()
     assert len(panel.app.document_data({})["lights"]) == 2
 
 
 def test_a_click_elsewhere_or_esc_lets_it_go(window):
-    panel, vp = _two_lights(window)
+    _panel, vp = _two_lights(window)
     _click(window, V(4, 0, 3))
     _click(window, V(2, 0, 0))              # empty ground
-    assert vp.extension_pick is None and panel._view_pick is None
+    assert vp.extension_pick is None and _picked_index() is None
     _click(window, V(4, 0, 3))
     vp.escape()
-    assert vp.extension_pick is None and panel._view_pick is None
+    assert vp.extension_pick is None and _picked_index() is None
 
 
 def test_after_an_undo_supr_does_not_delete_by_a_stale_index(window):

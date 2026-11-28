@@ -43,6 +43,7 @@ from core.render_blender import (
     kelvin_to_rgb,
 )
 
+from ..domain.i18n import tr
 from ..integrations import platform as host
 
 logger = logging.getLogger("trazomob.light_tools")
@@ -61,6 +62,7 @@ from .lighting import (
     _get_document_lights,
     _save_document_lights,
     _translate_light_scene_group,
+    wants_shadow,
 )
 
 
@@ -228,8 +230,10 @@ class LightManagerDialog(QDialog):
         self.lbl_kelvin_desc.setStyleSheet("color: palette(mid); font-style: italic;")
         l_right.addWidget(self.lbl_kelvin_desc)
 
-        self.chk_cast_shadow = QCheckBox("Projetar Sombras")
-        self.chk_cast_shadow.setToolTip("Desative em fitas LED embutidas no EEVEE se o armário bloquear a luz.")
+        self.chk_cast_shadow = QCheckBox(tr("Projetar Sombras"))
+        self.chk_cast_shadow.setToolTip(
+            tr("Desative em fitas LED embutidas no EEVEE se o armário bloquear a luz.")
+        )
         self.chk_cast_shadow.setChecked(True)
         self.chk_cast_shadow.toggled.connect(self._on_prop_changed)
         l_right.addWidget(self.chk_cast_shadow)
@@ -391,7 +395,7 @@ class LightManagerDialog(QDialog):
         self.spin_blend.blockSignals(False)
 
         self.chk_cast_shadow.blockSignals(True)
-        self.chk_cast_shadow.setChecked(bool(lt.get("cast_shadow", lt.get("kind") != "led_strip")))
+        self.chk_cast_shadow.setChecked(wants_shadow(lt))
         self.chk_cast_shadow.blockSignals(False)
 
         ies_cur = lt.get("ies_path")

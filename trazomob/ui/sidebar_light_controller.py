@@ -388,9 +388,25 @@ class SidebarLightMixin:
         if vp is not None:
             from ..render.lighting import (
                 TrazoMobLightVisualizer,
+                _get_document_lights,
+                _save_document_lights,
                 sync_scene_lights_to_document,
             )
-            sync_scene_lights_to_document(vp)
+            has_light_groups = any(
+                isinstance(getattr(g, "ext", None), dict)
+                and "trazomob_light" in g.ext
+                for g in getattr(scene, "groups", ()) or ()
+            )
+            if has_light_groups:
+                sync_scene_lights_to_document(vp)
+            else:
+                # Lights created in the Render tab live only in the document:
+                # syncing from an empty scene would wipe every other light.
+                lights = _get_document_lights(vp)
+                idx = self._selected_light_idx
+                if idx is not None and 0 <= idx < len(lights):
+                    del lights[idx]
+                    _save_document_lights(vp, lights, undoable=True)
             TrazoMobLightVisualizer.set_selected_index(None, vp)
             vp.update()
 

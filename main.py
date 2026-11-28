@@ -674,9 +674,14 @@ def main() -> int:
     return app.exec()
 
 
+def _freeze_log_path() -> Path:
+    """The black-box log for stalled UI frames, beside the crash log."""
+    from core.paths import user_log_dir
+    return user_log_dir() / "ingetrazo-freeze.log"
+
+
 def _install_freeze_watchdog(app) -> None:
     """Log the main thread stack trace if the Qt event loop stalls > 5s."""
-    import sys
     import threading
     import time
     import traceback
@@ -696,7 +701,7 @@ def _install_freeze_watchdog(app) -> None:
     hb.start()
 
     def _watch():
-        log_path = Path.home() / "AppData" / "Local" / "IngeTrazo" / "ingetrazo-freeze.log"
+        log_path = _freeze_log_path()
         while True:
             time.sleep(2.0)
             stalled = time.monotonic() - state["beat"]

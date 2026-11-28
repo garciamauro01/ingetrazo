@@ -247,21 +247,34 @@ def test_converter_timeout_kills_the_process(fake_converter, tmp_path, monkeypat
 
 
 def test_converter_cancel_keeps_the_event_loop_alive(fake_converter, tmp_path):
+    import time
     from PySide6.QtCore import QTimer
 
     fake_converter("hang")
     conv = dwg_bridge.DwgConverter()
     ticks = []
+    cancel_cost = []
     ticker = QTimer()
-    ticker.timeout.connect(lambda: ticks.append(1))
+
+    def _tick():
+        ticks.append(1)
+        if len(ticks) == 3:
+            # Cancel from inside the converter's own event loop: a synchronous
+            # waitForFinished() in cancel() would freeze it right here.
+            started = time.monotonic()
+            conv.cancel()
+            cancel_cost.append(time.monotonic() - started)
+            ticker.stop()
+
+    ticker.timeout.connect(_tick)
     ticker.start(20)
-    QTimer.singleShot(400, conv.cancel)
     before = set(_temp_dirs_left())
     with pytest.raises(dwg_bridge.DwgBridgeError) as err:
         conv.convert(tmp_path / "a.dwg")
     ticker.stop()
     assert err.value.kind == "cancelled"
     assert len(ticks) >= 3                # the GUI thread was not blocked
+    assert cancel_cost and cancel_cost[0] < 0.25
     assert set(_temp_dirs_left()) == before
 
 
